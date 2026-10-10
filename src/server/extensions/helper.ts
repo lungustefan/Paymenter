@@ -86,7 +86,18 @@ export class ExtensionHelper {
 
     static async getExtension(type: string, extension: string, config: unknown = {}): Promise<ExtensionBase> {
         const { Cls } = await loadClass(type, extension);
-        return new Cls(settingsToArray(config));
+        let values = settingsToArray(config);
+        if (Object.keys(values).length === 0) {
+            // `Extension::config()` loads the saved settings itself when it was not given any
+            const Model = type === 'gateway' ? Gateway : type === 'server' ? Server : Extension;
+            try {
+                const row = await Model.query().where('extension', extension).first();
+                if (row) values = await row.settingsMap();
+            } catch {
+                /* tables may not exist yet */
+            }
+        }
+        return new Cls(values);
     }
 
     static async getModule(type: string, extension: string) {
@@ -337,9 +348,7 @@ export class ExtensionHelper {
 
     /** A fresh instance with the settings currently saved for the first installed row of this extension. */
     static async freshInstance<T = ExtensionBase>(type: string, name: string): Promise<T> {
-        const Model = type === 'gateway' ? Gateway : type === 'server' ? Server : Extension;
-        const row = await Model.query().where('extension', name).first();
-        return (await this.getExtension(type, name, row ? await row.settingsMap() : {})) as T;
+        return (await this.getExtension(type, name)) as T;
     }
 
     static async bootExtensions() {
@@ -359,6 +368,9 @@ export class ExtensionHelper {
                     this.routes.push({ ...r, extension: row.extension, type: row.type });
                     if (r.name) (await import('@/server/routes')).registerRoute(r.name, r.path);
                 }
+                for (const endpoint of instance.apiEndpoints?.() ?? []) {
+                    (await import('@/server/api/admin')).registerEndpoint({ ...endpoint, extension: row.extension });
+                }
                 for (const p of instance.pages?.() ?? []) {
                     this.pages.push({ ...p, extension: row.extension, type: row.type });
                     if (p.name) (await import('@/server/routes')).registerRoute(p.name, p.path);
@@ -373,7 +385,7 @@ export class ExtensionHelper {
     static async runMigrations(relativePath: string): Promise<string[]> {
         const dir = path.join(process.cwd(), relativePath);
         if (!fs.existsSync(dir)) return [];
-        const files = fs.readdirSync(dir).filter((f) => f.endsWith('.sql')).sort();
+        const files = fs.readdirSync(dir).filter((f) => f.endsWith('.sql') && !f.endsWith('.down.sql')).sort();
         const { charset, collation } = dbConfig();
         const pool = getPool();
         const [rows] = (await pool.query('select migration from migrations')) as any;

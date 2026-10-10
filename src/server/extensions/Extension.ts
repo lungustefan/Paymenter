@@ -1,5 +1,6 @@
 import type { ConfigDefinition, ExtensionMeta, ExtensionPage, ExtensionRoute } from './types';
 import type { Extension as ExtensionModel } from '@/server/models/Extension';
+import type { Endpoint } from '@/server/api/admin';
 
 /**
  * Base class of every extension (port of App\Classes\Extension\Extension).
@@ -36,4 +37,6 @@ export class Extension {
     routes?(): ExtensionRoute[];
     /** Pages of the client area contributed by this extension */
     pages?(): ExtensionPage[];
+    /** Resources added to the admin REST API (`/api/v1/admin/<slug>`) */
+    apiEndpoints?(): Endpoint[];
 }

@@ -261,3 +261,10 @@ export function transliterate(s: string, unknown = '?'): string {
         })
         .join('');
 }
+
+/** PHP `json_encode()` with default flags: escaped slashes and `\uXXXX` for non-ASCII. */
+export function jsonEncode(value: unknown): string {
+    return JSON.stringify(value)
+        .replace(/\//g, '\\/')
+        .replace(/[\u007f-￿]/g, (c) => '\\u' + c.charCodeAt(0).toString(16).padStart(4, '0'));
+}
