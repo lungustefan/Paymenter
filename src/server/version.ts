@@ -20,5 +20,11 @@ export function appVersion(): string {
 }
 
 export function appCommit(): string {
-    return process.env.APP_COMMIT ?? '';
+    if (process.env.APP_COMMIT) return process.env.APP_COMMIT;
+    // release/beta builds stamp the commit into package.json
+    try {
+        return JSON.parse(fs.readFileSync(path.join(process.cwd(), 'package.json'), 'utf8')).commit ?? '';
+    } catch {
+        return '';
+    }
 }
