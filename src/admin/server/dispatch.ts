@@ -31,7 +31,6 @@ export async function handleDispatch(url: string, op: AdminOp): Promise<AdminAct
         const resolved = await resolveHost(segments, user, pathname, searchParams);
         if (!resolved) return { ok: false };
         const { result, notifications } = await collectNotifications(() => run(resolved.host, op));
-        if (op.type === 'submit') console.log('DBG submit result', JSON.stringify({ ok: result.ok, errors: result.errors, refresh: result.refresh, redirect: result.redirect }));
         return { ...result, notifications: [...(result.notifications ?? []), ...notifications] };
     });
 }
@@ -117,19 +116,13 @@ async function resolveAction(host: Host, id: string, args: Record<string, any>, 
     const ctx: ActionContext = { ...ref.ctx, action: ref.action, arguments: { ...ref.action.getArguments(), ...args } };
     ctx.records = await recordsFor({ ...ref, ctx }, keys);
     ref.ctx = ctx;
-    if (!(await ref.action.isVisible(ctx)) || (await ref.action.isDisabled(ctx))) {
-        console.log('DBG resolveAction hidden/disabled', id, await ref.action.isVisible(ctx), await ref.action.isDisabled(ctx));
-        return null;
-    }
+    if (!(await ref.action.isVisible(ctx)) || (await ref.action.isDisabled(ctx))) return null;
     return ref;
 }
 
 async function mount(host: Host, id: string, args: Record<string, any>, keys?: Array<string | number>, state?: Record<string, any>): Promise<AdminActionResult> {
     const ref = await resolveAction(host, id, args, keys, state);
-    if (!ref) {
-        console.log('DBG mount: action not resolved', id);
-        return { ok: false };
-    }
+    if (!ref) return { ok: false };
     if (!ref.action.shouldOpenModal()) return execute(host, ref, {}, {});
     return { ok: true, modal: await renderActionModal({ host, ref, actionId: id, args, records: keys }) as ReactNode };
 }

@@ -49,7 +49,11 @@ export function ReorderBody({ children }: { children: ReactNode }) {
         });
         return () => sortable.destroy();
     }, [dispatch, apply, router, t.tableId]);
-    return <tbody ref={body}>{children}</tbody>;
+    return (
+        <tbody ref={body} data-sortable-animation-duration="300">
+            {children}
+        </tbody>
+    );
 }
 
 /** enable / disable reordering (`?reordering=1`) */
