@@ -84,4 +84,26 @@ export async function disabledIf(settingKey: string, defaultValue: unknown = fal
     if (condition) notFound();
 }
 
+/**
+ * `checkout` middleware: `?currency=` and `?coupon=` need session / cookie writes, which a rendering
+ * page cannot do, so the request is redirected through `/checkout-parameters` and comes back clean.
+ */
+export async function handleCheckoutParameters(searchParams: Record<string, string | string[] | undefined>): Promise<void> {
+    const pick = (k: string) => (typeof searchParams[k] === 'string' ? (searchParams[k] as string) : Array.isArray(searchParams[k]) ? (searchParams[k] as string[])[0] : undefined);
+    const currency = pick('currency');
+    const coupon = pick('coupon');
+    if (currency === undefined && coupon === undefined) return;
+    const rest = new URLSearchParams();
+    for (const [k, v] of Object.entries(searchParams)) {
+        if (k === 'currency' || k === 'coupon' || v === undefined) continue;
+        for (const item of Array.isArray(v) ? v : [v]) rest.append(k, item);
+    }
+    const path = await currentPath();
+    const to = path + (rest.toString() ? `?${rest.toString()}` : '');
+    const q = new URLSearchParams({ to });
+    if (currency !== undefined) q.set('currency', currency);
+    if (coupon !== undefined) q.set('coupon', coupon);
+    redirect(`/checkout-parameters?${q.toString()}`);
+}
+
 export { allowedLanguages, isImpersonating, getCookie };

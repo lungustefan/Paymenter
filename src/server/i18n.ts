@@ -156,7 +156,7 @@ export function tChoice(key: string, count: number | unknown[], replace: Record<
     const fallback = config<string>('app.fallback_locale', 'en');
     let line = lookup(key, locale);
     if (typeof line !== 'string' && locale !== fallback) line = lookup(key, fallback);
-    const text = typeof line === 'string' ? choose(line, Number(number), locale) : key;
+    const text = choose(typeof line === 'string' ? line : key, Number(number), locale);
     return applyReplacements(text, { count: number, ...replace });
 }
 
