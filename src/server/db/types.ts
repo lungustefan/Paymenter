@@ -1,5 +1,10 @@
 import { customType } from 'drizzle-orm/mysql-core';
+import { Carbon } from '@/server/lib/carbon';
 import { formatDbDate, formatDbDateOnly, parseDbDate, parseDbDateOnly } from '@/server/lib/time';
+
+type DateLike = Carbon | Date | string;
+
+const toDate = (v: DateLike): Date => (v instanceof Carbon ? v.toDate() : v instanceof Date ? v : Carbon.parse(v).toDate());
 
 /**
  * Laravel stores wall-clock timestamps in the application timezone (the
@@ -7,39 +12,39 @@ import { formatDbDate, formatDbDateOnly, parseDbDate, parseDbDateOnly } from '@/
  * configured with `dateStrings: true` and these column types translate between
  * the stored wall-clock string and a JS Date.
  */
-export const dbTimestamp = customType<{ data: Date; driverData: string }>({
+export const dbTimestamp = customType<{ data: Carbon; driverData: string }>({
     dataType() {
         return 'timestamp';
     },
     fromDriver(value) {
-        return parseDbDate(value);
+        return new Carbon(parseDbDate(value));
     },
     toDriver(value) {
-        return formatDbDate(value);
+        return formatDbDate(toDate(value));
     },
 });
 
-export const dbDatetime = customType<{ data: Date; driverData: string }>({
+export const dbDatetime = customType<{ data: Carbon; driverData: string }>({
     dataType() {
         return 'datetime';
     },
     fromDriver(value) {
-        return parseDbDate(value);
+        return new Carbon(parseDbDate(value));
     },
     toDriver(value) {
-        return formatDbDate(value);
+        return formatDbDate(toDate(value));
     },
 });
 
-export const dbDate = customType<{ data: Date; driverData: string }>({
+export const dbDate = customType<{ data: Carbon; driverData: string }>({
     dataType() {
         return 'date';
     },
     fromDriver(value) {
-        return parseDbDateOnly(value);
+        return new Carbon(parseDbDateOnly(value));
     },
     toDriver(value) {
-        return formatDbDateOnly(value);
+        return formatDbDateOnly(toDate(value));
     },
 });
 
