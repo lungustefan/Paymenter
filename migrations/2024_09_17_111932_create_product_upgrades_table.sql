@@ -1,0 +1,3 @@
+create table `product_upgrades` (`id` bigint unsigned not null auto_increment primary key, `product_id` bigint unsigned not null, `upgrade_id` bigint unsigned not null, `created_at` timestamp null, `updated_at` timestamp null) default character set {{charset}} collate {{collation}};
+alter table `product_upgrades` add constraint `product_upgrades_product_id_foreign` foreign key (`product_id`) references `products` (`id`) on delete cascade;
+alter table `product_upgrades` add constraint `product_upgrades_upgrade_id_foreign` foreign key (`upgrade_id`) references `products` (`id`) on delete cascade;

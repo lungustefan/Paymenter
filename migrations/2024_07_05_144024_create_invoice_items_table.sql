@@ -1,0 +1,3 @@
+create table `invoice_items` (`id` bigint unsigned not null auto_increment primary key, `invoice_id` bigint unsigned not null, `price` decimal(17, 2) not null, `quantity` int not null default '1', `description` varchar(255) null, `reference_type` varchar(255) null, `reference_id` bigint unsigned null, `created_at` timestamp null, `updated_at` timestamp null) default character set {{charset}} collate {{collation}};
+alter table `invoice_items` add constraint `invoice_items_invoice_id_foreign` foreign key (`invoice_id`) references `invoices` (`id`) on delete cascade;
+alter table `invoice_items` add index `invoice_items_reference_type_reference_id_index`(`reference_type`, `reference_id`);

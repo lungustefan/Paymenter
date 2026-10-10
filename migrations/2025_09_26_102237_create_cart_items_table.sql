@@ -1,0 +1,4 @@
+create table `cart_items` (`id` bigint unsigned not null auto_increment primary key, `cart_id` bigint unsigned not null, `product_id` bigint unsigned null, `plan_id` bigint unsigned null, `config_options` json null, `checkout_config` json null, `quantity` int not null default '1', `created_at` timestamp null, `updated_at` timestamp null) default character set {{charset}} collate {{collation}};
+alter table `cart_items` add constraint `cart_items_cart_id_foreign` foreign key (`cart_id`) references `carts` (`id`) on delete cascade;
+alter table `cart_items` add constraint `cart_items_product_id_foreign` foreign key (`product_id`) references `products` (`id`) on delete cascade;
+alter table `cart_items` add constraint `cart_items_plan_id_foreign` foreign key (`plan_id`) references `plans` (`id`) on delete cascade;

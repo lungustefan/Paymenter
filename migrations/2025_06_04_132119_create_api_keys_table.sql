@@ -1,0 +1,3 @@
+create table `api_keys` (`id` bigint unsigned not null auto_increment primary key, `name` varchar(255) not null, `permissions` json null, `token` varchar(255) not null, `user_id` bigint unsigned null, `type` varchar(255) null, `ip_addresses` json null, `last_used_at` datetime null, `enabled` tinyint(1) not null default '1', `created_at` timestamp null, `updated_at` timestamp null) default character set {{charset}} collate {{collation}};
+alter table `api_keys` add constraint `api_keys_user_id_foreign` foreign key (`user_id`) references `users` (`id`) on delete cascade on update cascade;
+alter table `api_keys` add unique `api_keys_token_unique`(`token`);

@@ -1,22 +1,69 @@
 {
+    "name": "paymenter",
+    "version": "1.5.9",
     "private": true,
+    "description": "Paymenter is a self-hosted, open-source, and free invoicing and billing software built with Next.js.",
+    "keywords": [
+        "invoicing",
+        "billing",
+        "nextjs",
+        "open-source",
+        "self-hosted",
+        "subscription",
+        "payment",
+        "invoice",
+        "billing software"
+    ],
+    "license": "MIT",
     "type": "module",
-    "scripts": {
-        "dev": "node vite.js dev",
-        "build": "node vite.js",
-        "dev:admin": "npx tailwindcss --input ./resources/css/filament/admin/theme.css --output ./public/css/filament/admin/theme.css --config ./resources/css/filament/admin/tailwind.config.js --watch",
-        "build:admin": "npx tailwindcss --input ./resources/css/filament/admin/theme.css --output ./public/css/filament/admin/theme.css --config ./resources/css/filament/admin/tailwind.config.js --minify"
+    "engines": {
+        "node": ">=22"
     },
-    "devDependencies": {
-        "@tailwindcss/forms": "^0.5.10",
-        "@tailwindcss/typography": "^0.5.16",
-        "@tailwindcss/vite": "^4.1.11",
-        "easymde": "^2.20.0",
-        "laravel-vite-plugin": "^3.1",
-        "tailwindcss": "^4.1.11",
-        "vite": "^8.0"
+    "scripts": {
+        "dev": "node scripts/generate-registry.mjs && next dev",
+        "build": "node scripts/generate-registry.mjs && next build",
+        "start": "next start",
+        "worker": "tsx src/cli/index.ts worker",
+        "paymenter": "tsx src/cli/index.ts",
+        "migrate": "tsx src/cli/index.ts migrate",
+        "registry": "node scripts/generate-registry.mjs",
+        "lint": "tsc --noEmit",
+        "typecheck": "tsc --noEmit",
+        "test": "vitest run"
     },
     "dependencies": {
-        "@alpinejs/anchor": "^3.15.3"
+        "@next/env": "^16.4.0",
+        "@tailwindcss/forms": "^0.5.10",
+        "@tailwindcss/typography": "^0.5.16",
+        "bcryptjs": "^3.0.2",
+        "drizzle-orm": "^0.45.0",
+        "easymde": "^2.20.0",
+        "mysql2": "^3.14.0",
+        "next": "^16.0.0",
+        "nodemailer": "^7.0.0",
+        "otplib": "^12.0.1",
+        "react": "^19.0.0",
+        "react-dom": "^19.0.0",
+        "tsx": "^4.19.0",
+        "zod": "^3.24.0"
+    },
+    "devDependencies": {
+        "@tailwindcss/postcss": "^4.1.11",
+        "@types/node": "^22.0.0",
+        "@types/nodemailer": "^6.4.17",
+        "@types/react": "^19.0.0",
+        "@types/react-dom": "^19.0.0",
+        "drizzle-kit": "^0.31.0",
+        "postcss": "^8.5.0",
+        "tailwindcss": "^4.1.11",
+        "typescript": "^5.9.0",
+        "vitest": "^3.2.0"
+    },
+    "pnpm": {
+        "onlyBuiltDependencies": [
+            "esbuild",
+            "sharp",
+            "unrs-resolver"
+        ]
     }
 }
