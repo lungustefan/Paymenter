@@ -332,8 +332,15 @@ export class ExtensionHelper {
     /* ---------------- routes / events / migrations ---------------- */
 
     /** Routes contributed by all booted extensions. */
-    static routes: Array<ExtensionRoute & { extension: string }> = [];
-    static pages: Array<ExtensionPage & { extension: string }> = [];
+    static routes: Array<ExtensionRoute & { extension: string; type: string }> = [];
+    static pages: Array<ExtensionPage & { extension: string; type: string }> = [];
+
+    /** A fresh instance with the settings currently saved for the first installed row of this extension. */
+    static async freshInstance<T = ExtensionBase>(type: string, name: string): Promise<T> {
+        const Model = type === 'gateway' ? Gateway : type === 'server' ? Server : Extension;
+        const row = await Model.query().where('extension', name).first();
+        return (await this.getExtension(type, name, row ? await row.settingsMap() : {})) as T;
+    }
 
     static async bootExtensions() {
         const rows = await Extension.query()
@@ -349,11 +356,11 @@ export class ExtensionHelper {
                 const instance = (await this.getExtension(row.type, row.extension, await row.rel('settings'))) as ExtensionBase;
                 await instance.boot?.();
                 for (const r of instance.routes?.() ?? []) {
-                    this.routes.push({ ...r, extension: row.extension });
+                    this.routes.push({ ...r, extension: row.extension, type: row.type });
                     if (r.name) (await import('@/server/routes')).registerRoute(r.name, r.path);
                 }
                 for (const p of instance.pages?.() ?? []) {
-                    this.pages.push({ ...p, extension: row.extension });
+                    this.pages.push({ ...p, extension: row.extension, type: row.type });
                     if (p.name) (await import('@/server/routes')).registerRoute(p.name, p.path);
                 }
             } catch (e: any) {

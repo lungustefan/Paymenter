@@ -78,17 +78,23 @@ export function route(name: string, parameters: unknown = {}, absolute = true): 
 
     const placeholders = [...pattern.matchAll(/\{(\w+)(?::(\w+))?\}/g)].map((m) => ({ key: m[1], field: m[2] }));
     let params: Record<string, unknown> = {};
+    const extra: string[] = [];
     if (parameters instanceof Model || typeof parameters !== 'object' || parameters === null) {
-        if (parameters !== undefined && parameters !== null && placeholders[0]) params[placeholders[0].key] = parameters;
+        if (parameters !== undefined && parameters !== null) {
+            if (placeholders[0]) params[placeholders[0].key] = parameters;
+            else extra.push(encodeURIComponent(paramValue(parameters)));
+        }
     } else if (Array.isArray(parameters)) {
-        placeholders.forEach((p, i) => {
-            if (parameters[i] !== undefined) params[p.key] = parameters[i];
+        parameters.forEach((value, i) => {
+            if (placeholders[i]) params[placeholders[i].key] = value;
+            // Laravel appends leftover positional parameters to the query string as bare values (`?5`)
+            else extra.push(encodeURIComponent(paramValue(value)));
         });
     } else {
         params = { ...(parameters as Record<string, unknown>) };
     }
 
-    const query: string[] = [];
+    const query: string[] = [...extra];
     let path = pattern.replace(/\{(\w+)(?::(\w+))?\}/g, (_m, key: string, field?: string) => {
         const v = params[key];
         delete params[key];

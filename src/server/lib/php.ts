@@ -161,3 +161,8 @@ export function uniqueBy<T>(items: T[], fn: (item: T) => unknown): T[] {
         return true;
     });
 }
+
+/** What a DECIMAL(x, scale) column reads as in PHP (`"21.00"`): decimal columns are plain numbers in the ORM. */
+export function decimalString(value: unknown, scale = 2): string {
+    return value === null || value === undefined || value === '' ? '' : Number(value).toFixed(scale);
+}

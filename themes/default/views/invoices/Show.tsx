@@ -11,7 +11,7 @@ import { InvoiceTransactionStatus } from '@/server/enums';
 import { ExtensionHelper } from '@/server/extensions/helper';
 import { checkoutGateways, billingGateways, recurringServiceItems } from '@/server/services/invoice/InvoicePayment';
 import type { Invoice } from '@/server/models/Invoice';
-import { nl2br, e } from '@/server/lib/php';
+import { nl2br, e, decimalString } from '@/server/lib/php';
 import { InvoicePayment, PaymentPoller, type PaymentOptionsData } from './InvoiceShowClient';
 
 const th = 'p-4 text-xs font-semibold tracking-wider text-left uppercase';
@@ -200,7 +200,7 @@ export default async function Show({ invoice, showPayModal, checkPaymentParam }:
                                 </div>
                                 <div className="flex justify-between">
                                     <div className="text-sm font-medium text-gray-500 uppercase dark:text-base">
-                                        {tax?.name} ({String(tax?.rate)}%)
+                                        {tax?.name} ({decimalString(tax?.rate)}%)
                                     </div>
                                     <div className="text-base font-medium text-gray-900 dark:text-white">{formattedTotal.formatted.tax}</div>
                                 </div>

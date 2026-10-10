@@ -27,5 +27,5 @@ export abstract class Gateway extends Extension {
 
     /** optional: restrict the gateway for certain carts / invoices */
     canUseGateway?(total: number, currency: string, type: string, items?: unknown[]): Promise<boolean> | boolean;
-    cancelSubscription?(service: Service): Promise<boolean> | boolean;
+    cancelSubscription?(service: Service): Promise<boolean | void> | boolean | void;
 }

@@ -24,7 +24,9 @@ export interface ExtensionRoute {
     path: string;
     /** require an authenticated user ('auth') - the `web` + `auth` middleware pair */
     auth?: boolean;
-    handler: (ctx: ExtensionRouteContext) => Promise<Response> | Response;
+    /** `->where('param', 'regex')` constraints of the route */
+    where?: Record<string, string>;
+    handler: (ctx: ExtensionRouteContext) => Promise<Response | void> | Response | void;
 }
 
 export interface ExtensionRouteContext {
@@ -39,6 +41,8 @@ export interface ExtensionRouteContext {
     /** `$request->all()`: query string merged with the JSON / form body */
     all: () => Promise<Record<string, any>>;
     ip: string | null;
+    /** a fresh instance of the extension that registered this route, with its current saved settings (like the container-resolved controller) */
+    instance: <T = any>() => Promise<T>;
 }
 
 /** A page contributed by an extension (rendered inside the theme's layout). */
@@ -49,6 +53,8 @@ export interface ExtensionPage {
     path: string;
     /** require an authenticated user */
     auth?: boolean;
+    /** `->where('param', 'regex')` constraints of the route */
+    where?: Record<string, string>;
     title?: string;
     sidebar?: boolean;
     render: (ctx: { params: Record<string, string>; searchParams: Record<string, string | string[] | undefined>; user: import('@/server/models/User').User | null }) => Promise<import('react').ReactNode> | import('react').ReactNode;

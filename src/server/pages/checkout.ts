@@ -1,3 +1,4 @@
+import { decimalString } from '@/server/lib/php';
 import { notFound, redirect } from 'next/navigation';
 import { once } from '@/server/request-store';
 import { Cart } from '@/server/cart';
@@ -87,7 +88,7 @@ export async function pricingView(total: Price, plan: Plan, tr: Translator): Pro
         totalTax: total.formatted.total_tax,
         hasTax: Number(total.total_tax) > 0,
         taxName: (tax?.name as string) ?? '',
-        taxRate: String(tax?.rate ?? ''),
+        taxRate: decimalString(tax?.rate),
         showThen,
         thenLabel: showThen
             ? tr.t('product.then_after_x', { time: `${plan.billing_period} ${tr.tChoice(tr.t(`services.billing_cycles.${plan.billing_unit}`), plan.billing_period as number)}` })

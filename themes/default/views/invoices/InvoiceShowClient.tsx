@@ -86,7 +86,8 @@ function PaymentOptions({ invoiceId, options, onView }: { invoiceId: number; opt
                 </div>
             )}
 
-            {options.savedMethods.length > 0 && (
+            {/* `@if($this->savedPaymentMethods)` is a Collection, which is always truthy: the section shows even without saved methods */}
+            {
                 <div className="mb-6">
                     <h3 className="text-lg font-semibold mb-2">{t('account.saved_payment_methods')}</h3>
                     <div className="space-y-3">
@@ -110,7 +111,7 @@ function PaymentOptions({ invoiceId, options, onView }: { invoiceId: number; opt
                         </Link>
                     </div>
                 </div>
-            )}
+            }
 
             {options.gateways.length > 0 && (
                 <div className="mb-6">
