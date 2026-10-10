@@ -12,6 +12,13 @@ import type { Model } from './model';
  * timestamps excluded, non-scalar values excluded).
  */
 
+let auditConsole = false;
+
+/** `Config::set('audit.console', true)`: record audits even while running in the CLI (cron job, user:create ...). */
+export function setAuditConsole(enabled: boolean) {
+    auditConsole = enabled;
+}
+
 export type AuditEvent = 'created' | 'updated' | 'deleted' | 'restored' | string;
 
 function scalar(value: unknown): unknown {
@@ -43,7 +50,7 @@ export async function recordAudit(model: Model<any>, event: AuditEvent, custom?:
     if (!ctor.auditable || !envBool('AUDITING_ENABLED', true)) return;
 
     const req = await getRequestInfo();
-    if (req.runningInConsole) return; // config('audit.console') === false
+    if (req.runningInConsole && !auditConsole) return; // config('audit.console') === false
 
     let oldValues: Record<string, unknown> = {};
     let newValues: Record<string, unknown> = {};

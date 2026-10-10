@@ -559,7 +559,7 @@ export class Model<R extends Record<string, any> = Record<string, any>> {
     }
 
     /** `$model->relation()` - the query builder bound to this model. */
-    relation<T extends Model<any> = Model<any>>(name: string): RelationBuilder<T> {
+    relation<T extends Model<any> = any>(name: string): RelationBuilder<T> {
         const def = this.relationDef(name);
         if (!def) throw new Error(`Relation "${name}" is not defined on ${this.ctor.name}`);
         return def.query(this) as RelationBuilder<T>;

@@ -47,7 +47,7 @@ export async function handleServiceUpgrade(serviceUpgrade: ServiceUpgrade) {
         const pendingInvoice = await service.relation('invoices').where('status', 'pending').first();
         if (pendingInvoice) {
             const item = await pendingInvoice
-                .relation<InvoiceItem>('items')
+                .relation('items')
                 .where('reference_type', Service.morphName)
                 .where('reference_id', service.id)
                 .first();
