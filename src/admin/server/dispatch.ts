@@ -85,7 +85,7 @@ async function refresh(host: Host, target: FormTarget, state: Record<string, any
     const { schema, rc } = await formFor(host, target, normalizeInput(state));
     const before = structuredClone(rc.state);
     if (changed) {
-        const component = schema.findByStatePath(rc, changed);
+        const component = await schema.findByStatePath(rc, changed);
         if (component) await component.runAfterStateUpdated(rc);
     }
     await schema.hydrateDefaults(rc, rc.state, true);
@@ -94,7 +94,7 @@ async function refresh(host: Host, target: FormTarget, state: Record<string, any
 
 async function options(host: Host, target: FormTarget, state: Record<string, any>, path: string, search?: string, values?: Array<string | number>): Promise<AdminActionResult> {
     const { schema, rc } = await formFor(host, target, normalizeInput(state));
-    const component = schema.findByStatePath(rc, path) as unknown as Select | null;
+    const component = (await schema.findByStatePath(rc, path)) as unknown as Select | null;
     if (!component || typeof (component as any).optionsFor !== 'function') return { ok: false };
     return { ok: true, options: await component.optionsFor(rc, search, values) };
 }

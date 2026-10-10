@@ -14,6 +14,8 @@ export class Textarea extends Field {
     protected _autosize: Fn<boolean> = false;
 
     rows(v: Fn<number | null>) { this._rows = v; return this; }
+    protected _disableGrammarly = false;
+    disableGrammarly(v = true) { this._disableGrammarly = v; return this; }
     cols(v: Fn<number | null>) { this._cols = v; return this; }
     maxLength(v: Fn<number | null>) { this._maxLength = v; return this; }
     minLength(v: Fn<number | null>) { this._minLength = v; return this; }
@@ -51,9 +53,7 @@ export class Textarea extends Field {
                     readOnly={(await this.isReadOnly(rc)) || undefined}
                     required={(await this.isRequired(rc)) || undefined}
                     rows={rows ?? undefined}
-                    data-gramm="false"
-                    data-gramm_editor="false"
-                    data-enable-grammarly="false"
+                    {...(this._disableGrammarly ? { 'data-gramm': 'false', 'data-gramm_editor': 'false', 'data-enable-grammarly': 'false' } : {})}
                 />
             </div>
         );

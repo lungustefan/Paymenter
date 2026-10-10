@@ -99,6 +99,18 @@ export function RecordCheckbox({ recordKey, label, group }: { recordKey: string;
     return <input aria-label={label} type="checkbox" value={recordKey} checked={t.isSelected(recordKey)} onChange={() => t.toggle(recordKey)} data-group={group ?? ''} className="fi-ta-record-checkbox fi-checkbox-input" />;
 }
 
+/** the checkbox of a group header row: (de)selects the records of the group */
+export function GroupCheckbox({ keys, label }: { keys: string[]; label: string }) {
+    const t = useTable();
+    const ref = useRef<HTMLInputElement>(null);
+    const all = keys.length > 0 && keys.every((k) => t.isSelected(k));
+    const some = keys.some((k) => t.isSelected(k));
+    useEffect(() => {
+        if (ref.current) ref.current.indeterminate = !all && some;
+    }, [all, some]);
+    return <input ref={ref} aria-label={label} data-group-selectable-record-keys={JSON.stringify(keys)} type="checkbox" checked={all} onChange={() => t.toggleMany(keys)} className="fi-checkbox-input fi-ta-group-checkbox" />;
+}
+
 export function PageCheckbox({ label }: { label: string }) {
     const t = useTable();
     const ref = useRef<HTMLInputElement>(null);

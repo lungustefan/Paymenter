@@ -11,7 +11,7 @@ import { parseTableState, type TableState } from './state';
 import { Icon } from '../ui/Icon';
 import { badgeClass, buttonClass, iconButtonClass } from '../ui/classes';
 import { cn } from '@themes/default/components/cn';
-import { PageButton, PageCheckbox, PerPageSelect, RecordCheckbox, SearchInput, SelectionIndicator, SortButton, TableRoot, TableRow } from './client';
+import { GroupCheckbox, PageButton, PageCheckbox, PerPageSelect, RecordCheckbox, SearchInput, SelectionIndicator, SortButton, TableRoot, TableRow } from './client';
 import { ActionDropdown, ModalHost } from '../actions/client';
 import { renderFiltersForm, FiltersPanel, type BaseFilter } from './filters';
 import { TableHeaderCtn, ToolbarWrapper, ReorderTrigger, FilterIndicators } from './client-extra';
@@ -55,6 +55,22 @@ export function paginationElements(current: number, last: number, onEachSide = 3
  * Port of Filament\Tables\Table: the definition of a table (columns, filters, actions, ...) and the code that
  * queries and renders it. The state (search, sort, filters, page) comes from the URL.
  */
+/** Filament\Tables\Grouping\Group */
+export interface TableGroup {
+    id: string;
+    label?: string;
+    /** column the rows are grouped by (defaults to the id) */
+    column?: string;
+    getTitle?: (record: any) => string | null | Promise<string | null>;
+    titlePrefixedWithLabel?: boolean;
+}
+/** `str($name)->afterLast('.')->kebab()->replace(['-', '_'], ' ')->ucfirst()` */
+const groupLabel = (name: string) => {
+    const words = (name.split('.').pop() as string).replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase().replace(/[-_]+/g, ' ');
+    return words.charAt(0).toUpperCase() + words.slice(1);
+};
+const toGroup = (g: TableGroup | string): TableGroup => (typeof g === 'string' ? { id: g } : g);
+
 export class Table {
     /** DOM / dispatch id of the table: `table` or `rm0` (relation managers) */
     id = 'table';
@@ -97,8 +113,8 @@ export class Table {
     protected _recordClasses?: (record: any) => string | string[] | Record<string, boolean>;
     protected _selectable?: boolean;
     protected _isRecordSelectable?: (record: any) => boolean;
-    protected _groups: Array<{ id: string; label: string; column: string; getTitle?: (record: any) => string }> = [];
-    protected _defaultGroup?: string;
+    protected _groups: Array<TableGroup> = [];
+    protected _defaultGroup?: TableGroup;
     protected _filtersLayout: 'dropdown' | 'modal' | 'above' = 'dropdown';
     protected _deferFilters = true;
     protected _filtersFormColumns = 1;
@@ -145,8 +161,9 @@ export class Table {
     recordClasses(fn: (record: any) => string | string[] | Record<string, boolean>) { this._recordClasses = fn; return this; }
     selectable(v = true) { this._selectable = v; return this; }
     checkIfRecordIsSelectableUsing(fn: (record: any) => boolean) { this._isRecordSelectable = fn; return this; }
-    groups(list: Array<{ id: string; label: string; column: string; getTitle?: (record: any) => string }>) { this._groups = list; return this; }
-    defaultGroup(id: string) { this._defaultGroup = id; return this; }
+    groups(list: Array<TableGroup | string>) { this._groups = list.map(toGroup); return this; }
+    /** `defaultGroup('model')`: rows are grouped (and ordered) by a column */
+    defaultGroup(group: TableGroup | string) { this._defaultGroup = toGroup(group); return this; }
     filtersLayout(v: 'dropdown' | 'modal' | 'above') { this._filtersLayout = v; return this; }
     deferFilters(v = true) { this._deferFilters = v; return this; }
     filtersFormColumns(v: number) { this._filtersFormColumns = v; return this; }
@@ -230,8 +247,22 @@ export class Table {
         return q;
     }
 
+    protected activeGroup(state: TableState): TableGroup | undefined {
+        if (state.reordering) return undefined;
+        return this._defaultGroup;
+    }
+
+    /** the title of the group a record belongs to (`Group::getTitle()`) */
+    protected async groupTitle(group: TableGroup, record: any): Promise<string> {
+        if (group.getTitle) return String((await group.getTitle(record)) ?? '');
+        const value = record[group.column ?? group.id];
+        return value === null || value === undefined ? '' : String(value);
+    }
+
     protected async applySorting(q: Builder<any>, state: TableState, visible: Column[]) {
         if (state.reordering && this._reorder) return q.orderBy(this._reorder.column, this._reorder.direction);
+        const group = this.activeGroup(state);
+        if (group) q.orderBy(group.column ?? group.id, 'asc');
         const sortColumn = state.sortColumn ? visible.find((c) => c.getName() === state.sortColumn && c.isSortable()) : undefined;
         if (sortColumn) sortColumn.applySort(q, state.sortDirection === 'desc' ? 'desc' : 'asc');
         if (this._defaultSort) {
@@ -277,6 +308,11 @@ export class Table {
     }
 
     /* ---- actions ---- */
+    /** the context of a record action (`$action->record($record)`) */
+    recordActionContext(action: Action, record: any): ActionContext {
+        return this.actionContext({ action, record });
+    }
+
     protected actionContext(extra: Partial<ActionContext> = {}): ActionContext {
         return { get: () => undefined, set: () => undefined, user: this.user, livewire: this.livewire, model: this.model, resource: this.resource, ownerRecord: this.ownerRecord, table: this, action: undefined as any, ...extra } as ActionContext;
     }
@@ -415,8 +451,34 @@ export class Table {
         const rows: ReactNode[] = [];
         const selectionLabel = trans('filament-tables::table.fields.bulk_select_page.label');
         let index = 0;
+        const group = this.activeGroup(state);
+        const groupTitles: string[] = group ? await Promise.all(records.map((r) => this.groupTitle(group, r))) : [];
+        let previousGroupTitle: string | null = null;
         for (const record of records) {
             const key = this.recordKey(record);
+            if (group && groupTitles[index] !== previousGroupTitle) {
+                const title = groupTitles[index];
+                const keysInGroup = records.filter((_r, i) => groupTitles[i] === title).map((r) => this.recordKey(r));
+                const label = group.titlePrefixedWithLabel === false ? null : (group.label ?? groupLabel(group.id));
+                const heading = label ? `${label}: ${title}` : title;
+                rows.push(
+                    <tr key={`group-${index}`} className="fi-ta-group-header-row fi-ta-row">
+                        {isSelectionEnabled && (
+                            <td className="fi-ta-cell fi-ta-group-selection-cell">
+                                <GroupCheckbox keys={keysInGroup} label={trans('filament-tables::table.fields.bulk_select_group.label', { title })} />
+                            </td>
+                        )}
+                        <td className="fi-ta-group-header-cell" colSpan={visible.length + (hasRecordActionsForAnyRecord ? 1 : 0)}>
+                            <div className="fi-ta-group-header">
+                                <div>
+                                    <h2 className="fi-ta-group-heading">{heading}</h2>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>,
+                );
+                previousGroupTitle = title;
+            }
             const url = await urlOf(record);
             const clickable = !!url || !!this._recordAction;
             const classes = this._recordClasses ? this._recordClasses(record) : null;
@@ -434,7 +496,7 @@ export class Table {
             } else if (isSelectionEnabled) {
                 cells.push(
                     <td key="select" className="fi-ta-cell fi-ta-selection-cell">
-                        {selectable ? <RecordCheckbox recordKey={key} label={trans('filament-tables::table.fields.bulk_select_record.label', { key })} /> : null}
+                        {selectable ? <RecordCheckbox recordKey={key} label={trans('filament-tables::table.fields.bulk_select_record.label', { key })} group={group ? groupTitles[index] : undefined} /> : null}
                     </td>,
                 );
             }
@@ -486,7 +548,7 @@ export class Table {
         const filtersForm = hasFiltersTrigger ? await renderFiltersForm(this, state.filters, this._filtersFormColumns) : null;
 
         const toolbar = (
-            <div className="fi-ta-header-toolbar">
+            <>
                 <div className="fi-ta-actions fi-align-start fi-wrapped">
                     {this.isReorderable() && (
                         <ReorderTrigger reordering={reordering} prefixParam={this.prefix ? `${this.prefix}.reordering` : 'reordering'} labels={{ enable: trans('filament-tables::table.actions.enable_reordering.label'), disable: trans('filament-tables::table.actions.disable_reordering.label') }} />
@@ -503,7 +565,7 @@ export class Table {
                     <div>
                         {hasGlobalSearch && (
                             <div className="fi-ta-search-field">
-                                <label className="fi-sr-only" htmlFor={`${this.id}-search`}>
+                                <label className="fi-sr-only">
                                     {searchLabel}
                                 </label>
                                 <div className="fi-input-wrp">
@@ -511,7 +573,7 @@ export class Table {
                                         <Icon icon="heroicon:magnifying-glass" />
                                     </div>
                                     <div className="fi-input-wrp-content-ctn">
-                                        <SearchInput id={`${this.id}-search`} param={this.prefix ? `${this.prefix}.search` : 'search'} initial={state.search} debounce={this._searchDebounce} onBlur={this._searchOnBlur} placeholder={this._searchPlaceholder ?? trans('filament-tables::table.fields.search.placeholder')} className="fi-input fi-input-has-inline-prefix" />
+                                        <SearchInput param={this.prefix ? `${this.prefix}.search` : 'search'} initial={state.search} debounce={this._searchDebounce} onBlur={this._searchOnBlur} placeholder={this._searchPlaceholder ?? trans('filament-tables::table.fields.search.placeholder')} className="fi-input fi-input-has-inline-prefix" />
                                     </div>
                                 </div>
                             </div>
@@ -530,7 +592,7 @@ export class Table {
                         )}
                     </div>
                 )}
-            </div>
+            </>
         );
 
         const modalHostHere = !adminContext().modalsPlaced;
@@ -540,7 +602,13 @@ export class Table {
                 <input type="hidden" defaultValue={allCount} />
                 <div className={cn('fi-ta-ctn', hasPagination || hasEmptyState ? 'fi-ta-ctn-with-footer' : '', hasHeader ? 'fi-ta-ctn-with-header' : '')}>
                     <div className="fi-ta-main">
-                        {headerMode !== 'hidden' && (
+                        {headerMode === 'hidden' ? (
+                            <div className="fi-ta-header-ctn" style={{ display: 'none' }}>
+                                <div className="fi-ta-header-toolbar" style={{ display: 'none' }}>
+                                    <div className="fi-ta-actions fi-align-start fi-wrapped" />
+                                </div>
+                            </div>
+                        ) : (
                             <TableHeaderCtn mode={headerMode}>
                                 {(this._heading || this._description || (headerActions.length > 0 && !reordering)) && (
                                     <div className="fi-ta-header">
