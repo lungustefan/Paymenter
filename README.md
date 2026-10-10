@@ -50,6 +50,24 @@
 
 > **This is the Next.js / TypeScript edition of Paymenter.** It is a full rewrite of the Laravel (PHP) version 1.5.9 that keeps the database schema, the settings, the REST API and the look of the default theme. Read [Differences from the Laravel version](#differences-from-the-laravel-version) before upgrading an existing installation.
 
+#### Quick install (TL;DR)
+
+Needs Node.js 22+, pnpm and an empty MariaDB/MySQL database.
+
+```bash
+git clone https://github.com/paymenter/paymenter.git && cd paymenter
+pnpm install
+cp .env.example .env                 # edit DB_HOST, DB_DATABASE, DB_USERNAME, DB_PASSWORD and APP_URL
+pnpm paymenter key:generate
+pnpm paymenter migrate --seed
+pnpm paymenter app:init              # basic setup
+pnpm paymenter app:user:create       # your first admin user
+pnpm build && pnpm start             # http://localhost:3000  (admin at /admin)
+pnpm worker                          # in a second terminal: queue worker + scheduler (required for emails, invoices, provisioning)
+```
+
+Prefer Docker? See [Docker](#docker). More detail below.
+
 #### Installation & Documentation
 
 For a detailed explanation of how to install and configure Paymenter, take a look at our [documentation here](https://paymenter.org/docs/getting-started/introduction/). The documentation still describes the PHP installation; the steps below are the ones that apply to this edition.
