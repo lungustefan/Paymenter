@@ -39,6 +39,11 @@ async function build(name) {
     console.log(`[themes] ${name}: ${(result.css.length / 1024).toFixed(1)} kB in ${Date.now() - started} ms`);
 }
 
+// Third-party stylesheets the themes link on demand (EasyMDE is loaded after the theme CSS on pages with an editor)
+const vendor = path.join(root, 'public', 'build', 'vendor');
+fs.mkdirSync(vendor, { recursive: true });
+fs.copyFileSync(require.resolve('easymde/dist/easymde.min.css'), path.join(vendor, 'easymde.css'));
+
 for (const name of themes) await build(name);
 
 if (watch) {

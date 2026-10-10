@@ -22,7 +22,12 @@ function Label({ name, label, required, hideRequiredIndicator }: Pick<FieldProps
     return (
         <label htmlFor={name} className="mb-1 text-sm text-primary-100">
             {label}
-            {required && !hideRequiredIndicator && <span className="text-red-500">*</span>}
+            {required && !hideRequiredIndicator && (
+                <>
+                    {' '}
+                    <span className="text-red-500">*</span>
+                </>
+            )}
         </label>
     );
 }
