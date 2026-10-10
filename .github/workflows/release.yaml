@@ -4,6 +4,15 @@ on:
   push:
     tags:
       - "v*"
+  # Actions tab -> Release -> Run workflow: builds the archive and creates the tag + draft release itself
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version tag to release, e.g. v2.0.0-alpha.1"
+        required: true
+
+permissions:
+  contents: write
 
 jobs:
   release:
@@ -18,35 +27,37 @@ jobs:
         with:
           node-version: 22
 
-      - uses: shivammathur/setup-php@15c43e89cdef867065b0213be354c2841860869e
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
         with:
-          php-version: '8.3'
-      - name: Install dependencies
-        run: |
-          composer install -q --no-dev --optimize-autoloader --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
-          npm i
+          version: 10
 
-      - name: Build
-        run: npm run build
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
       - name: Create release branch and bump version
         env:
-          REF: ${{ github.ref }}
+          REF: refs/tags/${{ inputs.version || github.ref_name }}
         run: |
           BRANCH=release/${REF:10}
           git config --local user.email "ci@paymenter.org"
           git config --local user.name "Paymenter CI"
           git checkout -b $BRANCH
           git push -u origin $BRANCH
-          sed -i "s/    'version' => 'development',/    'version' => '${REF:11}',/" config/app.php
-          git add config/app.php composer.json
+          npm pkg set version="${REF:11}"
+          git add package.json
           git commit -m "ci(release): bump version"
           git push
 
+      - name: Build
+        run: |
+          pnpm build
+          find themes extensions -type f | sort | xargs sha256sum | sha256sum | cut -d' ' -f1 > .registry-hash
+
       - name: Create release archive
         run: |
-          rm -rf node_modules tests CODE_OF_CONDUCT.md CONTRIBUTING.md flake.lock flake.nix phpstan.neon phpunit.xml shell.nix
-          tar -czf paymenter.tar.gz * .env.example .gitignore
+          rm -rf node_modules tests CODE_OF_CONDUCT.md CONTRIBUTING.md flake.lock flake.nix .next/cache .next/standalone
+          tar -czf paymenter.tar.gz * .next .registry-hash .env.example .gitignore
 
       - name: Create checksum and add to changelog
         run: |
@@ -60,7 +71,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           draft: true
-          prerelease: ${{ contains(github.ref, 'rc') || contains(github.ref, 'beta') || contains(github.ref, 'alpha') }}
+          tag_name: ${{ inputs.version || github.ref_name }}
+          target_commitish: ${{ github.sha }}
+          prerelease: ${{ contains(inputs.version || github.ref_name, 'rc') || contains(inputs.version || github.ref_name, 'beta') || contains(inputs.version || github.ref_name, 'alpha') }}
 
       - name: Upload release archive
         id: upload-release-archive
