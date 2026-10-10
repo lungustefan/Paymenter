@@ -40,3 +40,22 @@ export async function getRequestInfo(): Promise<RequestInfo> {
 export function isRunningInConsole(): Promise<boolean> {
     return getRequestInfo().then((r) => r.runningInConsole);
 }
+
+/** Pathname of the page being rendered (set by `proxy.ts` as `x-paymenter-path`), e.g. `/invoices/12`. */
+export async function currentPath(): Promise<string> {
+    try {
+        const { headers } = await import('next/headers');
+        return (await headers()).get('x-paymenter-path') ?? '/';
+    } catch {
+        return '/';
+    }
+}
+
+export async function currentSearch(): Promise<string> {
+    try {
+        const { headers } = await import('next/headers');
+        return (await headers()).get('x-paymenter-search') ?? '';
+    } catch {
+        return '';
+    }
+}

@@ -181,3 +181,19 @@ export function allowedLanguages(): string[] {
     const allowed = setting<string[]>('allowed_languages', []);
     return Array.isArray(allowed) && allowed.length ? allowed : availableLanguages();
 }
+
+function deepMerge(a: Tree, b: Tree): Tree {
+    const out: Tree = { ...a };
+    for (const [k, v] of Object.entries(b)) {
+        out[k] = v && typeof v === 'object' && !Array.isArray(v) && typeof out[k] === 'object' && out[k] ? deepMerge(out[k], v) : v;
+    }
+    return out;
+}
+
+/** Every language group of `locale` (over the fallback locale) - handed to client components. */
+export function clientMessages(locale: string): Tree {
+    const fallback = config<string>('app.fallback_locale', 'en');
+    const groups = (loc: string) => loadGroup(langPath(), `core:${langPath()}`, loc);
+    const merged = locale === fallback ? groups(locale) : deepMerge(groups(fallback), groups(locale));
+    return { ...merged, __json: { ...loadJsonFile(fallback), ...loadJsonFile(locale) } };
+}

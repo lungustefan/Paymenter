@@ -39,6 +39,7 @@ export const routeTable: Record<string, string> = {
     'passport.x.authorize': '/oauth/oauth/authorize',
     token: '/api/oauth/token',
     logout: '/logout',
+    'filament.admin.pages.dashboard': '/admin',
 };
 
 /** Extensions (and tests) register additional named routes. */
@@ -109,4 +110,12 @@ export function storageUrl(file: string | null | undefined): string {
     if (!file) return '';
     if (/^https?:\/\//i.test(file)) return file;
     return `${baseUrl()}/storage/${file.replace(/^\/+/, '')}`;
+}
+
+/** Same-origin absolute URLs become root-relative paths (for client-side navigation); anything else is unchanged. */
+export function relativeUrl(u: string): string {
+    const base = baseUrl();
+    if (u === base) return '/';
+    if (u.startsWith(base + '/')) return u.slice(base.length);
+    return u;
 }

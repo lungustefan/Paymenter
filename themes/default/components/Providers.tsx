@@ -138,7 +138,7 @@ export function Providers({
     messages: Messages;
     locale: string;
     availableLocales: Record<string, string>;
-    flash?: { message: string; type: string } | null;
+    flash?: { id: number; message: string; type: string } | null;
     children: ReactNode;
 }) {
     // toasts
@@ -156,10 +156,15 @@ export function Providers({
         [removeToast],
     );
 
+    // `$this->notify(..., redirect: true)`: the server leaves the message in a short-lived cookie
+    const lastFlash = useRef<number | null>(null);
     useEffect(() => {
-        if (flash) notify(flash.message, flash.type);
+        if (!flash || lastFlash.current === flash.id) return;
+        lastFlash.current = flash.id;
+        notify(flash.message, flash.type);
+        document.cookie = 'paymenter_flash=; Max-Age=0; path=/';
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [flash?.id]);
 
     // confirmation
     const [confirmState, setConfirmState] = useState<(ConfirmOptions & { show: boolean; loading: boolean }) | null>(null);

@@ -17,9 +17,12 @@ const entryFiles = (dir, names) => names.map((n) => path.join(dir, n)).find((f) 
 const dirs = (p) => (fs.existsSync(p) ? fs.readdirSync(p, { withFileTypes: true }).filter((d) => d.isDirectory() && !d.name.startsWith('.')).map((d) => d.name).sort() : []);
 
 const themes = [];
+const themeModules = [];
 for (const name of dirs(path.join(root, 'themes'))) {
     const dir = path.join(root, 'themes', name);
     if (entryFiles(dir, ['theme.ts', 'theme.tsx', 'theme.js'])) themes.push(name);
+    // a theme with an index file provides the layout + page views
+    if (entryFiles(dir, ['index.ts', 'index.tsx', 'index.js'])) themeModules.push(name);
 }
 
 const extensions = [];
@@ -38,6 +41,10 @@ const lines = [
     '',
     'export const themeRegistry: Record<string, () => Promise<any>> = {',
     ...themes.map((t) => `    ${JSON.stringify(t)}: () => import('@themes/${t}/theme'),`),
+    '};',
+    '',
+    'export const themeModuleRegistry: Record<string, () => Promise<any>> = {',
+    ...themeModules.map((t) => `    ${JSON.stringify(t)}: () => import('@themes/${t}'),`),
     '};',
     '',
     'export interface ExtensionEntry { type: string; name: string; dir: string; load: () => Promise<any>; }',
