@@ -1,0 +1,2 @@
+create table `invoice_snapshots` (`id` bigint unsigned not null auto_increment primary key, `name` varchar(255) null, `properties` json null, `tax_name` varchar(255) null, `tax_rate` decimal(5, 2) null, `tax_country` varchar(255) null, `bill_to` text null, `invoice_id` bigint unsigned not null, `created_at` timestamp null, `updated_at` timestamp null) default character set {{charset}} collate {{collation}};
+alter table `invoice_snapshots` add constraint `invoice_snapshots_invoice_id_foreign` foreign key (`invoice_id`) references `invoices` (`id`) on delete cascade;

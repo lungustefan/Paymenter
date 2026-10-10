@@ -1,0 +1,2 @@
+create table `oauth_clients` (`id` uuid not null, `user_id` bigint unsigned null, `name` varchar(255) not null, `secret` varchar(100) null, `provider` varchar(255) null, `redirect` text not null, `personal_access_client` tinyint(1) not null, `password_client` tinyint(1) not null, `revoked` tinyint(1) not null, `created_at` timestamp null, `updated_at` timestamp null, primary key (`id`)) default character set {{charset}} collate {{collation}};
+alter table `oauth_clients` add index `oauth_clients_user_id_index`(`user_id`);

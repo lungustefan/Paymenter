@@ -1,0 +1,1 @@
+create table `currencies` (`code` varchar(3) not null, `prefix` varchar(255) null, `suffix` varchar(255) null, `format` enum('1.000,00', '1,000.00', '1 000,00', '1 000.00') not null default '1.000,00', primary key (`code`)) default character set {{charset}} collate {{collation}};

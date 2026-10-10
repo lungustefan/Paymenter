@@ -1,0 +1,1 @@
+create table `prices` (`id` bigint unsigned not null auto_increment primary key, `price` decimal(17, 2) null, `setup_fee` decimal(17, 2) null, `currency_code` varchar(3) not null, `plan_id` bigint unsigned null) default character set {{charset}} collate {{collation}};

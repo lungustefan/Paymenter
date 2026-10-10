@@ -1,0 +1,2 @@
+create table `notifications` (`id` bigint unsigned not null auto_increment primary key, `user_id` bigint unsigned not null, `title` varchar(255) not null, `body` text not null, `url` varchar(255) null, `read_at` timestamp null, `show_in_app` tinyint(1) not null default '1', `show_as_push` tinyint(1) not null default '1', `created_at` timestamp null, `updated_at` timestamp null) default character set {{charset}} collate {{collation}};
+alter table `notifications` add constraint `notifications_user_id_foreign` foreign key (`user_id`) references `users` (`id`) on delete cascade;

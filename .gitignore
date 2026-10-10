@@ -1,14 +1,10 @@
-/.phpunit.cache
 /node_modules
 /public/default/*
-/public/hot
 /public/storage
 /storage/*.key
-/vendor
 .env
 .env.backup
 .env.production
-.phpunit.result.cache
 Homestead.json
 Homestead.yaml
 auth.json
@@ -22,3 +18,17 @@ extensions/Others/Pages
 extensions/Servers/LicenseManager
 extensions/Servers/Proxmox
 !themes/default
+# Next.js / Node
+/.next
+/out
+/node_modules
+next-env.d.ts
+*.tsbuildinfo
+/src/generated
+
+# Local data
+/storage/app/public/*
+!/storage/app/public/.gitkeep
+/storage/logs/*
+!/storage/logs/.gitkeep
+/storage/framework/*

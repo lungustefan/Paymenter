@@ -1,0 +1,4 @@
+create table `tickets` (`id` bigint unsigned not null auto_increment primary key, `subject` varchar(255) not null, `status` varchar(255) not null default 'open', `priority` varchar(255) not null default 'normal', `department` varchar(255) null, `user_id` bigint unsigned not null, `assigned_to` bigint unsigned null, `service_id` bigint unsigned null, `created_at` timestamp null, `updated_at` timestamp null) default character set {{charset}} collate {{collation}};
+alter table `tickets` add constraint `tickets_user_id_foreign` foreign key (`user_id`) references `users` (`id`) on delete cascade;
+alter table `tickets` add constraint `tickets_assigned_to_foreign` foreign key (`assigned_to`) references `users` (`id`) on delete set null;
+alter table `tickets` add constraint `tickets_service_id_foreign` foreign key (`service_id`) references `services` (`id`) on delete set null;

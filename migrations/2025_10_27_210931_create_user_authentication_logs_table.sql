@@ -1,0 +1,3 @@
+create table `user_authentication_logs` (`id` bigint unsigned not null auto_increment primary key, `user_id` bigint unsigned not null, `ip_address` varchar(45) not null, `last_used_at` timestamp not null default CURRENT_TIMESTAMP, `created_at` timestamp null, `updated_at` timestamp null) default character set {{charset}} collate {{collation}};
+alter table `user_authentication_logs` add constraint `user_authentication_logs_user_id_foreign` foreign key (`user_id`) references `users` (`id`) on delete cascade;
+alter table `user_authentication_logs` add index `user_authentication_logs_user_id_ip_address_index`(`user_id`, `ip_address`);
