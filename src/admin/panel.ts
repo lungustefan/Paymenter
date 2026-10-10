@@ -17,6 +17,7 @@ import { InvoiceCluster, InvoiceResource, InvoiceTransactionResource } from './r
 import { OrderResource } from './resources/OrderResource';
 import { TicketResource } from './resources/TicketResource';
 import { ActiveUsers, Overview, Revenue, Support } from './widgets/PanelWidgets';
+import { OauthClientResource } from './resources/OauthClientResource';
 import { AuditResource } from './resources/AuditResource';
 import { Settings } from './pages/Settings';
 import { Updates } from './pages/Updates';
@@ -29,6 +30,6 @@ let registered = false;
 export function registerPanel() {
     if (registered) return;
     registered = true;
-    registerCore({ widgets: [Overview, Revenue, Support, ActiveUsers], pages: [Dashboard, Extension, Settings, Updates, CronStats], clusters: [ExtensionsCluster, ServicesCluster, InvoiceCluster], resources: [AuditResource, UserResource, OrderResource, TicketResource, ServiceResource, ServiceCancellationResource, InvoiceResource, InvoiceTransactionResource, CategoryResource, ProductResource, ConfigOptionResource, CouponResource, NotificationTemplateResource, ExtensionResource, GatewayResource, ServerResource, ApiResource, CurrencyResource, CustomPropertyResource, EmailLogResource, ErrorLogResource, FailedJobResource, HttpLogResource, RoleResource, TaxRateResource] });
+    registerCore({ widgets: [Overview, Revenue, Support, ActiveUsers], pages: [Dashboard, Extension, Settings, Updates, CronStats], clusters: [ExtensionsCluster, ServicesCluster, InvoiceCluster], resources: [OauthClientResource, AuditResource, UserResource, OrderResource, TicketResource, ServiceResource, ServiceCancellationResource, InvoiceResource, InvoiceTransactionResource, CategoryResource, ProductResource, ConfigOptionResource, CouponResource, NotificationTemplateResource, ExtensionResource, GatewayResource, ServerResource, ApiResource, CurrencyResource, CustomPropertyResource, EmailLogResource, ErrorLogResource, FailedJobResource, HttpLogResource, RoleResource, TaxRateResource] });
 }
 registerPanel();
