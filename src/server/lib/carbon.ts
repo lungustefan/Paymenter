@@ -198,44 +198,71 @@ export class Carbon {
     }
 
     /**
-     * Carbon's `diffForHumans()`: one unit, truncated, with English phrases
-     * (translations of the unit names come from `Intl.RelativeTimeFormat`).
+     * Carbon's calendar difference (`DateInterval`): years, months, days (+ weeks derived from days),
+     * hours, minutes and seconds between two moments, borrowing like PHP does.
      */
-    diffForHumans(other: Carbon | Date | null = null, locale = 'en'): string {
-        const ref = other ?? new Date();
-        let seconds = (+ref - this.valueOf()) / 1000;
-        const past = seconds >= 0;
-        seconds = Math.abs(seconds);
-        const units: [Intl.RelativeTimeFormatUnit, number][] = [
-            ['year', 31536000],
-            ['month', 2592000],
-            ['week', 604800],
-            ['day', 86400],
-            ['hour', 3600],
-            ['minute', 60],
-            ['second', 1],
+    private calendarDiff(other: Carbon | Date): { y: number; m: number; d: number; h: number; i: number; s: number; past: boolean } {
+        const o = other instanceof Carbon ? other : new Carbon(other, this.tz);
+        const past = o.valueOf() >= this.valueOf();
+        const [a, b] = past ? [this, o] : [o, this];
+        let y = b.year - a.year;
+        let m = b.month - a.month;
+        let d = b.day - a.day;
+        let h = b.hour - a.hour;
+        let i = b.minute - a.minute;
+        let s = b.second - a.second;
+        if (s < 0) { s += 60; i--; }
+        if (i < 0) { i += 60; h--; }
+        if (h < 0) { h += 24; d--; }
+        if (d < 0) {
+            // borrow the length of the month before the later date's month
+            const prevMonth = b.month === 1 ? 12 : b.month - 1;
+            const prevYear = b.month === 1 ? b.year - 1 : b.year;
+            d += new Date(Date.UTC(prevYear, prevMonth, 0)).getUTCDate();
+            m--;
+        }
+        if (m < 0) { m += 12; y--; }
+        return { y, m, d, h, i, s, past };
+    }
+
+    /**
+     * Carbon's `diffForHumans()`: one unit, truncated ("3 weeks ago", "1 hour from now").
+     * `absolute` drops the ago / from now wording (`longAbsoluteDiffForHumans`).
+     */
+    diffForHumans(other: Carbon | Date | null = null, locale = 'en', absolute = false): string {
+        const { y, m, d, h, i, s, past } = this.calendarDiff(other ?? new Date());
+        const parts: [Intl.RelativeTimeFormatUnit, number][] = [
+            ['year', y],
+            ['month', m],
+            ['week', Math.floor(d / 7)],
+            ['day', d % 7],
+            ['hour', h],
+            ['minute', i],
+            ['second', s],
         ];
-        let value = 0;
-        let unit: Intl.RelativeTimeFormatUnit = 'second';
-        for (const [u, s] of units) {
-            if (seconds >= s) {
-                value = Math.floor(seconds / s);
-                unit = u;
-                break;
+        const [unit, value] = parts.find(([, v]) => v > 0) ?? (['second', 0] as [Intl.RelativeTimeFormatUnit, number]);
+        const lang = locale.split(/[-_]/)[0];
+
+        if (absolute) {
+            try {
+                return new Intl.NumberFormat(lang, { style: 'unit', unit, unitDisplay: 'long' }).format(value);
+            } catch {
+                return `${value} ${unit}${value === 1 ? '' : 's'}`;
             }
         }
-        if (value === 0) {
-            value = 0;
-            unit = 'second';
+        if (lang === 'en') {
+            const text = `${value} ${unit}${value === 1 ? '' : 's'}`;
+            return past ? `${text} ago` : `${text} from now`;
         }
-        let rtf: Intl.RelativeTimeFormat;
         try {
-            rtf = new Intl.RelativeTimeFormat(locale, { numeric: 'always' });
+            return new Intl.RelativeTimeFormat(lang, { numeric: 'always' }).format(past ? -value : value, unit);
         } catch {
-            rtf = new Intl.RelativeTimeFormat('en', { numeric: 'always' });
+            return `${value} ${unit}`;
         }
-        if (value === 0) return new Intl.RelativeTimeFormat(locale, { numeric: 'auto' }).format(0, 'second');
-        return rtf.format(past ? -value : value, unit);
+    }
+
+    longAbsoluteDiffForHumans(other: Carbon | Date | null = null, locale = 'en'): string {
+        return this.diffForHumans(other, locale, true);
     }
 
     /** PHP `date()` formatting. */

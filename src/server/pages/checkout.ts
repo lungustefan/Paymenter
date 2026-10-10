@@ -112,6 +112,8 @@ export interface CheckoutField {
     children?: { id: number; name: string; prices: Record<string, { label: string; available: boolean; free: boolean }> }[];
     /** id of the config option (only for product config options) */
     optionId?: number;
+    /** price tags shown on the children? (precomputed where it does not depend on the selected plan) */
+    showPriceTag?: boolean;
 }
 
 export async function getCheckoutConfigFields(product: Product, values: Record<string, any>): Promise<any[]> {
