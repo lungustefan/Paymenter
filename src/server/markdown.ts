@@ -9,13 +9,15 @@ import taskLists from 'markdown-it-task-lists';
 export interface MarkdownOptions {
     html_input?: 'allow' | 'escape' | 'strip';
     allow_unsafe_links?: boolean;
+    /** rendered for a soft line break (league/commonmark `renderer.soft_break`, default newline) */
+    soft_break?: string;
 }
 
 type MD = InstanceType<typeof MarkdownIt>;
 const cache = new Map<string, MD>();
 
 function engine(opts: MarkdownOptions): MD {
-    const key = `${opts.html_input ?? 'allow'}|${opts.allow_unsafe_links ?? true}`;
+    const key = `${opts.html_input ?? 'allow'}|${opts.allow_unsafe_links ?? true}|${opts.soft_break ?? ''}`;
     let md = cache.get(key);
     if (md) return md;
     md = new MarkdownIt({
@@ -34,6 +36,10 @@ function engine(opts: MarkdownOptions): MD {
     if (opts.allow_unsafe_links === false) {
         const validate = md.validateLink;
         md.validateLink = (url: string) => validate(url) && !/^\s*(javascript|vbscript|data):/i.test(url);
+    }
+    if (opts.soft_break !== undefined) {
+        const sb = opts.soft_break;
+        md.renderer.rules.softbreak = () => sb;
     }
     cache.set(key, md);
     return md;

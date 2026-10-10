@@ -3,6 +3,7 @@ import type { NextConfig } from 'next';
 const nextConfig: NextConfig = {
     output: 'standalone',
     reactStrictMode: true,
+    agentRules: false,
     poweredByHeader: false,
     // Themes and extensions live in the project root (like the PHP release) and are picked up at build time.
     transpilePackages: [],
