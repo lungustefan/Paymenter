@@ -182,6 +182,17 @@ export function Providers({
         }
     };
 
+    // push notifications: the service worker hands over notifications that should show up inside the page
+    useEffect(() => {
+        if (!('serviceWorker' in navigator)) return;
+        navigator.serviceWorker.register('/service-worker.js').catch((error) => console.log('Service Worker registration failed:', error));
+        const onMessage = (event: MessageEvent) => {
+            if (event.data && event.data.type === 'SHOW_NOTIFICATION') window.dispatchEvent(new CustomEvent('new-notification'));
+        };
+        navigator.serviceWorker.addEventListener('message', onMessage);
+        return () => navigator.serviceWorker.removeEventListener('message', onMessage);
+    }, []);
+
     // dark mode
     const [mode, setModeState] = useState<ThemeMode>('system');
     const [systemDark, setSystemDark] = useState(false);
