@@ -1,8 +1,10 @@
 'use client';
 
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
+import Sortable from 'sortablejs';
 import { useTable } from './client';
+import { useAdminActions } from '../actions/client';
 import { FormProvider } from '../forms/runtime';
 import { Dropdown } from '../layout/client';
 import { cn } from '@themes/default/components/cn';
@@ -27,6 +29,29 @@ export function ToolbarWrapper({ mode, children }: { mode: 'visible' | 'selectio
     );
 }
 
+/** the `tbody` of a table in reordering mode: rows are dragged by their handle (`x-sortable`) and the new order is saved */
+export function ReorderBody({ children }: { children: ReactNode }) {
+    const t = useTable();
+    const { dispatch, apply } = useAdminActions();
+    const router = useRouter();
+    const body = useRef<HTMLTableSectionElement>(null);
+    useEffect(() => {
+        if (!body.current) return;
+        const sortable = Sortable.create(body.current, {
+            handle: '.fi-ta-reorder-handle',
+            draggable: 'tr[data-sortable-item]',
+            animation: 300,
+            onEnd: async () => {
+                const order = [...(body.current?.querySelectorAll('tr[data-sortable-item]') ?? [])].map((tr) => (tr as HTMLElement).dataset.sortableItem as string);
+                apply(await dispatch({ type: 'table', table: t.tableId, action: 'reorder', order }));
+                router.refresh();
+            },
+        });
+        return () => sortable.destroy();
+    }, [dispatch, apply, router, t.tableId]);
+    return <tbody ref={body}>{children}</tbody>;
+}
+
 /** enable / disable reordering (`?reordering=1`) */
 export function ReorderTrigger({ reordering, prefixParam, labels }: { reordering: boolean; prefixParam: string; labels: { enable: string; disable: string } }) {
     const t = useTable();
@@ -36,7 +61,7 @@ export function ReorderTrigger({ reordering, prefixParam, labels }: { reordering
             title={label}
             aria-label={label}
             type="button"
-            className="fi-ac-icon-btn-action fi-icon-btn fi-size-md"
+            className="fi-force-enabled fi-ac-icon-btn-action fi-icon-btn fi-size-md"
             onClick={() => t.go({ [prefixParam]: reordering ? null : '1', page: null })}
         >
             <svg className="fi-icon fi-size-md" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true" data-slot="icon">

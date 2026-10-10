@@ -14,7 +14,9 @@ export function ModalFrame({ id, className, alert, closeByClickingAway = true, c
     useEffect(() => {
         const previous = document.body.style.overflow;
         document.body.style.overflow = 'hidden';
-        ref.current?.focus();
+        // `x-trap`: the first tabbable element of the modal gets the focus
+        const first = ref.current?.querySelector<HTMLElement>('.fi-modal-window :is(a[href], button, input:not([type=hidden]), select, textarea, [tabindex]):not([tabindex="-1"]):not(:disabled)');
+        (first ?? ref.current)?.focus();
         return () => {
             document.body.style.overflow = previous;
         };
@@ -59,10 +61,10 @@ export function ModalCloseButton({ className, label, children }: { className: st
 
 /** footer: submit the modal's form */
 export function ModalSubmitButton({ className, children }: { className: string; children: ReactNode }) {
-    const { pending } = useFormContext();
+    const { submitting } = useFormContext();
     return (
-        <button type="submit" className={className} disabled={pending}>
-            {pending && <LoadingIndicator />}
+        <button type="submit" className={className} disabled={submitting}>
+            {submitting && <LoadingIndicator />}
             <span>{children}</span>
         </button>
     );
@@ -70,10 +72,10 @@ export function ModalSubmitButton({ className, children }: { className: string; 
 
 /** footer: a button that submits the form with extra arguments (`createAnother`) */
 export function ModalExtraButton({ className, args, children }: { className: string; args: Record<string, any>; children: ReactNode }) {
-    const { pending, submit } = useFormContext();
+    const { submitting, submit } = useFormContext();
     return (
-        <button type="button" className={className} disabled={pending} onClick={() => submit(args)}>
-            {pending && <LoadingIndicator />}
+        <button type="button" className={className} disabled={submitting} onClick={() => submit(args)}>
+            {submitting && <LoadingIndicator />}
             {children}
         </button>
     );

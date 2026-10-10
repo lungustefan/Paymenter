@@ -201,9 +201,20 @@ export abstract class Component {
         return list;
     }
 
+    /** the components below this one with the render context they are rendered in (a repeater has one per item) */
+    async getHydrationEntries(rc: RenderContext): Promise<Array<{ component: Component; rc: RenderContext }>> {
+        return (await this.getChildren(rc)).map((component) => ({ component, rc }));
+    }
+
+    /** `afterStateHydrated` of this component and everything below it */
+    async runAfterStateHydratedDeep(rc: RenderContext): Promise<void> {
+        await this.runAfterStateHydrated(rc);
+        for (const entry of await this.getHydrationEntries(rc)) await entry.component.runAfterStateHydratedDeep(entry.rc);
+    }
+
     /** `afterStateUpdated` closures */
-    async runAfterStateUpdated(rc: RenderContext): Promise<void> {
-        for (const fn of this._afterStateUpdated) await fn(this.evalCtx(rc));
+    async runAfterStateUpdated(rc: RenderContext, old?: unknown): Promise<void> {
+        for (const fn of this._afterStateUpdated) await fn(this.evalCtx(rc, { old }));
     }
     async runAfterStateHydrated(rc: RenderContext): Promise<void> {
         for (const fn of this._afterStateHydrated) await fn(this.evalCtx(rc));

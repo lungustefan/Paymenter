@@ -137,6 +137,11 @@ export abstract class Resource {
         return name in this.getPages();
     }
 
+    /** `hasRecordTitle()` */
+    static hasRecordTitle(): boolean {
+        return this.recordTitleAttribute !== null || this.getRecordTitle !== Resource.getRecordTitle;
+    }
+
     /** `getRecordTitle($record)` */
     static getRecordTitle(record: Model<any> | null): string {
         if (!record) return titleCase(this.getModelLabel());

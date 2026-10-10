@@ -62,8 +62,8 @@ export abstract class AdminPage extends Host {
         return renderActionsGroup(this.getHeaderActions(), this.actionContext(), 'header', { defaultStyle: 'button' });
     }
 
-    override async findAction(id: string): Promise<ActionRef | null> {
-        if (id.startsWith('table.')) return super.findAction(id);
+    override async findAction(id: string, state?: Record<string, any>): Promise<ActionRef | null> {
+        if (!id.startsWith('header.')) return super.findAction(id, state);
         if (id.startsWith('header.')) {
             const found = findByName(this.getHeaderActions(), id.slice('header.'.length));
             return found ? { action: found, ctx: this.actionContext({ action: found }) } : null;

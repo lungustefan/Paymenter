@@ -293,6 +293,11 @@ export abstract class Field extends Component {
         return kind === 'hint' ? this._hintActions : kind === 'prefix' ? this._prefixActions : this._suffixActions;
     }
 
+    /** extra values of the context of an inline action (`model`, `record`, ...) */
+    async fieldActionContext(_rc: RenderContext, _action: Action): Promise<Record<string, any>> {
+        return {};
+    }
+
     protected actionId(rc: RenderContext, kind: string, action: Action) {
         return `field:${this.getStatePath(rc)}:${kind}:${action.getName()}`;
     }

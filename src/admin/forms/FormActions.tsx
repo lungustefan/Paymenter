@@ -28,25 +28,25 @@ function useBinding(ref: React.RefObject<HTMLElement | null>, binding: string | 
 
 /** the submit button of a form (`Action::make('save')->submit('save')`): shows the loading state while the request runs */
 export function FormSubmitButton({ className, binding, children }: { className: string; binding?: string; children: ReactNode }) {
-    const { pending, submit } = useFormContext();
+    const { submitting, submit } = useFormContext();
     const ref = useRef<HTMLButtonElement>(null);
     useBinding(ref, binding, () => submit());
     return (
-        <button ref={ref} type="submit" className={className} disabled={pending}>
-            {pending && <LoadingIndicator />}
-            <span style={pending ? { display: 'none' } : undefined}>{children}</span>
+        <button ref={ref} type="submit" className={className} disabled={submitting}>
+            {submitting && <LoadingIndicator />}
+            <span style={submitting ? { display: 'none' } : undefined}>{children}</span>
         </button>
     );
 }
 
 /** a button that submits the form with extra arguments (`createAnother`) */
 export function FormActionButton({ className, binding, args, children }: { className: string; binding?: string; args: Record<string, any>; children: ReactNode }) {
-    const { pending, submit } = useFormContext();
+    const { submitting, submit } = useFormContext();
     const ref = useRef<HTMLButtonElement>(null);
     useBinding(ref, binding, () => submit(args));
     return (
-        <button ref={ref} type="button" className={className} disabled={pending} onClick={() => submit(args)}>
-            {pending && <LoadingIndicator />}
+        <button ref={ref} type="button" className={className} disabled={submitting} onClick={() => submit(args)}>
+            {submitting && <LoadingIndicator />}
             {children}
         </button>
     );

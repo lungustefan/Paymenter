@@ -57,7 +57,7 @@ export async function fillForm(schema: Schema, rc: RenderContext, data: Record<s
     rc.state = data ? structuredCloneSafe(data) : {};
     await schema.hydrateDefaults(rc, rc.state, data === null);
     if (rc.record) await schema.loadRelationshipState(rc, rc.record, rc.state);
-    for (const c of await schema.getAllComponents(rc)) await c.runAfterStateHydrated(rc);
+    for (const c of schema.getFlatComponents()) await c.runAfterStateHydratedDeep(rc);
     return rc.state;
 }
 

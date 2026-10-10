@@ -12,6 +12,8 @@ export interface ActionRef {
     ctx: ActionContext;
     /** the render context of the form the action belongs to (field actions): `$set()` calls change its state */
     rc?: RenderContext;
+    /** the schema of that form: it is re-rendered after the action ran (a Livewire request re-renders the whole component) */
+    schema?: Schema;
 }
 
 /** a form resolved by its id */
@@ -58,9 +60,12 @@ export abstract class Host {
         const found = await form.schema.findByStatePath(form.rc, m[1]);
         const component: any = found?.component;
         const action = component?.inlineActions?.(m[2])?.find((a: Action) => a.getName() === m[3]);
-        if (!found || !action) return null;
-        const ctx = { ...component.evalCtx(found.rc), action, record: found.rc.record, user: this.user, livewire: this, model: found.rc.model } as ActionContext;
-        return { action, ctx, rc: found.rc };
+        if (!found || !action) {
+            console.log('DBG findFieldAction', id, !!found, found?.component?.constructor?.name, found ? (found.component as any).inlineActions?.(m[2]).map((a: Action) => a.getName()) : null);
+            return null;
+        }
+        const ctx = { ...component.evalCtx(found.rc), action, record: found.rc.record, user: this.user, livewire: this, model: found.rc.model, ...(await component.fieldActionContext?.(found.rc, action)) } as ActionContext;
+        return { action, ctx, rc: found.rc, schema: form.schema };
     }
 
     /** the form with this id (`form`) built around the given state */

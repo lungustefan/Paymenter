@@ -139,6 +139,16 @@ export class TextInput extends Field {
         return this.wrap(rc, await this.wrapInput(rc, slot, 'fi-fo-text-input'));
     }
 
+    /** `NumberStateCast`: the state of a numeric input is a number (`'49.90'` is shown as `49.9`) */
+    override async runAfterStateHydrated(rc: RenderContext): Promise<void> {
+        await super.runAfterStateHydrated(rc);
+        if (!(await this.ev(this._numeric, rc))) return;
+        const { getPath, setPath } = await import('../Component');
+        const path = this.getStatePath(rc);
+        const value = getPath(rc.state, path);
+        if (typeof value === 'string' && value.trim() !== '' && !Number.isNaN(Number(value))) setPath(rc.state, path, Number(value));
+    }
+
     override async dehydrate(rc: RenderContext, out: Record<string, any>): Promise<void> {
         await super.dehydrate(rc, out);
         const { getPath, setPath } = await import('../Component');

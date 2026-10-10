@@ -48,6 +48,7 @@ export class RichEditor extends Field {
                 path={path}
                 id={id}
                 labelId={`${id}-label`}
+                label={(await this.getLabel(rc)) ?? ''}
                 disabled={await this.isDisabled(rc)}
                 placeholder={(await this.ev(this._placeholder, rc)) ?? undefined}
                 toolbar={toolbar}

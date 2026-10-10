@@ -15,7 +15,7 @@ import { plural } from '../core/Resource';
 import { GroupCheckbox, PageButton, PageCheckbox, PerPageSelect, RecordCheckbox, SearchInput, SelectionIndicator, SortButton, TableRoot, TableRow } from './client';
 import { ActionDropdown, ActionTrigger, ModalHost } from '../actions/client';
 import { renderFiltersForm, FiltersPanel, type BaseFilter } from './filters';
-import { TableHeaderCtn, ToolbarWrapper, ReorderTrigger, FilterIndicators, ColumnManager, TablePoll } from './client-extra';
+import { TableHeaderCtn, ToolbarWrapper, ReorderTrigger, FilterIndicators, ColumnManager, TablePoll, ReorderBody } from './client-extra';
 
 export interface TableHost {
     pathname: string;
@@ -554,7 +554,7 @@ export class Table {
                 );
             }
             rows.push(
-                <TableRow key={key} recordKey={selectable && !reordering ? key : null} className={cn('fi-ta-row', clickable && 'fi-clickable', this._striped && index % 2 === 1 && 'fi-striped', ...extra)}>
+                <TableRow key={key} recordKey={selectable && !reordering ? key : null} sortKey={reordering ? key : undefined} className={cn('fi-ta-row', clickable && 'fi-clickable', this._striped && index % 2 === 1 && 'fi-striped', ...extra)}>
                     {cells}
                 </TableRow>,
             );
@@ -708,7 +708,7 @@ export class Table {
                                         {!reordering && records.length > 0 && hasRecordActionsForAnyRecord && <th aria-label={transChoice('filament-tables::table.columns.actions.label', flatActionCount)} scope="col" className="fi-ta-actions-header-cell fi-ta-empty-header-cell"></th>}
                                     </tr>
                                 </thead>
-                                {(this._columns.some((c) => c.isIndividuallySearchable()) || records.length > 0) && <tbody>{rows}</tbody>}
+                                {(this._columns.some((c) => c.isIndividuallySearchable()) || records.length > 0) && (reordering ? <ReorderBody>{rows}</ReorderBody> : <tbody>{rows}</tbody>)}
                             </table>
                         </div>
                         {hasEmptyState && (

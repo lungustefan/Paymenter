@@ -97,7 +97,7 @@ export async function resolveHost(segments: string[], user: User, pathname: stri
                     <PageFrame
                         subNavigation={subNavigation}
                         classes={page.getPageClasses().join(' ')}
-                        breadcrumbs={page.getBreadcrumbs()}
+                        breadcrumbs={await page.getBreadcrumbs()}
                         heading={title}
                         subheading={page.getSubheading()}
                         actions={await page.renderHeaderActions()}
