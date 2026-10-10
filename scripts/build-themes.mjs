@@ -28,15 +28,22 @@ const themes = fs
     .map((d) => d.name)
     .filter((n) => !only || n === only);
 
+/** the client area stylesheet (`css/app.css`) and the admin panel stylesheet (`admin/theme.css`) of a theme */
+const sheets = (name) => [
+    { from: path.join(themesDir, name, 'css', 'app.css'), to: path.join(root, 'public', 'build', 'themes', name, 'app.css'), label: 'app' },
+    { from: path.join(themesDir, name, 'admin', 'theme.css'), to: path.join(root, 'public', 'build', 'themes', name, 'admin.css'), label: 'admin' },
+];
+
 async function build(name) {
-    const from = path.join(themesDir, name, 'css', 'app.css');
-    const to = path.join(root, 'public', 'build', 'themes', name, 'app.css');
-    const started = Date.now();
-    const css = fs.readFileSync(from, 'utf8');
-    const result = await postcss([tailwind({ optimize: process.env.NODE_ENV === 'production' })]).process(css, { from, to });
-    fs.mkdirSync(path.dirname(to), { recursive: true });
-    fs.writeFileSync(to, result.css);
-    console.log(`[themes] ${name}: ${(result.css.length / 1024).toFixed(1)} kB in ${Date.now() - started} ms`);
+    for (const { from, to, label } of sheets(name)) {
+        if (!fs.existsSync(from)) continue;
+        const started = Date.now();
+        const css = fs.readFileSync(from, 'utf8');
+        const result = await postcss([tailwind({ optimize: process.env.NODE_ENV === 'production' })]).process(css, { from, to });
+        fs.mkdirSync(path.dirname(to), { recursive: true });
+        fs.writeFileSync(to, result.css);
+        console.log(`[themes] ${name}/${label}: ${(result.css.length / 1024).toFixed(1)} kB in ${Date.now() - started} ms`);
+    }
 }
 
 // Third-party stylesheets the themes link on demand (EasyMDE is loaded after the theme CSS on pages with an editor)
@@ -47,7 +54,7 @@ fs.copyFileSync(require.resolve('easymde/dist/easymde.min.css'), path.join(vendo
 for (const name of themes) await build(name);
 
 if (watch) {
-    const dirs = [path.join(root, 'themes'), path.join(root, 'src', 'components'), path.join(root, 'extensions')].filter((d) => fs.existsSync(d));
+    const dirs = [path.join(root, 'themes'), path.join(root, 'src', 'components'), path.join(root, 'src', 'admin'), path.join(root, 'extensions')].filter((d) => fs.existsSync(d));
     let timer;
     const trigger = () => {
         clearTimeout(timer);
