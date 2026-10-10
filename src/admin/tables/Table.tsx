@@ -5,7 +5,7 @@ import type { Resource } from '../core/Resource';
 import type { ActionRef } from '../core/host';
 import { Action, ActionGroup, BulkActionGroup, findByName, type ActionContext } from '../actions/Action';
 import { renderActionItem, renderActionsGroup } from '../actions/render';
-import { Column, kebabName } from './columns/Column';
+import { Column, kebabName, labelFromName, dataGetRecord } from './columns/Column';
 import { adminContext, trans, transChoice } from '../context';
 import { parseTableState, type TableState } from './state';
 import { Icon } from '../ui/Icon';
@@ -65,11 +65,6 @@ export interface TableGroup {
     getTitle?: (record: any) => string | null | Promise<string | null>;
     titlePrefixedWithLabel?: boolean;
 }
-/** `str($name)->afterLast('.')->kebab()->replace(['-', '_'], ' ')->ucfirst()` */
-const groupLabel = (name: string) => {
-    const words = (name.split('.').pop() as string).replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase().replace(/[-_]+/g, ' ');
-    return words.charAt(0).toUpperCase() + words.slice(1);
-};
 const toGroup = (g: TableGroup | string): TableGroup => (typeof g === 'string' ? { id: g } : g);
 
 export class Table {
@@ -275,14 +270,19 @@ export class Table {
     /** the title of the group a record belongs to (`Group::getTitle()`) */
     protected async groupTitle(group: TableGroup, record: any): Promise<string> {
         if (group.getTitle) return String((await group.getTitle(record)) ?? '');
-        const value = record[group.column ?? group.id];
+        const value = await dataGetRecord(record, group.column ?? group.id);
         return value === null || value === undefined ? '' : String(value);
     }
 
     protected async applySorting(q: Builder<any>, state: TableState, visible: Column[]) {
         if (state.reordering && this._reorder) return q.orderBy(this._reorder.column, this._reorder.direction);
         const group = this.activeGroup(state);
-        if (group) q.orderBy(group.column ?? group.id, 'asc');
+        if (group) {
+            // a relationship (`category.name`) is ordered by the column of the related table like a sortable column
+            const column = this._columns.find((c) => c.getName() === (group.column ?? group.id));
+            if (column) column.applySort(q, 'asc');
+            else q.orderBy(group.column ?? group.id, 'asc');
+        }
         const sortColumn = state.sortColumn ? visible.find((c) => c.getName() === state.sortColumn && c.isSortable()) : undefined;
         if (sortColumn) sortColumn.applySort(q, state.sortDirection === 'desc' ? 'desc' : 'asc');
         if (this._defaultSort) {
@@ -481,8 +481,9 @@ export class Table {
             if (group && groupTitles[index] !== previousGroupTitle) {
                 const title = groupTitles[index];
                 const keysInGroup = records.filter((_r, i) => groupTitles[i] === title).map((r) => this.recordKey(r));
-                const label = group.titlePrefixedWithLabel === false ? null : (group.label ?? groupLabel(group.id));
-                const heading = label ? `${label}: ${title}` : title;
+                const label = group.titlePrefixedWithLabel === false ? null : (group.label ?? labelFromName(group.id));
+                // the heading of a table that has one (relation managers) is an `h2`, so the groups go one level down
+                const Heading = this._heading ? 'h3' : 'h2';
                 rows.push(
                     <tr key={`group-${index}`} className="fi-ta-group-header-row fi-ta-row">
                         {isSelectionEnabled && (
@@ -493,7 +494,11 @@ export class Table {
                         <td className="fi-ta-group-header-cell" colSpan={visible.length + (hasRecordActionsForAnyRecord ? 1 : 0)}>
                             <div className="fi-ta-group-header">
                                 <div>
-                                    <h2 className="fi-ta-group-heading">{heading}</h2>
+                                    <Heading className="fi-ta-group-heading">
+                                        {label ? `${label}:` : null}
+                                        {label ? ' ' : null}
+                                        {title}
+                                    </Heading>
                                 </div>
                             </div>
                         </td>
@@ -708,7 +713,7 @@ export class Table {
                                         {!reordering && records.length > 0 && hasRecordActionsForAnyRecord && <th aria-label={transChoice('filament-tables::table.columns.actions.label', flatActionCount)} scope="col" className="fi-ta-actions-header-cell fi-ta-empty-header-cell"></th>}
                                     </tr>
                                 </thead>
-                                {(this._columns.some((c) => c.isIndividuallySearchable()) || records.length > 0) && (reordering ? <ReorderBody>{rows}</ReorderBody> : <tbody>{rows}</tbody>)}
+                                {(this._columns.some((c) => c.isIndividuallySearchable()) || records.length > 0) && (reordering ? <ReorderBody>{rows}</ReorderBody> : <tbody data-sortable-animation-duration={this.isReorderable() ? '300' : undefined}>{rows}</tbody>)}
                             </table>
                         </div>
                         {hasEmptyState && (

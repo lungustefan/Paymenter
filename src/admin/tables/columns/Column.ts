@@ -143,10 +143,7 @@ export abstract class Column {
 
     getLabel(): string {
         if (typeof this._label === 'string') return this._label;
-        // `str($name)->afterLast('.')->kebab()->replace(['-', '_'], ' ')->ucfirst()`
-        const last = this.name.split('.').pop() as string;
-        const words = last.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase().replace(/[-_]+/g, ' ');
-        return words.charAt(0).toUpperCase() + words.slice(1);
+        return labelFromName(this.name);
     }
 
     async getLabelFor(record: any = null): Promise<string> {
@@ -209,23 +206,7 @@ export abstract class Column {
 
     /** `data_get($record, $name)` with relations (`user.name`) and accessors */
     async resolveAttribute(record: any, path = this.name): Promise<any> {
-        let current: any = record;
-        for (const segment of path.split('.')) {
-            if (current === null || current === undefined) return null;
-            if (Array.isArray(current)) {
-                current = (await Promise.all(current.map(async (item) => this.readSegment(item, segment)))).flat();
-                continue;
-            }
-            current = await this.readSegment(current, segment);
-        }
-        return current;
-    }
-
-    private async readSegment(item: any, segment: string): Promise<any> {
-        if (item === null || item === undefined) return null;
-        if (typeof item.relationDef === 'function' && item.relationDef(segment)) return item.rel(segment);
-        if (typeof item.getAttribute === 'function') return dbValue(item, segment, await item.getAttribute(segment));
-        return item[segment];
+        return dataGetRecord(record, path);
     }
 
     async getState(record: any): Promise<any> {
@@ -308,4 +289,34 @@ export abstract class Column {
 
     /** the content of a cell (`{{ $column }}`) */
     abstract render(record: any, ctx: { recordKey: string; rowLoop: ColumnContext['rowLoop'] }): Promise<ReactNode>;
+}
+
+
+/** `str($name)->beforeLast('.')->afterLast('.')->kebab()->replace(['-', '_'], ' ')->ucfirst()` (`category.name` -> `Category`) */
+export function labelFromName(name: string): string {
+    const base = name.includes('.') ? name.slice(0, name.lastIndexOf('.')) : name;
+    const last = base.split('.').pop() as string;
+    const words = last.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase().replace(/[-_]+/g, ' ');
+    return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+/** `data_get($record, 'user.name')` with relations and accessors */
+export async function dataGetRecord(record: any, path: string): Promise<any> {
+    let current: any = record;
+    for (const segment of path.split('.')) {
+        if (current === null || current === undefined) return null;
+        if (Array.isArray(current)) {
+            current = (await Promise.all(current.map(async (item) => readSegment(item, segment)))).flat();
+            continue;
+        }
+        current = await readSegment(current, segment);
+    }
+    return current;
+}
+
+async function readSegment(item: any, segment: string): Promise<any> {
+    if (item === null || item === undefined) return null;
+    if (typeof item.relationDef === 'function' && item.relationDef(segment)) return item.rel(segment);
+    if (typeof item.getAttribute === 'function') return dbValue(item, segment, await item.getAttribute(segment));
+    return item[segment];
 }
