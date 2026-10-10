@@ -42,6 +42,8 @@ export class Repeater extends Field {
     schema(v: Fn<SchemaItem[]>) { this._schema = v; return this; }
     relationship(name?: string | null, modifyQuery?: (q: Builder<any>) => void) {
         this._relationship = { name: name ?? this.getName() ?? '', modifyQuery };
+        // `Str::headline($relationshipName)` is the label of a relationship repeater
+        this._label = headline(this._relationship.name);
         return this;
     }
     orderColumn(v: string | null = 'sort') { this._orderColumn = v; return this; }
@@ -97,6 +99,13 @@ export class Repeater extends Field {
         return v && typeof v === 'object' && !Array.isArray(v) ? v : {};
     }
 
+    /** how many repeaters this one is nested in */
+    private repeaterDepth() {
+        let depth = 0;
+        for (let p = this.parent; p; p = p.parent) if (p instanceof Repeater) depth++;
+        return depth;
+    }
+
     private async isCollapsible(rc: RenderContext) {
         return (await this.ev(this._collapsible, rc)) === true;
     }
@@ -147,6 +156,15 @@ export class Repeater extends Field {
             const irc = this.itemRc(probe, key, row);
             for (const child of await this.getChildren(irc)) await child.loadRelationshipState(irc, row, state);
         }
+    }
+
+    override async getHydrationEntries(rc: RenderContext) {
+        const out: Array<{ component: Component; rc: RenderContext }> = [];
+        for (const key of Object.keys(this.items(rc))) {
+            const irc = this.itemRc(rc, key);
+            for (const component of await this.getChildren(irc)) out.push({ component, rc: irc });
+        }
+        return out;
     }
 
     /* ---- mutations (add / clone / delete / move) ---- */
@@ -352,6 +370,7 @@ export class Repeater extends Field {
                 addLabel={addLabel}
                 grid={(this._gridColumns as any) ?? null}
                 headers={this._hasItemHeaders}
+                headingLevel={2 + this.repeaterDepth()}
                 labels={{
                     move: trans('filament-forms::components.repeater.actions.reorder.label'),
                     clone: trans('filament-forms::components.repeater.actions.clone.label'),
@@ -368,6 +387,15 @@ export class Repeater extends Field {
         return this.wrap(rc, control, { labelTag: 'div' });
     }
 }
+
+const headline = (s: string) =>
+    s
+        .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+        .replace(/[_-]+/g, ' ')
+        .trim()
+        .split(/\s+/)
+        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+        .join(' ');
 
 async function rowData(row: any): Promise<Record<string, any>> {
     const { attributesForForm } = await import('../../core/attributes');

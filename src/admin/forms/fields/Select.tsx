@@ -6,6 +6,7 @@ import { SearchableSelect, type SelectOption } from '../controls-select';
 import type { Fn } from '../../core/evaluate';
 import { trans } from '../../context';
 import { Action } from '../../actions/Action';
+import { Schema } from '../Schema';
 import { BelongsToMany } from '@/server/orm/relations';
 import type { Builder } from '@/server/orm';
 import type { Rule } from '@/server/validation';
@@ -45,12 +46,13 @@ export class Select extends Field {
     protected _getOptionLabelUsing?: (ctx: any) => Promise<string | null> | string | null;
     protected _getOptionLabelsUsing?: (ctx: any) => Promise<OptionsInput> | OptionsInput;
     protected _getOptionLabelFromRecordUsing?: (record: any) => string | Promise<string>;
-    protected _disableOptionWhen?: (value: string, label: string) => boolean;
+    protected _disableOptionWhen?: (value: string, label: string, record: any) => boolean;
     protected _noSearchResultsMessage?: string;
     protected _noOptionsMessage?: string;
     protected _searchPrompt?: string;
     protected _maxItems?: number;
-    protected _createOption?: { form: Fn<any[]>; using: (ctx: any) => Promise<any> | any };
+    protected _createOption?: { form: ((schema: Schema) => Schema | any[]) | any[]; using?: (ctx: any) => Promise<any> | any };
+    private _createOptionAction?: Action;
     protected _searchColumns?: string[];
     protected _boolean?: { trueLabel: string; falseLabel: string };
 
@@ -71,7 +73,7 @@ export class Select extends Field {
     getOptionLabelUsing(fn: (ctx: any) => Promise<string | null> | string | null) { this._getOptionLabelUsing = fn; return this; }
     getOptionLabelsUsing(fn: (ctx: any) => Promise<OptionsInput> | OptionsInput) { this._getOptionLabelsUsing = fn; return this; }
     getOptionLabelFromRecordUsing(fn: (record: any) => string | Promise<string>) { this._getOptionLabelFromRecordUsing = fn; return this; }
-    disableOptionWhen(fn: (value: string, label: string) => boolean) { this._disableOptionWhen = fn; return this; }
+    disableOptionWhen(fn: (value: string, label: string, record: any) => boolean) { this._disableOptionWhen = fn; return this; }
     /** `->boolean()` */
     boolean(trueLabel?: string, falseLabel?: string, placeholder?: string) {
         this._boolean = { trueLabel: trueLabel ?? trans('filament-forms::components.select.boolean.true'), falseLabel: falseLabel ?? trans('filament-forms::components.select.boolean.false') };
@@ -82,12 +84,15 @@ export class Select extends Field {
         this._placeholder = placeholder ?? '-';
         return this;
     }
-    createOptionForm(form: Fn<any[]>) { this._createOption = { form, using: this._createOption?.using ?? (() => null) }; return this; }
+    createOptionForm(form: ((schema: Schema) => Schema | any[]) | any[]) { this._createOption = { form, using: this._createOption?.using }; return this; }
     createOptionUsing(fn: (ctx: any) => Promise<any> | any) { this._createOption = { form: this._createOption?.form ?? [], using: fn }; return this; }
 
     /** `->relationship('user', 'name', fn (Builder $query) => ..., ignoreRecord: true)` */
     relationship(name?: string | null, titleAttribute?: string | null, modifyQuery?: (q: Builder<any>, search: string | null) => void, ignoreRecord = false) {
         this._relationship = { name: name ?? this.getName() ?? '', titleAttribute: titleAttribute ?? null, modifyQuery, ignoreRecord };
+        // `Str::kebab($relationshipName)` with the dashes turned into spaces
+        const words = this._relationship.name.replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/[-_]+/g, ' ').toLowerCase();
+        this._label = words.charAt(0).toUpperCase() + words.slice(1);
         return this;
     }
 
@@ -238,7 +243,7 @@ export class Select extends Field {
         const isStatic = !this._relationship && !this._getOptionLabelUsing && !this._getOptionLabelsUsing;
         let valid: boolean;
         if (isStatic) {
-            const known = new Set(flat((await this.resolveOptions(rc)) ?? []).filter((o) => !o.disabled && !(this._disableOptionWhen?.(o.value, o.label))).map((o) => o.value));
+            const known = new Set(flat((await this.resolveOptions(rc)) ?? []).filter((o) => !o.disabled && !(this._disableOptionWhen?.(o.value, o.label, rc.record))).map((o) => o.value));
             valid = values.every((v) => known.has(String(v)));
         } else {
             const found = await this.resolveLabels(rc, values);
@@ -261,11 +266,9 @@ export class Select extends Field {
         const hasInlinePrefix = this._inlinePrefix && (!!(await this.ev(this._prefix, rc)) || !!(await this.ev(this._prefixIcon, rc)));
         const state = getPath(rc.state, path);
 
-        const suffixExtra = await this.createOptionAction(rc);
-
         let slot: ReactNode;
         if (native) {
-            const list = (entries ?? []).map((e) => ('group' in e ? { group: e.group, options: e.options.map((o) => ({ ...o, disabled: this._disableOptionWhen?.(o.value, o.label) })) } : { ...e, disabled: this._disableOptionWhen?.(e.value, e.label) }));
+            const list = (entries ?? []).map((e) => ('group' in e ? { group: e.group, options: e.options.map((o) => ({ ...o, disabled: this._disableOptionWhen?.(o.value, o.label, rc.record) })) } : { ...e, disabled: this._disableOptionWhen?.(e.value, e.label, rc.record) }));
             slot = (
                 <SelectControl
                     path={path}
@@ -307,18 +310,59 @@ export class Select extends Field {
                     maxItems={this._maxItems}
                     maxItemsMessage={this._maxItems ? trans('filament-forms::components.select.max_items_message', { count: this._maxItems }) : undefined}
                     optionsLimit={this._optionsLimit}
-                    disabledValues={(entries ?? []).flatMap((e) => ('group' in e ? e.options : [e])).filter((o) => this._disableOptionWhen?.(o.value, o.label)).map((o) => o.value)}
+                    disabledValues={(entries ?? []).flatMap((e) => ('group' in e ? e.options : [e])).filter((o) => this._disableOptionWhen?.(o.value, o.label, rc.record)).map((o) => o.value)}
                     selectedLabel="Clear selection"
                 />
             );
         }
-        void suffixExtra;
         const hasPrefixOrSuffix = false;
         void hasPrefixOrSuffix;
         return this.wrap(rc, await this.wrapInput(rc, slot, ['fi-fo-select', hasInlinePrefix ? 'fi-fo-select-has-inline-prefix' : '', native ? 'fi-fo-select-native' : ''].filter(Boolean).join(' ')), { className: 'fi-fo-select-wrp' });
     }
 
-    protected async createOptionAction(_rc: RenderContext): Promise<Action | null> {
-        return null;
+    /** the `+` button next to the select: a modal with the create form of the related resource */
+    override inlineActions(kind: 'hint' | 'prefix' | 'suffix'): Action[] {
+        const actions = super.inlineActions(kind);
+        if (kind !== 'suffix' || !this._createOption) return actions;
+        return [...actions, (this._createOptionAction ??= this.makeCreateOptionAction())];
     }
+
+    /** the model / record the modal form works with: the related model, a new record */
+    override async fieldActionContext(rc: RenderContext, action: Action): Promise<Record<string, any>> {
+        if (action !== this._createOptionAction || !this._relationship) return {};
+        return { model: this.relatedModel(rc).related, record: null, statePath: this.getStatePath(rc), multiple: await this.isMultiple(rc) };
+    }
+
+    private makeCreateOptionAction(): Action {
+        const create = this._createOption!;
+        const action = Action.make('createOption')
+            .label(() => trans('filament-forms::components.select.actions.create_option.label'))
+            .icon('heroicon:plus')
+            .color('gray')
+            .iconButton()
+            .size('sm')
+            .modalHeading(() => trans('filament-forms::components.select.actions.create_option.modal.heading'))
+            .modalSubmitActionLabel(() => trans('filament-forms::components.select.actions.create_option.modal.actions.create.label'))
+            .form(() => (typeof create.form === 'function' ? create.form(Schema.make()) : create.form))
+            .action(async (ctx) => {
+                let key: any;
+                if (create.using) key = await create.using(ctx);
+                else {
+                    const Related = ctx.model;
+                    const record = new Related();
+                    record.fill(ctx.data ?? {});
+                    await record.save();
+                    if (ctx.formSchema) {
+                        ctx.formRc.record = record;
+                        await ctx.formSchema.saveRelationships(ctx.formRc, record, ctx.data ?? {});
+                    }
+                    key = record.getKey();
+                }
+                // the new option is selected
+                const current = ctx.get(ctx.statePath, true);
+                ctx.set(ctx.statePath, ctx.multiple ? [...(Array.isArray(current) ? current : []), String(key)] : String(key), true);
+            });
+        return action;
+    }
+
 }

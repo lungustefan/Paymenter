@@ -1,6 +1,7 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import { useExpandConcealing } from '../expand';
 import { Icon } from '../../ui/Icon';
 import { cn } from '@themes/default/components/cn';
 
@@ -57,8 +58,10 @@ export function SectionShell({
             return next;
         });
     const label = collapsed ? expandLabel : collapseLabel;
+    const root = useRef<HTMLElement>(null);
+    useExpandConcealing(root, () => setCollapsed(false));
     return (
-        <section aria-labelledby={labelledBy} aria-describedby={describedBy} className={cn(className, collapsible && collapsed && 'fi-collapsed')}>
+        <section ref={root} aria-labelledby={labelledBy} aria-describedby={describedBy} className={cn(className, collapsible && collapsed && 'fi-collapsed')}>
             {header && (
                 <header
                     className="fi-section-header"
@@ -101,8 +104,9 @@ export function SectionShell({
 
 interface TabsCtx {
     active: string;
+    select: (key: string) => void;
 }
-const TabsContext = createContext<TabsCtx>({ active: '' });
+const TabsContext = createContext<TabsCtx>({ active: '', select: () => undefined });
 
 export interface TabItem {
     key: string;
@@ -175,7 +179,7 @@ export function TabsRoot({
     };
 
     return (
-        <TabsContext.Provider value={{ active }}>
+        <TabsContext.Provider value={{ active, select }}>
             <div id={id} {...extra} className={cn('fi-sc-tabs', contained && 'fi-contained', vertical && 'fi-vertical')}>
                 <input type="hidden" defaultValue={JSON.stringify(keys)} />
                 <nav aria-label={label ?? undefined} role="tablist" className={cn('fi-tabs', contained && 'fi-contained', vertical && 'fi-vertical')}>
@@ -196,9 +200,11 @@ export function TabsRoot({
 
 /** a tab panel: visible while its tab is the open one */
 export function TabPanel({ tabKey, id, extra, children }: { tabKey: string; id?: string; extra?: Record<string, any>; children: ReactNode }) {
-    const { active } = useContext(TabsContext);
+    const { active, select } = useContext(TabsContext);
+    const root = useRef<HTMLDivElement>(null);
+    useExpandConcealing(root, () => select(tabKey));
     return (
-        <div aria-labelledby={id} id={id} role="tabpanel" {...extra} className={cn('fi-sc-tabs-tab', active === tabKey && 'fi-active')}>
+        <div ref={root} aria-labelledby={id} id={id} role="tabpanel" {...extra} className={cn('fi-sc-tabs-tab', active === tabKey && 'fi-active')}>
             {children}
         </div>
     );

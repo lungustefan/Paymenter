@@ -35,6 +35,8 @@ export interface ActionContext extends EvalContext {
     /** the schema + render context of the modal form the action was submitted with */
     formSchema?: any;
     formRc?: any;
+    /** what the handler returned (for `successRedirectUrl()`) */
+    result?: any;
 }
 
 /** closures of an action receive the action context */
@@ -277,7 +279,7 @@ export class Action {
     async getModalFooterContent(ctx: ActionContext) { return this.ev(this._modalFooterContent, ctx); }
     hasModalSubmitAction() { return this._modalSubmitAction !== false; }
     hasModalCancelAction() { return this._modalCancelAction !== false; }
-    getModalFooterActionsAlignment() { return this._modalFooterActionsAlignment ?? (this._requiresConfirmation ? 'center' : null); }
+    getModalFooterActionsAlignment() { return this._modalFooterActionsAlignment ?? (this._requiresConfirmation ? 'center' : 'start'); }
     shouldCloseModalByClickingAway() { return this._closeModalByClickingAway; }
     async getExtraModalFooterActions(ctx: ActionContext): Promise<Action[]> { return (await this.ev(this._extraModalFooterActions, ctx)) ?? []; }
     async mutateFormData(data: Record<string, any>, ctx: ActionContext) {

@@ -42,8 +42,16 @@ export abstract class ResourcePage extends Host {
     /** the last breadcrumb: `List`, `Create`, `Edit` */
     abstract getBreadcrumb(): string;
 
-    getBreadcrumbs(): Breadcrumb[] {
-        return [{ label: this.resource.getBreadcrumb(), url: this.resource.getUrl('index') }, { label: this.getBreadcrumb() }];
+    /** `EditRecord` / `ViewRecord`: the title of the record sits between the resource and the page (`hasRecordTitle()`) */
+    async getBreadcrumbs(): Promise<Breadcrumb[]> {
+        const resource = this.resource;
+        const crumbs: Breadcrumb[] = [{ label: resource.getBreadcrumb(), url: resource.getUrl('index') }];
+        if (this.record && resource.hasRecordTitle()) {
+            const link = resource.hasPage('view') && (await resource.canView(this.user, this.record));
+            crumbs.push({ label: resource.getRecordTitle(this.record), url: link ? resource.getUrl('view', { record: this.record }) : undefined });
+        }
+        crumbs.push({ label: this.getBreadcrumb() });
+        return crumbs;
     }
 
     getSubheading(): string | null {
@@ -105,8 +113,8 @@ export abstract class ResourcePage extends Host {
         return renderActionsGroup(this.headerActions(), this.actionContext(), 'header', { defaultStyle: 'button' });
     }
 
-    override async findAction(id: string): Promise<ActionRef | null> {
-        if (id.startsWith('table.')) return super.findAction(id);
+    override async findAction(id: string, state?: Record<string, any>): Promise<ActionRef | null> {
+        if (!id.startsWith('header.')) return super.findAction(id, state);
         if (id.startsWith('header.')) {
             const found = findByName(this.headerActions(), id.slice('header.'.length));
             return found ? { action: found, ctx: this.actionContext({ action: found }) } : null;

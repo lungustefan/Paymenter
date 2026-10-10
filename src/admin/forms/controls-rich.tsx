@@ -20,7 +20,9 @@ type Live = { onBlur?: boolean; debounce?: number } | false | undefined;
 function RichIcon({ name }: { name: string }) {
     const icon = richIcons[name];
     if (!icon) return null;
-    return <svg className="fi-icon fi-size-md" xmlns="http://www.w3.org/2000/svg" viewBox={icon.viewBox} fill={icon.fill} {...icon.extra} aria-hidden="true" data-slot="icon" dangerouslySetInnerHTML={{ __html: icon.inner }} />;
+    // `stroke-width` -> `strokeWidth`
+    const extra = Object.fromEntries(Object.entries(icon.extra).map(([k, v]) => [k.replace(/-([a-z])/g, (_m, c: string) => c.toUpperCase()), v]));
+    return <svg className="fi-icon fi-size-md" xmlns="http://www.w3.org/2000/svg" viewBox={icon.viewBox} fill={icon.fill} {...extra} aria-hidden="true" data-slot="icon" dangerouslySetInnerHTML={{ __html: icon.inner }} />;
 }
 
 interface Button {
@@ -30,8 +32,7 @@ interface Button {
     /** `isActive()` arguments */
     active?: (e: Editor) => boolean;
     run: (e: Editor, helpers: { link: () => void; attach: () => void; table: () => void }) => void;
-    disabled?: (e: Editor) => boolean;
-}
+    }
 
 const BUTTONS: Record<string, Omit<Button, 'name'>> = {
     bold: { label: 'Bold', icon: 'Bold', active: (e) => e.isActive('bold'), run: (e) => e.chain().focus().toggleBold().run() },
@@ -53,8 +54,8 @@ const BUTTONS: Record<string, Omit<Button, 'name'>> = {
     orderedList: { label: 'Numbered list', icon: 'Numbered list', active: (e) => e.isActive('orderedList'), run: (e) => e.chain().focus().toggleOrderedList().run() },
     table: { label: 'Table', icon: 'Table', active: (e) => e.isActive('table'), run: (e) => e.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run() },
     attachFiles: { label: 'Attach files', icon: 'Attach files', active: (e) => e.isActive('image'), run: (_e, h) => h.attach() },
-    undo: { label: 'Undo', icon: 'Undo', run: (e) => e.chain().focus().undo().run(), disabled: (e) => !e.can().undo() },
-    redo: { label: 'Redo', icon: 'Redo', run: (e) => e.chain().focus().redo().run(), disabled: (e) => !e.can().redo() },
+    undo: { label: 'Undo', icon: 'Undo', run: (e) => e.chain().focus().undo().run() },
+    redo: { label: 'Redo', icon: 'Redo', run: (e) => e.chain().focus().redo().run() },
 };
 
 const TABLE_BUTTONS: Array<{ label: string; icon: string; run: (e: Editor) => void }> = [
@@ -76,6 +77,7 @@ export function RichEditorControl({
     path,
     id,
     labelId,
+    label,
     disabled,
     placeholder,
     toolbar,
@@ -89,6 +91,7 @@ export function RichEditorControl({
     path: string;
     id: string;
     labelId: string;
+    label: string;
     disabled?: boolean;
     placeholder?: string;
     toolbar: string[][];
@@ -123,9 +126,9 @@ export function RichEditorControl({
             TableRow,
             TableHeader,
             TableCell,
-            Placeholder.configure({ placeholder: placeholder ?? '' }),
+            ...(placeholder ? [Placeholder.configure({ placeholder })] : []),
         ],
-        editorProps: { attributes: { class: 'fi-fo-rich-editor-content' } },
+        editorProps: { attributes: { role: 'textbox', 'aria-label': label, translate: 'no', tabindex: '0' } },
         onUpdate: ({ editor: e }) => {
             const html = e.isEmpty ? null : e.getHTML();
             last.current = html;
@@ -178,7 +181,7 @@ export function RichEditorControl({
     };
 
     return (
-        <div aria-labelledby={labelId} id={id} role="group" className={cn(uploading && 'fi-fo-rich-editor-uploading-file')}>
+        <div aria-labelledby={labelId} id={id} role="group" className={cn(uploading && 'fi-fo-rich-editor-uploading-file') || undefined}>
             {!disabled && (
                 <div className="fi-fo-rich-editor-toolbar" aria-label="Editor toolbar">
                     {toolbar.map((group, gi) => (
@@ -196,8 +199,7 @@ export function RichEditorControl({
                                         aria-label={b.label}
                                         title={b.label}
                                         aria-pressed={isToggle ? (active ? 'true' : 'false') : undefined}
-                                        className={cn(active && 'fi-active')}
-                                        disabled={!editor || (editor && b.disabled?.(editor)) || undefined}
+                                        className={cn('fi-fo-rich-editor-tool', active && 'fi-active')}
                                         onMouseDown={(e) => e.preventDefault()}
                                         onClick={() => editor && b.run(editor, helpers)}
                                     >
@@ -224,13 +226,13 @@ export function RichEditorControl({
                     {editor?.isActive('table') && !disabled && (
                         <div className="fi-fo-rich-editor-floating-toolbar fi-not-prose">
                             {TABLE_BUTTONS.map((b) => (
-                                <button key={b.label} tabIndex={-1} type="button" aria-label={b.label} title={b.label} onMouseDown={(e) => e.preventDefault()} onClick={() => b.run(editor)}>
+                                <button key={b.label} tabIndex={-1} type="button" aria-label={b.label} title={b.label} className="fi-fo-rich-editor-tool" onMouseDown={(e) => e.preventDefault()} onClick={() => b.run(editor)}>
                                     <RichIcon name={b.icon} />
                                 </button>
                             ))}
                         </div>
                     )}
-                    <EditorContent editor={editor} className={className} />
+                    <EditorContent editor={editor} className={className || undefined} />
                 </div>
             </div>
             <input ref={fileInput} type="file" hidden accept={acceptedFileTypes.join(',')} onChange={(e) => void onFile(e.target.files?.[0]).then(() => (e.target.value = ''))} />

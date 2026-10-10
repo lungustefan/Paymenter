@@ -7,6 +7,8 @@ import { EmailLogResource, ErrorLogResource, FailedJobResource, HttpLogResource 
 import { ExtensionResource, ExtensionsCluster, GatewayResource, ServerResource } from './resources/ExtensionResources';
 import { NotificationTemplateResource } from './resources/NotificationTemplateResource';
 import { CouponResource } from './resources/CouponResource';
+import { CategoryResource } from './resources/CategoryResource';
+import { ProductResource } from './resources/ProductResource';
 import { RoleResource } from './resources/RoleResource';
 import { TaxRateResource } from './resources/TaxRateResource';
 
@@ -15,6 +17,6 @@ let registered = false;
 export function registerPanel() {
     if (registered) return;
     registered = true;
-    registerCore({ pages: [Dashboard], clusters: [ExtensionsCluster], resources: [CouponResource, NotificationTemplateResource, ExtensionResource, GatewayResource, ServerResource, ApiResource, CurrencyResource, CustomPropertyResource, EmailLogResource, ErrorLogResource, FailedJobResource, HttpLogResource, RoleResource, TaxRateResource] });
+    registerCore({ pages: [Dashboard], clusters: [ExtensionsCluster], resources: [CategoryResource, ProductResource, CouponResource, NotificationTemplateResource, ExtensionResource, GatewayResource, ServerResource, ApiResource, CurrencyResource, CustomPropertyResource, EmailLogResource, ErrorLogResource, FailedJobResource, HttpLogResource, RoleResource, TaxRateResource] });
 }
 registerPanel();

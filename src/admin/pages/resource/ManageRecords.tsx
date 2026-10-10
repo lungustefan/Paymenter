@@ -16,7 +16,7 @@ export class ManageRecords extends ListRecords {
     }
 
     /** `hasResourceBreadcrumbs()` is false: only the (empty) breadcrumb of the page itself */
-    override getBreadcrumbs() {
+    override async getBreadcrumbs() {
         return [{ label: '' }];
     }
 

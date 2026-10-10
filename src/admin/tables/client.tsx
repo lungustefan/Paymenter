@@ -8,6 +8,7 @@ import { buildQuery } from './state';
 import { cn } from '@themes/default/components/cn';
 
 interface TableCtxValue {
+    tableId: string;
     /** `?search=…` params of the table (prefixed when the page has several tables) */
     go: (updates: Record<string, any>) => void;
     pending: boolean;
@@ -72,8 +73,8 @@ export function TableRoot({ tableId, pageKeys, allCount, className, children }: 
     }, [dispatch, tableId]);
 
     const value = useMemo<TableCtxValue>(
-        () => ({ go, pending, selected, isSelected: (k) => selected.includes(k), toggle, toggleMany, clear, pageKeys, allCount, selectAll, canSelectAll: allCount > selected.length, loading }),
-        [go, pending, selected, toggle, toggleMany, clear, pageKeys, allCount, selectAll, loading],
+        () => ({ tableId, go, pending, selected, isSelected: (k) => selected.includes(k), toggle, toggleMany, clear, pageKeys, allCount, selectAll, canSelectAll: allCount > selected.length, loading }),
+        [tableId, go, pending, selected, toggle, toggleMany, clear, pageKeys, allCount, selectAll, loading],
     );
     const selection = useMemo(() => ({ selected, clear }), [selected, clear]);
 
@@ -89,9 +90,13 @@ export function TableRoot({ tableId, pageKeys, allCount, className, children }: 
 }
 
 /** a table row: gets `fi-selected` while its record is selected */
-export function TableRow({ recordKey, className, children }: { recordKey: string | null; className: string; children: ReactNode }) {
+export function TableRow({ recordKey, sortKey, className, children }: { recordKey: string | null; sortKey?: string; className: string; children: ReactNode }) {
     const t = useTable();
-    return <tr className={cn(className, recordKey !== null && t.isSelected(recordKey) && 'fi-selected')}>{children}</tr>;
+    return (
+        <tr className={cn(className, recordKey !== null && t.isSelected(recordKey) && 'fi-selected')} data-sortable-item={sortKey}>
+            {children}
+        </tr>
+    );
 }
 
 export function RecordCheckbox({ recordKey, label, group }: { recordKey: string; label: string; group?: string }) {

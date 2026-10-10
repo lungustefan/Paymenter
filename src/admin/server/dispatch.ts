@@ -31,6 +31,7 @@ export async function handleDispatch(url: string, op: AdminOp): Promise<AdminAct
         const resolved = await resolveHost(segments, user, pathname, searchParams);
         if (!resolved) return { ok: false };
         const { result, notifications } = await collectNotifications(() => run(resolved.host, op));
+        if (op.type === 'submit') console.log('DBG submit result', JSON.stringify({ ok: result.ok, errors: result.errors, refresh: result.refresh, redirect: result.redirect }));
         return { ...result, notifications: [...(result.notifications ?? []), ...notifications] };
     });
 }
@@ -39,7 +40,7 @@ async function run(host: Host, op: AdminOp): Promise<AdminActionResult> {
     try {
         switch (op.type) {
             case 'refresh':
-                return await refresh(host, op.target, op.state, op.changed, op.mutate);
+                return await refresh(host, op.target, op.state, op.changed, op.mutate, op.old);
             case 'submit':
                 return op.target.kind === 'form' ? await host.submitForm(op.target.id, op.state, op.target.args) : await submitAction(host, op.target, op.state);
             case 'mount':
@@ -81,7 +82,7 @@ async function recordsFor(ref: ActionRef, keys?: Array<string | number>) {
 }
 
 /** a live field changed: run `afterStateUpdated`, return the patches and the re-rendered schema */
-async function refresh(host: Host, target: FormTarget, state: Record<string, any>, changed: string | null, mutate?: Extract<AdminOp, { type: 'refresh' }>['mutate']): Promise<AdminActionResult> {
+async function refresh(host: Host, target: FormTarget, state: Record<string, any>, changed: string | null, mutate?: Extract<AdminOp, { type: 'refresh' }>['mutate'], old?: unknown): Promise<AdminActionResult> {
     const { schema, rc } = await formFor(host, target, normalizeInput(state));
     const before = structuredClone(rc.state);
     if (mutate) {
@@ -94,7 +95,7 @@ async function refresh(host: Host, target: FormTarget, state: Record<string, any
     }
     if (changed) {
         const found = await schema.findByStatePath(rc, changed);
-        if (found) await found.component.runAfterStateUpdated(found.rc);
+        if (found) await found.component.runAfterStateUpdated(found.rc, old);
     }
     await schema.hydrateDefaults(rc, rc.state, true);
     return { ok: true, patches: diffState(before, rc.state), schema: await schema.render(rc) };
@@ -116,13 +117,19 @@ async function resolveAction(host: Host, id: string, args: Record<string, any>, 
     const ctx: ActionContext = { ...ref.ctx, action: ref.action, arguments: { ...ref.action.getArguments(), ...args } };
     ctx.records = await recordsFor({ ...ref, ctx }, keys);
     ref.ctx = ctx;
-    if (!(await ref.action.isVisible(ctx)) || (await ref.action.isDisabled(ctx))) return null;
+    if (!(await ref.action.isVisible(ctx)) || (await ref.action.isDisabled(ctx))) {
+        console.log('DBG resolveAction hidden/disabled', id, await ref.action.isVisible(ctx), await ref.action.isDisabled(ctx));
+        return null;
+    }
     return ref;
 }
 
 async function mount(host: Host, id: string, args: Record<string, any>, keys?: Array<string | number>, state?: Record<string, any>): Promise<AdminActionResult> {
     const ref = await resolveAction(host, id, args, keys, state);
-    if (!ref) return { ok: false };
+    if (!ref) {
+        console.log('DBG mount: action not resolved', id);
+        return { ok: false };
+    }
     if (!ref.action.shouldOpenModal()) return execute(host, ref, {}, {});
     return { ok: true, modal: await renderActionModal({ host, ref, actionId: id, args, records: keys }) as ReactNode };
 }
@@ -164,8 +171,9 @@ async function execute(host: Host, ref: ActionRef, data: Record<string, any>, ar
     const patches = ref.rc && before ? diffState(before, ref.rc.state) : undefined;
     if (outcome.halted) return { ok: true, halted: true };
     if (outcome.cancelled) return { ok: true, close: true };
-    const redirect = await ref.action.getSuccessRedirectUrl(ctx);
-    return { ok: true, close: true, refresh: ref.rc ? false : !redirect, redirect: redirect ? relativeUrl(redirect) : null, patches };
+    const redirect = await ref.action.getSuccessRedirectUrl({ ...ctx, result: outcome.result });
+    const schema = ref.rc && ref.schema ? await ref.schema.render(ref.rc) : undefined;
+    return { ok: true, close: true, refresh: ref.rc ? false : !redirect, redirect: redirect ? relativeUrl(redirect) : null, patches, schema };
 }
 
 export { Halt, Cancel };

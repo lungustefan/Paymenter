@@ -20,7 +20,8 @@ const headline = (s: string) => titleCase(s.replace(/([a-z0-9])([A-Z])/g, '$1 $2
  */
 export abstract class RelationManager {
     static relationship: string;
-    static relatedResource: typeof Resource | null = null;
+    /** the related resource (a function when it can not be referenced yet, circular imports) */
+    static relatedResource: typeof Resource | (() => typeof Resource) | null = null;
     static title: string | null = null;
 
     ownerRecord!: Model<any>;
@@ -34,9 +35,16 @@ export abstract class RelationManager {
         return this.constructor as typeof RelationManager;
     }
 
+    /** `getRelatedResource()` */
+    get related(): typeof Resource | null {
+        const r = this.ctor.relatedResource;
+        if (r === null) return null;
+        return 'getSlug' in (r as object) ? (r as typeof Resource) : (r as () => typeof Resource)();
+    }
+
     getTitle(): string {
         if (this.ctor.title) return this.ctor.title;
-        if (this.ctor.relatedResource) return titleCase(this.ctor.relatedResource.getPluralModelLabel());
+        if (this.related) return titleCase(this.related.getPluralModelLabel());
         return headline(this.ctor.relationship);
     }
 
@@ -52,11 +60,11 @@ export abstract class RelationManager {
 
     /** the form of the create / edit modals (the related resource's form by default) */
     form(schema: Schema): Schema {
-        return this.ctor.relatedResource ? this.ctor.relatedResource.form(schema) : schema;
+        return this.related ? this.related.form(schema) : schema;
     }
 
     infolist(schema: Schema): Schema {
-        return this.ctor.relatedResource ? this.ctor.relatedResource.infolist(schema) : this.form(schema);
+        return this.related ? this.related.infolist(schema) : this.form(schema);
     }
 
     table(table: Table): Table {
@@ -78,10 +86,10 @@ export abstract class RelationManager {
         table.user = this.user;
         table.model = this.getRelatedModel();
         table.ownerRecord = this.ownerRecord;
-        table.resource = this.ctor.relatedResource ?? undefined;
+        table.resource = this.related ?? undefined;
         table.queryFrom(() => this.ownerRecord.relation(this.ctor.relationship));
         table.heading(this.getTitle());
-        const related = this.ctor.relatedResource;
+        const related = this.related;
         if (related) {
             related.table(table);
             // rows link to the related resource's pages
@@ -113,7 +121,7 @@ export abstract class RelationManager {
     }
 
     private configureActions(list: Array<any>) {
-        const related = this.ctor.relatedResource;
+        const related = this.related;
         for (const a of list) {
             if (a.actions) {
                 this.configureActions(a.actions);

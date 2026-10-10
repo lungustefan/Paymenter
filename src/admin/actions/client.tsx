@@ -62,6 +62,8 @@ export function ActionsProvider({ children }: { children: ReactNode }) {
             for (const n of result.notifications ?? []) notify(n);
             // `$set()` calls of an action: the form of the page takes the new values
             if (result.patches && Object.keys(result.patches).length) window.dispatchEvent(new CustomEvent('admin-form-patches', { detail: result.patches }));
+            // a field action re-renders the whole form (a Livewire request morphs the component)
+            if (result.schema !== undefined && !result.modal) window.dispatchEvent(new CustomEvent('admin-form-schema', { detail: result.schema }));
             if (result.redirect) router.push(result.redirect);
             else if (result.refresh) router.refresh();
             if (result.close) setModals((m) => m.slice(0, -1));
