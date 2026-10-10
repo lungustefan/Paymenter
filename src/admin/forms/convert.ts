@@ -12,6 +12,7 @@ import { Radio } from './fields/Radio';
 import { Placeholder } from '../infolists';
 import { Component } from './Component';
 import type { SettingDefinition } from '@/server/settings/types';
+import { settingActions } from '../actions/SettingsActions';
 
 /** `Arr::first` style normalisation of the `options` of a setting (see `FilamentInput::convert()`) */
 export function configOptions(options: SettingDefinition['options']): Array<[string, string]> {
@@ -47,6 +48,7 @@ export function convertInput(setting: SettingDefinition | Component): Component 
         f.label(label);
         if (s.description !== undefined && s.description !== null) f.helperText(s.description);
         if (s.hint) f.hint(s.hint).hintColor('primary');
+        if ((s as any).action && settingActions[(s as any).action]) f.hintActions([settingActions[(s as any).action]()]);
         return field;
     };
 

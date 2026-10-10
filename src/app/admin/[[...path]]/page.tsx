@@ -1,4 +1,4 @@
-import { notFound } from 'next/navigation';
+import { forbidden, notFound } from 'next/navigation';
 import { initRequest, requireUser } from '@/server/page';
 import { config } from '@/server/config';
 import { currentPath } from '@/server/request';
@@ -27,7 +27,7 @@ export async function generateMetadata({ params, searchParams }: { params: Promi
 export default async function AdminRoute({ params, searchParams }: { params: Promise<{ path?: string[] }>; searchParams: Promise<SearchParams> }) {
     const user = await requireUser();
     // `canAccessPanel`
-    if (!(await user.canAccessAdmin())) notFound();
+    if (!(await user.canAccessAdmin())) forbidden();
 
     const segments = (await params).path ?? [];
     const pathname = await currentPath();
