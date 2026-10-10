@@ -31,7 +31,7 @@ services:
     networks:
       - paymenter_nw
   paymenter:
-    image: ghcr.io/paymenter/paymenter:master
+    image: ghcr.io/lungustefan/paymenter:master
     restart: always
     ports:
       - "80:80"

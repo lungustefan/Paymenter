@@ -1,6 +1,6 @@
 #!/bin/bash
 
-URL='https://github.com/paymenter/paymenter/releases/latest/download/paymenter.tar.gz'
+URL='https://github.com/lungustefan/Paymenter/releases/latest/download/paymenter.tar.gz'
 
 echo "Starting upgrade process..."
 
