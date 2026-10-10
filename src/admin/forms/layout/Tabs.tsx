@@ -50,7 +50,7 @@ export class Tab extends Layout {
         const items = await this.getItems(rc);
         if (items.length === 0) return null;
         const key = await this.tabKey(rc);
-        const inner = await this.renderSchema(rc, { columns: this.getColumns() ?? this.containerColumns });
+        const inner = await this.renderSchema(rc, { columns: this.getColumns() ?? { default: 1 } });
         return (
             <TabPanel tabKey={key} id={`${rc.formId}.${key}`} extra={this._extraAttributes}>
                 {inner}

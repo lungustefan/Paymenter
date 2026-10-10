@@ -13,6 +13,8 @@ export function decimalScale(model: any, column: string): number | null {
 
 /** the value of a column of the record as Eloquent would give it */
 export function dbValue(record: any, name: string, value: any): any {
+    // `tinyint(1)` columns without a boolean cast are integers in Eloquent
+    if (typeof value === 'boolean') return record?.ctor?.casts?.[name] === 'boolean' ? value : value ? 1 : 0;
     if (typeof value !== 'number') return value;
     const scale = decimalScale(record?.ctor, name);
     return scale === null ? value : value.toFixed(scale);

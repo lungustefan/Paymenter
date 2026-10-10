@@ -375,11 +375,17 @@ export class Builder<M extends Model<any>, Ctor extends ModelCtor<M> = ModelCtor
         let q: any = currentDb().select().from(this.table);
         if (where) q = q.where(where);
         if (c.groupColumns.length) q = q.groupBy(...c.groupColumns);
-        if (c.orders.length) q = q.orderBy(...c.orders);
+        const orders = c.orders.length ? c.orders : this.defaultOrders();
+        if (orders.length) q = q.orderBy(...orders);
         if (c.limitValue !== null) q = q.limit(c.limitValue);
         if (c.offsetValue !== null) q = q.offset(c.offsetValue);
         if (c.lock) q = q.for(c.lock);
         return q;
+    }
+
+    /** the order used when none was asked for (a relation through a pivot table follows the pivot rows) */
+    protected defaultOrders(): SQL[] {
+        return [];
     }
 
     async get(): Promise<M[]> {

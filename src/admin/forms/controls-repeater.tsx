@@ -139,7 +139,7 @@ export function RepeaterControl({
                 </div>
             )}
             {items.length > 0 && (
-                <ul ref={list} className={cn(gridAttrs.className, 'fi-fo-repeater-items')} style={gridAttrs.style}>
+                <ul ref={list} data-sortable-animation-duration="300" className={cn(gridAttrs.className, 'fi-fo-repeater-items')} style={gridAttrs.style}>
                     {items.map((item, index) => {
                         const isClosed = closed.has(item.key);
                         const hasHeader = headers && (reorderable || reorderWithButtons || !!item.label || cloneable || deletable || collapsible);

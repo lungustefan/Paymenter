@@ -34,6 +34,7 @@ export class Repeater extends Field {
     protected _defaultItems: Fn<number> = 1;
     protected _itemLabel?: (ctx: any) => string | null | Promise<string | null>;
     protected _itemNumbers = false;
+    /** `deleteAction(fn)` customises the delete action (before / after hooks); `null` goes back to the default one */
     protected _deleteAction?: ((action: Action) => any) | null;
     protected _gridColumns?: number | Record<string, number> | null;
     protected _reorderWithButtons = false;
@@ -204,7 +205,6 @@ export class Repeater extends Field {
             }
             place(next);
         } else if (m.op === 'delete' && m.key) {
-            if (this._deleteAction === null) return;
             if (this._deleteAction) {
                 const action = Action.make('delete');
                 this._deleteAction(action);
@@ -336,7 +336,7 @@ export class Repeater extends Field {
         const collapsible = await this.isCollapsible(rc);
         const collapsed = (await this.ev(this._collapsed, rc)) === true;
         const cloneable = (await this.ev(this._cloneable, rc)) === true;
-        const deletable = (await this.ev(this._deletable, rc)) !== false && this._deleteAction !== null;
+        const deletable = (await this.ev(this._deletable, rc)) !== false;
         const reorderable = (await this.ev(this._reorderable, rc)) !== false;
         const addable = (await this.ev(this._addable, rc)) !== false;
         const maxItems = await this.ev(this._maxItems, rc);

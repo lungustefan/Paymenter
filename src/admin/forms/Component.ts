@@ -83,6 +83,8 @@ export abstract class Component {
         this._live = typeof onBlur === 'object' ? onBlur : { onBlur: onBlur === true, debounce };
         return this;
     }
+    /** `reactive()` is `live()` */
+    reactive() { return this.live(); }
     afterStateUpdated(fn: (ctx: EvalContext) => any) { this._afterStateUpdated.push(fn); return this; }
     afterStateHydrated(fn: (ctx: EvalContext) => any) { this._afterStateHydrated.push(fn); return this; }
     extraAttributes(v: Record<string, any>) { this._extraAttributes = v; return this; }

@@ -294,9 +294,18 @@ class BelongsToMany extends BaseRelation {
         }
     }
     query(parent: Model<any>) {
-        const q = new RelationBuilder<any>(this.related(), this, parent);
-        this.scopeFn?.(q);
         const pivot = sql.identifier(this.pivotTable);
+        const related = this.related();
+        const parentKey = (parent as any)[this.pk(parent.ctor)];
+        // `inner join pivot ... where pivot.fk = ?` hands the rows back in the order of the pivot rows
+        const pivotOrder = sql`(select min(${sql.identifier('id')}) from ${pivot} where ${sql.identifier(this.foreignPivotKey)} = ${parentKey} and ${sql.identifier(this.relatedPivotKey)} = ${related.table}.${sql.identifier(this.rk())})`;
+        class PivotBuilder extends RelationBuilder<any> {
+            protected override defaultOrders(): SQL[] {
+                return [pivotOrder];
+            }
+        }
+        const q = new PivotBuilder(related, this, parent);
+        this.scopeFn?.(q);
         return q.whereRaw(
             sql`${this.related().table}.${sql.identifier(this.rk())} in (select ${sql.identifier(this.relatedPivotKey)} from ${pivot} where ${sql.identifier(this.foreignPivotKey)} = ${(parent as any)[this.pk(parent.ctor)]})`,
         );

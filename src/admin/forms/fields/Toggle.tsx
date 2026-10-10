@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { Field } from '../Field';
-import type { RenderContext } from '../Component';
+import { getPath, setPath, type RenderContext } from '../Component';
+import { truthy } from '@/server/lib/php';
 import { ToggleControl } from '../controls';
 import { Icon } from '../../ui/Icon';
 import { colorClass, type FilamentColorName } from '../../ui/colors';
@@ -23,6 +24,13 @@ export class Toggle extends Field {
 
     protected override emptyState(_rc: RenderContext) {
         return false;
+    }
+
+    /** `BooleanStateCast`: the state is a boolean (`1` -> `true`) */
+    override async runAfterStateHydrated(rc: RenderContext): Promise<void> {
+        await super.runAfterStateHydrated(rc);
+        const path = this.getStatePath(rc);
+        setPath(rc.state, path, truthy(getPath(rc.state, path)));
     }
 
     override async render(rc: RenderContext): Promise<ReactNode> {
