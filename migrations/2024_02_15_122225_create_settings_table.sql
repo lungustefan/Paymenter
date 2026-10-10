@@ -1,0 +1,3 @@
+create table `settings` (`id` bigint unsigned not null auto_increment primary key, `key` varchar(255) not null, `value` text null, `type` varchar(255) not null default 'string', `encrypted` tinyint(1) not null default '0', `settingable_type` varchar(255) null, `settingable_id` bigint unsigned null, `created_at` timestamp null, `updated_at` timestamp null) default character set {{charset}} collate {{collation}};
+alter table `settings` add index `settings_settingable_type_settingable_id_index`(`settingable_type`, `settingable_id`);
+alter table `settings` add unique `settings_key_settingable_id_settingable_type_unique`(`key`, `settingable_id`, `settingable_type`);

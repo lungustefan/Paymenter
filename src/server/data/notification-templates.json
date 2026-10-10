@@ -1,0 +1,114 @@
+{
+    "new_login_detected": {
+        "subject": "New login detected",
+        "body": "# New login detected  \n            \nA new login was detected on your account.\n            \n- IP: {{ $ip }}  \n- Device: {{ $device }}\n- Time: {{ $time }}\n\n**If this was you**  \nYou can ignore this message, there is no need to take any action.\n            \n**If this wasn't you**  \nPlease reset your password [here]({{ route('password.request') }}).",
+        "in_app_title": "New login detected",
+        "in_app_body": "A new login was detected on your account from IP: {{ $ip }} using {{ $device }} at {{ $time }}.",
+        "mail_enabled": "force",
+        "in_app_enabled": "choice_off",
+        "edit_preference_message": "Alert me about new login attempts",
+        "in_app_url": "{{ route(\"profile.security\") }}"
+    },
+    "new_invoice_created": {
+        "subject": "New invoice created",
+        "body": "# New invoice created  \n            \nA new invoice was created on your account.\n            \nTotal amount: **{{ $total }}**\n            \n            \n<div class=\"table\">  \n            \n|   Item   | Quantity |  Price   |  \n| :------: | :------: | :------: |\n@foreach ($items as $item)\n| {{ $item->description }} | {{ $item->quantity }} | {{ $item->price }} |\n@endforeach\n</div>\n            \n<div class=\"action\">\n\t<a class=\"button button-blue\" href=\"{{ route('invoices.show', $invoice) }}\">\n\t\tGo to invoice\n\t</a>\n</div>\n            \n@if($has_subscription)\nYou have a active subscription, the invoice will be automatically paid.\n@endif",
+        "in_app_title": "New invoice created",
+        "in_app_body": "A new invoice was created on your account with total amount: {{ $total }}.",
+        "mail_enabled": "choice_on",
+        "in_app_enabled": "choice_on",
+        "edit_preference_message": "Notify me about new invoices",
+        "in_app_url": "{{ route(\"invoices.show\", $invoice) }}"
+    },
+    "invoice_paid": {
+        "subject": "Invoice paid",
+        "body": "# Invoice paid  \n            \nYour invoice has been successfully paid.\n            \nTotal amount: **{{ $invoice->formattedTotal }}**\n            \nYou can view your invoice details by clicking the button below.\n            \n<div class=\"action\">\n\t<a class=\"button button-blue\" href=\"{{ route('invoices.show', $invoice) }}\">\n\t\tView Invoice\n\t</a>\n</div>",
+        "in_app_title": "Invoice paid",
+        "in_app_body": "Your invoice #{{ $invoice->id }} has been successfully paid with total amount: {{ $invoice->formattedTotal }}.",
+        "mail_enabled": "choice_on",
+        "in_app_enabled": "choice_on",
+        "edit_preference_message": "Notify me about successful payments",
+        "in_app_url": "{{ route(\"invoices.show\", $invoice) }}"
+    },
+    "invoice_payment_failed": {
+        "subject": "Invoice payment failed",
+        "body": "# Invoice payment failed  \n\nYour invoice payment has failed.\n\nTotal amount: **{{ $invoice->formattedTotal }}**\n            \nPlease pay the invoice to avoid service interruptions.\n            \n<div class=\"action\">\n\t<a class=\"button button-blue\" href=\"{{ route('invoices.show', $invoice) }}\">\n\t\tPay Invoice\n\t</a>\n</div>",
+        "in_app_title": "Invoice payment failed",
+        "in_app_body": "Your invoice #{{ $invoice->id }} payment has failed. Please pay the invoice to avoid service interruptions.",
+        "mail_enabled": "choice_on",
+        "in_app_enabled": "choice_on",
+        "edit_preference_message": "Alert me about payment failures",
+        "in_app_url": "{{ route(\"invoices.show\", $invoice) }}"
+    },
+    "new_order_created": {
+        "subject": "New order created",
+        "body": "# New order created\n\nA new order was created on your account.\n\n**Order details**\n<div class=\"table\">  \n            \n|   Item   | Quantity |  Price   |  \n| :------: | :------: | :------: |\n@foreach ($items as $item)\n| {{ $item->product->name }} | {{ $item->quantity }} | {{ $item->formattedPrice }} |\n@endforeach\n</div>",
+        "in_app_title": "New order created",
+        "in_app_body": "A new order was created on your account.",
+        "mail_enabled": "choice_on",
+        "in_app_enabled": "choice_on",
+        "edit_preference_message": "Send me order confirmations",
+        "in_app_url": "{{ route(\"services\") }}"
+    },
+    "new_server_created": {
+        "subject": "Service activated",
+        "body": "# Service activated\n\nYour service has been activated.\n\n**Service details**\n- Name: {{ $service->product->name }}\n\n@isset($service->product->email_template)\n**Service information**  \n{!! Str::markdown(Illuminate\\View\\Compilers\\BladeCompiler::render($service->product->email_template, get_defined_vars()['__data'])) !!}\n@endisset",
+        "in_app_title": "Service activated",
+        "in_app_body": "Your service {{ $service->product->name }} has been activated.",
+        "mail_enabled": "force",
+        "in_app_enabled": "choice_on",
+        "edit_preference_message": "Notify me about new service activations",
+        "in_app_url": "{{ route(\"services.show\", $service) }}"
+    },
+    "server_suspended": {
+        "subject": "Service suspended",
+        "body": "# Service suspended\n\nYour service has been suspended due to a payment failure.\n\n**Service details**\n- Name: {{ $service->product->name }}\n\nPlease pay the invoice to reactivate the service.",
+        "in_app_title": "Service suspended",
+        "in_app_body": "Your service {{ $service->product->name }} has been suspended due to a payment failure. Please pay the invoice to reactivate the service.",
+        "mail_enabled": "force",
+        "in_app_enabled": "choice_on",
+        "edit_preference_message": "Alert me about service suspensions",
+        "in_app_url": "{{ route(\"services.show\", $service) }}"
+    },
+    "server_terminated": {
+        "subject": "Service terminated",
+        "body": "# Service terminated\n\nYour service has been terminated.\n\n**Service details**\n- Name: {{ $service->product->name }}\n\nDo you consider it a mistake?\n<div class=\"action\">\n\t<a class=\"button button-blue\" href=\"{{ route('tickets.create') }}\">\n\t\tContact us\n\t</a>\n</div>",
+        "in_app_title": "Server terminated",
+        "in_app_body": "Your server {{ $service->product->name }} has been terminated.",
+        "mail_enabled": "force",
+        "in_app_enabled": "choice_on",
+        "edit_preference_message": "Alert me about service terminations",
+        "in_app_url": "{{ route(\"services.show\", $service) }}"
+    },
+    "new_ticket_message": {
+        "subject": "[Ticket #{{ $ticketMessage->ticket_id }}] New reply",
+        "body": "# New ticket reply\n\n{{ $ticketMessage->user->name }} replied to your ticket.\n\n**Message**\n{!! Str::markdown($ticketMessage->message, [\n    'html_input' => 'strip',\n    'allow_unsafe_links' => false,\n]) !!}",
+        "in_app_title": "New ticket reply",
+        "in_app_body": "You have a new reply on your ticket #{{ $ticketMessage->ticket_id }}.",
+        "mail_enabled": "choice_on",
+        "in_app_enabled": "choice_on",
+        "edit_preference_message": "Notify me about ticket replies",
+        "in_app_url": "{{ route(\"tickets.show\", $ticketMessage->ticket_id) }}"
+    },
+    "email_verification": {
+        "subject": "Email verification",
+        "body": "# Email verification\nPlease verify your email address by clicking the link below.\n<div class=\"action\">\n    <a class=\"button button-blue\" href=\"{{ $url }}\">\n        Verify email\n    </a>\n</div>\nThis link will expire in 60 minutes.\nIf you did not create an account, you can ignore this email.",
+        "mail_enabled": "force",
+        "in_app_enabled": "never"
+    },
+    "password_reset": {
+        "subject": "Password reset",
+        "body": "# Password reset\nYou are receiving this email because we received a password reset request for your account.\n\n**Reset password**\n<div class=\"action\">\n\t<a class=\"button button-blue\" href=\"{{ $url }}\">\n\t\tReset password\n\t</a>\n</div>\n\nThis password reset link will expire in 60 minutes.\n\nIf you did not request a password reset, no further action is required.",
+        "mail_enabled": "force",
+        "in_app_enabled": "never"
+    },
+    "service_cancellation_received": {
+        "subject": "Service cancellation received",
+        "body": "# Server Cancellation Received\n\nWe're sorry to see you go! Your server cancellation has been successfully received.\n\n**Cancellation Details**\n- Server: {{ $service->product->name }}\n@if($cancellation->reason)\n- Reason: {{ $cancellation->reason }}\n@endif\n- Requested at: {{ $cancellation->created_at->format('F j, Y, g:i A') }}\n\n@if($cancellation->type === 'end_of_period')\nYour server will remain active until {{ $service->expires_at->format('F j, Y') }} (end of your current billing period).\n@else\nYour server has been terminated immediately.\n@endif\n",
+        "in_app_title": "Service cancellation received",
+        "in_app_body": "Your server cancellation has been successfully received.",
+        "mail_enabled": "choice_on",
+        "in_app_enabled": "choice_on",
+        "edit_preference_message": "Notify me about service cancellations",
+        "in_app_url": "{{ route(\"services.show\", $service) }}"
+    }
+}

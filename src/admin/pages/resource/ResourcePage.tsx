@@ -1,0 +1,242 @@
+import type { ReactNode } from 'react';
+import { notFound } from 'next/navigation';
+import type { Model } from '@/server/orm';
+import { Host, type ActionRef } from '../../core/host';
+import type { NavigationItemInfo, PageRoute, Resource } from '../../core/Resource';
+import { Action, ActionGroup, findByName, type ActionContext } from '../../actions/Action';
+import { renderActionsGroup } from '../../actions/render';
+import { DeleteAction } from '../../actions/builtin';
+import type { Breadcrumb } from '../../Header';
+import { trans } from '../../context';
+import { setPath } from '../../core/evaluate';
+import type { RelationManager } from '../../resources/RelationManager';
+import { ContentCell } from './formPage';
+import { renderWidgets, type WidgetClass } from '../../widgets/Widget';
+
+/**
+ * Port of Filament\Resources\Pages\Page: a page of a resource (list, create, edit, view, ...).
+ * Subclasses set `static resource` and implement `renderContent()`.
+ */
+export abstract class ResourcePage extends Host {
+    static resource: typeof Resource;
+    /** the kind of page, used for the DOM classes (`fi-resource-create-record-page`) */
+    static kind: string = 'page';
+    static navigationLabel: string | null = null;
+    static navigationIcon: string | null = null;
+    static activeNavigationIcon: string | null = null;
+    static navigationSort: number | null = null;
+
+    /** the label of the page in the sub navigation of a record */
+    static getNavigationLabel(): string {
+        return this.navigationLabel ?? '';
+    }
+    static getNavigationIcon(): string {
+        return this.navigationIcon ?? 'heroicon-o-document-text';
+    }
+
+    static route(path: string): PageRoute {
+        return { page: this, path };
+    }
+
+    /** the record of the URL (`{record}`) */
+    record: any = null;
+
+    get resource(): typeof Resource {
+        return (this.constructor as typeof ResourcePage).resource;
+    }
+
+    getModel() {
+        return this.resource.model;
+    }
+
+    /* ---- titles ---- */
+    abstract getTitle(): string;
+    /** the last breadcrumb: `List`, `Create`, `Edit` */
+    abstract getBreadcrumb(): string;
+
+    /** `EditRecord` / `ViewRecord`: the title of the record sits between the resource and the page (`hasRecordTitle()`) */
+    async getBreadcrumbs(): Promise<Breadcrumb[]> {
+        const resource = this.resource;
+        const crumbs: Breadcrumb[] = [{ label: resource.getBreadcrumb(), url: resource.getUrl('index') }];
+        if (this.record && resource.hasRecordTitle()) {
+            const link = resource.hasPage('view') && (await resource.canView(this.user, this.record));
+            crumbs.push({ label: resource.getRecordTitle(this.record), url: link ? resource.getUrl('view', { record: this.record }) : undefined });
+        }
+        crumbs.push({ label: this.getBreadcrumb() });
+        return crumbs;
+    }
+
+    /** `generateNavigationItems()`: the links of the given pages of the resource, for the record of this page */
+    async generateNavigationItems(pages: Array<typeof ResourcePage>): Promise<NavigationItemInfo[]> {
+        const items: NavigationItemInfo[] = [];
+        const routes = Object.entries(this.resource.getPages());
+        for (const Page of pages) {
+            const found = routes.find(([, route]) => route.page === Page);
+            if (!found) continue;
+            const icon = Page.getNavigationIcon();
+            items.push({
+                label: Page.getNavigationLabel(),
+                url: this.resource.getUrl(found[0], { record: this.record }),
+                icon,
+                activeIcon: Page.activeNavigationIcon ?? icon,
+                group: null,
+                sort: Page.navigationSort,
+                isActive: this instanceof Page,
+            });
+        }
+        return items;
+    }
+
+    getSubheading(): string | null {
+        return null;
+    }
+
+    getPageClasses(): string[] {
+        return [`fi-resource-${(this.constructor as typeof ResourcePage).kind}-page`, `fi-resource-${this.resource.getSlug().replace('/', '-')}`];
+    }
+
+    getResourceUrl(page = 'index', params: { record?: string | number | Model<any> } = {}) {
+        return this.resource.getUrl(page, params);
+    }
+
+    /* ---- actions ---- */
+    getHeaderActions(): Array<Action | ActionGroup> {
+        return [];
+    }
+
+    private headerActionsCache?: Array<Action | ActionGroup>;
+    /** the header actions, configured once (`configureAction()` of the Filament page) */
+    protected headerActions(): Array<Action | ActionGroup> {
+        if (!this.headerActionsCache) {
+            this.headerActionsCache = this.getHeaderActions();
+            const walk = (list: Array<Action | ActionGroup>) => {
+                for (const a of list) {
+                    if (a instanceof ActionGroup) walk(a.actions);
+                    else this.configureAction(a);
+                }
+            };
+            walk(this.headerActionsCache);
+        }
+        return this.headerActionsCache;
+    }
+
+    /** what `Page::configureAction()` does to every action of the page */
+    protected configureAction(action: Action) {
+        // deleting the record of the page sends the user back to the list
+        if (action instanceof DeleteAction && this.record && !action.hasSuccessRedirect()) action.successRedirectUrl(() => this.resource.getUrl('index'));
+    }
+
+    /** the context actions of this page run in */
+    actionContext(extra: Partial<ActionContext> = {}): ActionContext {
+        return {
+            get: () => undefined,
+            set: () => undefined,
+            record: this.record,
+            user: this.user,
+            livewire: this,
+            model: this.resource.model,
+            resource: this.resource,
+            action: undefined as any,
+            ...extra,
+        } as ActionContext;
+    }
+
+    /** `<div class="fi-header-actions-ctn">` content */
+    async renderHeaderActions(): Promise<ReactNode> {
+        return renderActionsGroup(this.headerActions(), this.actionContext(), 'header', { defaultStyle: 'button' });
+    }
+
+    override async findAction(id: string, state?: Record<string, any>): Promise<ActionRef | null> {
+        if (!id.startsWith('header.')) return super.findAction(id, state);
+        if (id.startsWith('header.')) {
+            const found = findByName(this.headerActions(), id.slice('header.'.length));
+            return found ? { action: found, ctx: this.actionContext({ action: found }) } : null;
+        }
+        return null;
+    }
+
+    /* ---- relation managers ---- */
+    private rmCache?: RelationManager[];
+    /** the relation managers of the resource that apply to the record of the page */
+    async relationManagers(): Promise<RelationManager[]> {
+        if (!this.rmCache) {
+            this.rmCache = [];
+            if (this.record) {
+                for (const Cls of this.resource.getRelations() as Array<new () => RelationManager>) {
+                    const rm = new Cls();
+                    rm.ownerRecord = this.record;
+                    rm.host = this;
+                    rm.user = this.user;
+                    if (!(await rm.canViewForRecord())) continue;
+                    rm.index = this.rmCache.length;
+                    this.rmCache.push(rm);
+                }
+            }
+        }
+        return this.rmCache;
+    }
+
+    override getTables(): Record<string, import('../../tables/Table').Table> {
+        const tables: Record<string, import('../../tables/Table').Table> = {};
+        for (const rm of this.rmCache ?? []) tables[`relationManager${rm.index}`] = rm.getTable();
+        return tables;
+    }
+
+    /** the cell(s) below the form that hold the relation managers */
+    async renderRelationManagers(): Promise<ReactNode> {
+        const managers = await this.relationManagers();
+        if (managers.length === 0) return null;
+        const nodes = await Promise.all(managers.map((m) => m.render(this.searchParams)));
+        return <>{nodes.map((n, i) => <ContentCell key={i}>{n}</ContentCell>)}</>;
+    }
+
+    /** the content below the header */
+    abstract renderContent(): Promise<ReactNode>;
+
+    /** `getHeaderWidgets()` / `getFooterWidgets()`: widgets above / below the content of the page */
+    getHeaderWidgets(): Promise<WidgetClass[]> | WidgetClass[] {
+        return [];
+    }
+    getFooterWidgets(): Promise<WidgetClass[]> | WidgetClass[] {
+        return [];
+    }
+    override async getWidgetClasses() {
+        return [...(await this.getHeaderWidgets()), ...(await this.getFooterWidgets())];
+    }
+
+    getHeaderWidgetsColumns(): number {
+        return 2;
+    }
+
+    /** the whole content of the page: widgets around what `renderContent()` gives */
+    async renderPage(): Promise<ReactNode> {
+        const page = { record: this.record, user: this.user, livewire: this };
+        const header = await renderWidgets(await this.getHeaderWidgets(), page, this.getHeaderWidgetsColumns());
+        const content = await this.renderContent();
+        const footer = await renderWidgets(await this.getFooterWidgets(), page, this.getHeaderWidgetsColumns());
+        return (
+            <>
+                {header}
+                {content}
+                {footer}
+            </>
+        );
+    }
+
+    /** `abort_unless($resource::canX(), 403)` */
+    protected abortUnless(allowed: boolean) {
+        if (!allowed) notFound();
+    }
+
+    /** `$record = $this->resolveRecord($key)` */
+    protected async resolveRecord(key: string): Promise<Model<any>> {
+        const model = this.resource.model;
+        const record = await this.resource.getEloquentQuery().where(model.primaryKey ?? 'id', key).first();
+        if (!record) notFound();
+        return record;
+    }
+
+    protected t = trans;
+}
+
+export { setPath, findByName };

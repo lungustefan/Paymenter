@@ -18,27 +18,28 @@ jobs:
         with:
           node-version: 22
 
-      - uses: shivammathur/setup-php@15c43e89cdef867065b0213be354c2841860869e
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
         with:
-          php-version: '8.3'
+          version: 10
+
       - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Mark version as beta and add commit sha
         run: |
-          composer install -q --no-dev --optimize-autoloader --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
-          npm i
+          npm pkg set version=beta
+          npm pkg set commit="${{ github.sha }}"
 
       - name: Build
-        run: npm run build
-
-      - name: Create release branch and bump version
-        run: sed -i "s/    'version' => 'development',/    'version' => 'beta',/" config/app.php
-
-      - name: Add commit sha to app.php
-        run: sed -i "s/    'commit' => '',/    'commit' => '${{ github.sha }}',/" config/app.php
+        run: |
+          pnpm build
+          find themes extensions -type f | sort | xargs sha256sum | sha256sum | cut -d' ' -f1 > .registry-hash
 
       - name: Create beta archive
         run: | 
-            rm -rf node_modules tests CODE_OF_CONDUCT.md CONTRIBUTING.md flake.lock flake.nix phpstan.neon phpunit.xml shell.nix
-            tar -czf paymenter.tar.gz * .env.example .gitignore
+            rm -rf node_modules tests CODE_OF_CONDUCT.md CONTRIBUTING.md flake.lock flake.nix .next/cache .next/standalone
+            tar -czf paymenter.tar.gz * .next .registry-hash .env.example .gitignore
     
       - name: Move file to seperate directory for r2 upload
         run: |

@@ -1,0 +1,1 @@
+create table `oauth_personal_access_clients` (`id` bigint unsigned not null auto_increment primary key, `client_id` uuid not null, `created_at` timestamp null, `updated_at` timestamp null) default character set {{charset}} collate {{collation}};
