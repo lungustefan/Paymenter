@@ -4,6 +4,15 @@ on:
   push:
     tags:
       - "v*"
+  # Actions tab -> Release -> Run workflow: builds the archive and creates the tag + draft release itself
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version tag to release, e.g. v2.0.0-alpha.1"
+        required: true
+
+permissions:
+  contents: write
 
 jobs:
   release:
@@ -28,7 +37,7 @@ jobs:
 
       - name: Create release branch and bump version
         env:
-          REF: ${{ github.ref }}
+          REF: refs/tags/${{ inputs.version || github.ref_name }}
         run: |
           BRANCH=release/${REF:10}
           git config --local user.email "ci@paymenter.org"
@@ -62,7 +71,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           draft: true
-          prerelease: ${{ contains(github.ref, 'rc') || contains(github.ref, 'beta') || contains(github.ref, 'alpha') }}
+          tag_name: ${{ inputs.version || github.ref_name }}
+          target_commitish: ${{ github.sha }}
+          prerelease: ${{ contains(inputs.version || github.ref_name, 'rc') || contains(inputs.version || github.ref_name, 'beta') || contains(inputs.version || github.ref_name, 'alpha') }}
 
       - name: Upload release archive
         id: upload-release-archive

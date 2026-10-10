@@ -28,8 +28,8 @@
  <div align="center">
    
   [![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/Paymenter/paymenter/blob/master/LICENSE)
-  [![Downloads](https://img.shields.io/github/downloads/paymenter/paymenter/total)]()
-  [![GitHub release (latest by date)](https://img.shields.io/github/v/release/paymenter/paymenter)](https://github.com/Paymenter/paymenter/releases)
+  [![Downloads](https://img.shields.io/github/downloads/lungustefan/Paymenter/total)]()
+  [![GitHub release (latest by date)](https://img.shields.io/github/v/release/lungustefan/Paymenter)](https://github.com/lungustefan/Paymenter/releases)
     <br>
     <br>
   [![Discord](https://img.shields.io/discord/882318291014651924?logo=discord&labelColor=white&color=5865f2)](https://discord.gg/paymenter-882318291014651924)
@@ -48,7 +48,25 @@
 
 ## Getting Started
 
-> **This is the Next.js / TypeScript edition of Paymenter.** It is a full rewrite of the Laravel (PHP) version 1.5.9 that keeps the database schema, the settings, the REST API and the look of the default theme. Read [Differences from the Laravel version](#differences-from-the-laravel-version) before upgrading an existing installation.
+> **This is an independent Next.js / TypeScript rewrite of Paymenter, maintained in [lungustefan/Paymenter](https://github.com/lungustefan/Paymenter). It is a separate project from the official [Paymenter](https://github.com/Paymenter/Paymenter) and is not affiliated with or supported by its authors; install it from this repository, not from theirs.** The rewrite is based on the Laravel (PHP) version 1.5.9 that keeps the database schema, the settings, the REST API and the look of the default theme. Read [Differences from the Laravel version](#differences-from-the-laravel-version) before upgrading an existing installation.
+
+#### Quick install (TL;DR)
+
+Needs Node.js 22+, pnpm and an empty MariaDB/MySQL database.
+
+```bash
+git clone https://github.com/lungustefan/Paymenter.git paymenter && cd paymenter
+pnpm install
+cp .env.example .env                 # edit DB_HOST, DB_DATABASE, DB_USERNAME, DB_PASSWORD and APP_URL
+pnpm paymenter key:generate
+pnpm paymenter migrate --seed
+pnpm paymenter app:init              # basic setup
+pnpm paymenter app:user:create       # your first admin user
+pnpm build && pnpm start             # http://localhost:3000  (admin at /admin)
+pnpm worker                          # in a second terminal: queue worker + scheduler (required for emails, invoices, provisioning)
+```
+
+Prefer Docker? See [Docker](#docker). More detail below.
 
 #### Installation & Documentation
 
@@ -67,9 +85,9 @@ Or, get additional help via [Community Discord](https://discord.gg/xB4UUT3XQg).
 #### Installation
 
 ```bash
-# 1. Get the code: a release archive (contains a pre-built app) or a clone of the repository
+# 1. Get the code: a clone of this repository (or a release archive, which contains a pre-built app)
 curl -L https://github.com/paymenter/paymenter/releases/latest/download/paymenter.tar.gz | tar -xz
-# or: git clone https://github.com/paymenter/paymenter.git && cd paymenter
+# or: git clone https://github.com/lungustefan/Paymenter.git paymenter && cd paymenter
 
 # 2. Install the dependencies
 pnpm install            # npm install / yarn install work as well
@@ -129,7 +147,7 @@ cp docker-compose.example.yml docker-compose.yml   # set the passwords, then:
 docker compose up -d
 ```
 
-The image (`ghcr.io/paymenter/paymenter`) is built from the `Dockerfile` (Node 22, multi-stage). It serves the panel on port **80** and runs the worker next to it (both supervised by supervisord). On start the entrypoint generates an `APP_KEY` (stored in `./.env` on the host when none exists), waits for the database, renews the bundled themes and extensions (set `PAYMENTER_SKIP_DEFAULT=true` to keep your changes) and runs `migrate --seed`. MariaDB and Redis are part of the compose file; `./themes`, `./extensions`, `./storage/logs` and `./storage/public` are mounted volumes.
+The image (`ghcr.io/lungustefan/paymenter`) is built from the `Dockerfile` (Node 22, multi-stage). It serves the panel on port **80** and runs the worker next to it (both supervised by supervisord). On start the entrypoint generates an `APP_KEY` (stored in `./.env` on the host when none exists), waits for the database, renews the bundled themes and extensions (set `PAYMENTER_SKIP_DEFAULT=true` to keep your changes) and runs `migrate --seed`. MariaDB and Redis are part of the compose file; `./themes`, `./extensions`, `./storage/logs` and `./storage/public` are mounted volumes.
 
 Themes and extensions are compiled into the app. If the mounted `themes/` or `extensions/` differ from what the image was built with, the container rebuilds the app on start (this takes a few minutes the first time). Run commands inside the container with `docker compose exec paymenter pnpm paymenter app:user:create`.
 
