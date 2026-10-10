@@ -8,6 +8,7 @@ import { Carbon } from '@/server/lib/carbon';
 import { ApiKey } from '@/server/models/ApiKey';
 import { Category } from '@/server/models/Category';
 import { Credit } from '@/server/models/Credit';
+import { Extension as ExtensionModel } from '@/server/models/Extension';
 import { Invoice } from '@/server/models/Invoice';
 import { InvoiceItem } from '@/server/models/InvoiceItem';
 import { Order } from '@/server/models/Order';
@@ -49,8 +50,14 @@ const MAPPED_INCLUDES: Record<string, string> = {
     'plans.prices': 'products',
 };
 
-interface Endpoint {
+export interface Endpoint {
     slug: string;
+    /** set for endpoints registered by an extension (they only exist while it is enabled) */
+    extension?: string;
+    /** respond with the saved model itself instead of reloading it (and 201 on create), as controllers that return `new Resource($model)` do */
+    rawResponse?: boolean;
+    /** load computed attributes (accessors) onto the models before they are serialised */
+    prepare?: (models: Model<any>[]) => Promise<void>;
     model: any;
     def: ResourceDef;
     permission: string;
@@ -288,6 +295,13 @@ const endpoints: Endpoint[] = [
 
 export const findEndpoint = (slug: string) => endpoints.find((e) => e.slug === slug);
 
+/** Extensions add their own resources to `/api/v1/admin` (`Route::apiResources([...])` in their routes). */
+export function registerEndpoint(endpoint: Endpoint) {
+    const index = endpoints.findIndex((e) => e.slug === endpoint.slug);
+    if (index === -1) endpoints.push(endpoint);
+    else endpoints[index] = endpoint;
+}
+
 /* ------------------------------ authentication ------------------------------ */
 
 export function clientIp(request: Request): string | null {
@@ -372,6 +386,8 @@ function applyQuery(builder: Builder<any, any>, endpoint: Endpoint, params: URLS
 
 function rawLike(model: any, column: string, value: string) {
     const col = (model.table as any)[column];
+    // an allowed filter that is not a column fails in the database
+    if (!col) throw new Error(`Unknown column '${column}'`);
     return sql`LOWER(${col}) LIKE ${`%${value.toLowerCase()}%`}`;
 }
 
@@ -428,6 +444,8 @@ export async function handleAdminApi(request: Request, slug: string, id: string 
         await ensureSettings();
         const endpoint = findEndpoint(slug);
         if (!endpoint) return NextResponse.json({ message: 'Not Found' }, { status: 404 });
+        // the routes of an extension only exist while it is enabled
+        if (endpoint.extension && !(await ExtensionModel.query().where('extension', endpoint.extension).where('enabled', true).first())) return NextResponse.json({ message: 'Not Found' }, { status: 404 });
 
         const { permissions } = await authenticateAdminApi(request);
         const has = (p: string) => permissions.includes(p);
@@ -449,6 +467,7 @@ export async function handleAdminApi(request: Request, slug: string, id: string 
             const perPage = Math.max(1, Number(perPageRaw ?? 15) || 15);
             const page = Math.max(1, Number(u.searchParams.get('page')) || 1);
             const result = await builder.simplePaginate(perPage, page);
+            await endpoint.prepare?.(result.data);
 
             const ctx: SerializeContext = { includes, fields };
             const data = result.data.map((m: Model<any>) => toResource(m, endpoint.def, ctx));
@@ -472,6 +491,7 @@ export async function handleAdminApi(request: Request, slug: string, id: string 
             const builder = endpoint.model.query() as Builder<any, any>;
             const { includes } = applyQuery(builder, { ...endpoint, filters: [], sorts: [] }, u.searchParams, permissions);
             const loaded = await builder.findOrFail(record.getKey());
+            await endpoint.prepare?.([loaded]);
             return respondOne(endpoint, loaded, includes, fields);
         }
 
@@ -496,21 +516,32 @@ export async function handleAdminApi(request: Request, slug: string, id: string 
         const validated = await validate(input, rules);
         const saved = action === 'store' ? await endpoint.model.create(validated) : await record!.update(validated);
 
+        if (endpoint.rawResponse) {
+            if (action === 'store') {
+                // Eloquent does not know the defaults of the database: only what was assigned is on the model
+                const assigned = new Set<string>([...Object.keys(validated).filter((k) => (endpoint.model.fillable as string[]).includes(k)), endpoint.model.primaryKey, 'created_at', 'updated_at']);
+                for (const column of endpoint.model.columnNames() as string[]) if (!assigned.has(column)) (saved as any)[column] = undefined;
+            }
+            await endpoint.prepare?.([saved]);
+            return respondOne(endpoint, saved, [], fields, action === 'store' ? 201 : 200);
+        }
+
         // `loadAllowedIncludes`: only the allowed relations of `?include=` are loaded
         const builder = endpoint.model.query() as Builder<any, any>;
         const { includes } = applyQuery(builder, { ...endpoint, filters: [], sorts: [] }, u.searchParams, permissions);
         const loaded = await builder.findOrFail(saved.getKey());
+        await endpoint.prepare?.([loaded]);
         return respondOne(endpoint, loaded, includes, fields);
     } catch (e) {
         return errorResponse(e);
     }
 }
 
-function respondOne(endpoint: Endpoint, model: Model<any>, includes: string[], fields: Record<string, string[]>) {
+function respondOne(endpoint: Endpoint, model: Model<any>, includes: string[], fields: Record<string, string[]>, status = 200) {
     const ctx: SerializeContext = { includes, fields };
     const data = toResource(model, endpoint.def, ctx);
     const included = uniqueResources(includedOf(model, endpoint.def, ctx));
-    return jsonApi({ data, ...(included.length ? { included } : {}) });
+    return jsonApi({ data, ...(included.length ? { included } : {}) }, status);
 }
 
 /** `HandleCors` for api/*: any origin, any method. */

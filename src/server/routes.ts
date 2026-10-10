@@ -105,10 +105,10 @@ export function route(name: string, parameters: unknown = {}, absolute = true): 
     return absolute ? baseUrl() + path : path;
 }
 
-/** `url('/path')` */
+/** `url('/path')`: like Laravel, `url('/')` has no trailing slash */
 export function url(path = '/'): string {
     if (/^https?:\/\//i.test(path)) return path;
-    return baseUrl() + (path.startsWith('/') ? path : `/${path}`);
+    return `${baseUrl()}/${path.replace(/^\/+|\/+$/g, '')}`.replace(/\/+$/, '');
 }
 
 /** `Storage::url($path)` for the public disk */
