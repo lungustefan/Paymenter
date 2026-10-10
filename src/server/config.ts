@@ -1,5 +1,6 @@
 import { envBool, envString } from '@/server/env';
 import { dataGet, dataSet } from '@/server/lib/php';
+import { appCommit, appVersion } from '@/server/version';
 
 /**
  * Runtime configuration (Laravel's `config()` for the keys the app uses).
@@ -11,8 +12,8 @@ function defaults(): Record<string, any> {
     return {
         app: {
             name: envString('APP_NAME', 'Paymenter'),
-            version: process.env.APP_VERSION ?? 'development',
-            commit: process.env.APP_COMMIT ?? '',
+            version: appVersion(),
+            commit: appCommit(),
             telemetry_enabled: envBool('TELEMETRY_ENABLED', true),
             env: envString('APP_ENV', 'production'),
             debug: envBool('APP_DEBUG', false),

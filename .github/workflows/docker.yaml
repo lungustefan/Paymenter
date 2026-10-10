@@ -46,7 +46,7 @@ jobs:
         env:
           REF: ${{ github.event.release.tag_name }}
         run: |
-          sed -i "s/    'version' => 'development',/    'version' => '${REF:1}',/" config/app.php
+          npm pkg set version="${REF:1}"
 
       - name: Build and Push
         uses: docker/build-push-action@v3
