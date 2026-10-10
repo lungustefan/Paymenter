@@ -47,11 +47,11 @@ export class Textarea extends Field {
                     autoFocus={this._autofocus || undefined}
                     cols={(await this.ev(this._cols, rc)) ?? undefined}
                     disabled={(await this.isDisabled(rc)) || undefined}
-                    maxLength={(await this.ev(this._maxLength, rc)) ?? undefined}
-                    minLength={(await this.ev(this._minLength, rc)) ?? undefined}
+                    maxLength={(!this.isConcealed() ? await this.ev(this._maxLength, rc) : null) ?? undefined}
+                    minLength={(!this.isConcealed() ? await this.ev(this._minLength, rc) : null) ?? undefined}
                     placeholder={(await this.ev(this._placeholder, rc)) || undefined}
                     readOnly={(await this.isReadOnly(rc)) || undefined}
-                    required={(await this.isRequired(rc)) || undefined}
+                    required={((await this.isRequired(rc)) && !this.isConcealed()) || undefined}
                     rows={rows ?? undefined}
                     {...(this._disableGrammarly ? { 'data-gramm': 'false', 'data-gramm_editor': 'false', 'data-enable-grammarly': 'false' } : {})}
                 />

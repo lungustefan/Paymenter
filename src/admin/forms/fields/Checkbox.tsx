@@ -17,7 +17,7 @@ export class Checkbox extends Field {
         const path = this.getStatePath(rc);
         const id = `${rc.formId}.${path}`;
         const input = (
-            <CheckboxControl path={path} live={this._live} id={id} disabled={(await this.isDisabled(rc)) || undefined} required={(await this.isRequired(rc)) || undefined} autoFocus={this._autofocus || undefined} className="fi-checkbox-input" />
+            <CheckboxControl path={path} live={this._live} id={id} disabled={(await this.isDisabled(rc)) || undefined} required={((await this.isRequired(rc)) && !this.isConcealed()) || undefined} autoFocus={this._autofocus || undefined} className="fi-checkbox-input" />
         );
         if ((await this.ev(this._inline, rc)) !== false) return this.wrap(rc, null, { labelPrefix: input, verticalAlign: 'center' });
         return this.wrap(rc, input, { verticalAlign: 'center' });

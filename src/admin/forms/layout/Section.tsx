@@ -36,6 +36,7 @@ export class Section extends Layout {
         return s;
     }
 
+    override canConcealComponents() { return this._collapsible === true; }
     heading(v: Fn<string | null>) { this._heading = v; return this; }
     description(v: Fn<string | null>) { this._description = v; return this; }
     icon(v: Fn<string | null>) { this._icon = v; return this; }

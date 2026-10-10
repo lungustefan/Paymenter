@@ -86,7 +86,7 @@ export class TextInput extends Field {
         const type = await this.resolveType(rc);
         const numeric = await this.ev(this._numeric, rc);
         const integer = await this.ev(this._integer, rc);
-        const concealed = false;
+        const concealed = this.isConcealed();
         const maxLength = !concealed ? await this.ev(this._maxLength, rc) : null;
         const minLength = !concealed ? await this.ev(this._minLength, rc) : null;
         const max = !concealed ? await this.ev(this._maxValue, rc) : null;
@@ -101,7 +101,7 @@ export class TextInput extends Field {
         const autocomplete = await this.ev(this._autocomplete, rc);
         const hasInlinePrefix = this._inlinePrefix && (!!(await this.ev(this._prefix, rc)) || !!(await this.ev(this._prefixIcon, rc)) || this._prefixActions.length > 0);
         const hasInlineSuffix = this._inlineSuffix && (!!(await this.ev(this._suffix, rc)) || !!(await this.ev(this._suffixIcon, rc)) || this._suffixActions.length > 0);
-        const required = (await this.ev(this._required, rc)) === true;
+        const required = (await this.ev(this._required, rc)) === true && !concealed;
         const attrs = {
             id,
             autoComplete: autocomplete === false ? 'off' : (autocomplete ?? undefined),

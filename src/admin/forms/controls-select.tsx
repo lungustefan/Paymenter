@@ -167,7 +167,8 @@ export function SearchableSelect({
         });
     };
 
-    const live0 = live ? { ...live, debounce: 0 } : undefined;
+    // a `live(onBlur: true)` select commits when its dropdown closes after a choice
+    const live0 = live ? { ...live, onBlur: false, debounce: 0 } : undefined;
     const choose = (v: string) => {
         if (multiple) {
             const set = selected.includes(v) ? selected.filter((s) => s !== v) : maxItems && selected.length >= maxItems ? selected : [...selected, v];

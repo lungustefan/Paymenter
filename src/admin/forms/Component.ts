@@ -183,6 +183,13 @@ export abstract class Component {
         return null;
     }
 
+    /** a collapsible section / tab may hide its fields: their `required` / `maxlength` attributes are left out (`isConcealed()`) */
+    canConcealComponents(): boolean { return false; }
+    isConcealed(): boolean {
+        for (let p = this.parent; p; p = p.parent) if (p.canConcealComponents()) return true;
+        return false;
+    }
+
     /** static child components (layout components) */
     getChildComponents(): Component[] { return []; }
 
