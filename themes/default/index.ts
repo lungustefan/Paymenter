@@ -35,6 +35,7 @@ const module: ThemeModule = {
         'auth.verify-email': () => import('./views/auth/VerifyEmail'),
         'auth.password.request': () => import('./views/auth/PasswordRequest'),
         'auth.password.reset': () => import('./views/auth/PasswordReset'),
+        'vendor.passport.authorize': () => import('./views/vendor/passport/Authorize'),
     },
 };
 
