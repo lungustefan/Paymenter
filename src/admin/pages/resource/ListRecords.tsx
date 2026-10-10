@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { ResourcePage } from './ResourcePage';
 import { ContentCell, ContentGrid } from './formPage';
 import { Table } from '../../tables/Table';
+import { Schema } from '../../forms/Schema';
 import { CreateAction, DeleteAction, EditAction, ViewAction } from '../../actions/builtin';
 import { Action, ActionGroup, findByName } from '../../actions/Action';
 import { trans } from '../../context';
@@ -94,6 +95,8 @@ export class ListRecords extends ResourcePage {
         if (a instanceof EditAction && resource.hasPage('edit')) a.url(({ record }) => resource.getUrl('edit', { record }));
         else if (a instanceof ViewAction && resource.hasPage('view')) a.url(({ record }) => resource.getUrl('view', { record }));
         else if (a instanceof CreateAction && resource.hasPage('create')) a.url(() => resource.getUrl('create'));
+        // without a view page the view action opens the infolist of the resource in a modal
+        else if (a instanceof ViewAction) a.form(() => this.resource.infolist(Schema.make().operation('view').model(this.getModel()).columns(2)));
     }
 
     override getTables() {
