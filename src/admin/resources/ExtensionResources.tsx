@@ -67,6 +67,12 @@ const uniqueWithoutDeleted = (rule: any) => rule.where('deleted_at', null);
 
 export class GatewayResource extends Resource {
     static model = Gateway;
+    static override getGloballySearchableAttributes() {
+        return ['name'];
+    }
+    static override getGlobalSearchResultTitle(record: any) {
+        return record.name;
+    }
     static slug = 'gateways';
     static navigationGroup = 'Extensions';
     static navigationIcon = 'ri-secure-payment-line';
@@ -143,6 +149,12 @@ class ListGateways extends ListRecords {
 
 export class ServerResource extends Resource {
     static model = Server;
+    static override getGloballySearchableAttributes() {
+        return ['name'];
+    }
+    static override getGlobalSearchResultTitle(record: any) {
+        return record.name;
+    }
     static slug = 'servers';
     static navigationGroup = 'Extensions';
     static navigationIcon = 'ri-server-line';
@@ -237,6 +249,12 @@ export class ExtensionsCluster extends Cluster {
 
 export class ExtensionResource extends Resource {
     static model = Extension;
+    static override getGloballySearchableAttributes() {
+        return ['name'];
+    }
+    static override getGlobalSearchResultTitle(record: any) {
+        return record.name;
+    }
     static slug = 'extensions';
     static cluster = ExtensionsCluster;
     static navigationIcon = 'ri-puzzle-line';

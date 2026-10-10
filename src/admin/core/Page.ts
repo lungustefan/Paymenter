@@ -50,8 +50,7 @@ export abstract class AdminPage extends Host {
     }
 
     getPageClasses(): string[] {
-        const slug = (this.constructor as typeof AdminPage).slug;
-        return slug ? [`fi-${slug.replace('/', '-')}-page`] : [];
+        return [];
     }
 
     actionContext(extra: Partial<ActionContext> = {}): ActionContext {
@@ -86,6 +85,7 @@ export abstract class AdminPage extends Host {
     abstract render(): Promise<ReactNode> | ReactNode;
 
     getBreadcrumbs(): Record<string, string> | null {
-        return null;
+        const cluster = (this.constructor as typeof AdminPage).cluster;
+        return cluster ? { '': cluster.label() } : null;
     }
 }

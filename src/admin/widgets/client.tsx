@@ -147,7 +147,7 @@ export function ChartCanvas({ type, data, options, label, maxHeight }: { type: s
 
     return (
         <div>
-            <div ref={frame} data-chart-type={type} className="fi-color fi-color-primary fi-wi-chart-frame fi-wi-chart-canvas-ctn">
+            <div ref={frame} data-chart-type={type} className={`fi-color fi-color-primary fi-wi-chart-frame fi-wi-chart-canvas-ctn${maxHeight ? ' fi-wi-chart-frame-no-aspect-ratio' : ''}`}>
                 <canvas ref={canvas} role="img" aria-label={label} style={maxHeight ? { maxHeight } : { maxHeight: '100%' }} />
                 <span ref={bg} className="fi-wi-chart-bg-color"></span>
                 <span ref={border} className="fi-wi-chart-border-color"></span>

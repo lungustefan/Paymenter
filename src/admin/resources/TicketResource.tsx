@@ -51,6 +51,12 @@ const span = ({ record }: any) => (record ? 2 : 1);
 
 export class TicketResource extends Resource {
     static model = Ticket;
+    static override getGloballySearchableAttributes() {
+        return ['subject'];
+    }
+    static override getGlobalSearchResultTitle(record: any) {
+        return record.subject;
+    }
     static slug = 'tickets';
     static navigationIcon = 'ri-customer-service-line';
     static activeNavigationIcon = 'ri-customer-service-fill';

@@ -27,6 +27,12 @@ const canUpdateRoles = async ({ user }: { user: User }) => !!user && (await user
 
 export class UserResource extends Resource {
     static model = User;
+    static override getGloballySearchableAttributes() {
+        return ['first_name', 'last_name', 'email'];
+    }
+    static override getGlobalSearchResultTitle(record: any) {
+        return record.displayName();
+    }
     static slug = 'users';
     static navigationGroup = 'Administration';
     static navigationIcon = 'ri-group-line';

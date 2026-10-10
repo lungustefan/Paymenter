@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { notFound } from 'next/navigation';
 import type { User } from '@/server/models/User';
 import { boot } from '@/server/bootstrap';
+import { syncExtensionAdmin } from './core/extensionAdmin';
 import { makeTranslator } from '@/server/i18n';
 import { getLocale } from '@/server/page';
 import './panel';
@@ -26,6 +27,7 @@ export interface ResolvedHost {
 
 /** the admin context of a request (current user, translator, URL) */
 export async function adminRequest(user: User, pathname: string, searchParams: SearchParams) {
+    await syncExtensionAdmin();
     const locale = await getLocale();
     return { user, locale, tr: makeTranslator(locale), pathname, searchParams };
 }
@@ -36,6 +38,7 @@ export async function adminRequest(user: User, pathname: string, searchParams: S
  */
 export async function resolveHost(segments: string[], user: User, pathname: string, searchParams: SearchParams): Promise<ResolvedHost | null> {
     await boot();
+    await syncExtensionAdmin();
     const path = segments.join('/');
 
     // custom pages (the dashboard is the page at the root)

@@ -118,6 +118,9 @@ export class TextColumn extends Column {
         this._tooltip = ({ state }: ColumnContext) => (isBlank(state) ? null : Carbon.parse(state).format(format));
         return this;
     }
+    dateTimeTooltip(format = 'M j, Y H:i:s') {
+        return this.dateTooltip(format);
+    }
     /** `->money('EUR', divideBy: 100)` */
     money(currency?: CFn<string | null>, divideBy: number = 0, locale?: string | null, decimalPlaces?: number | null) {
         this.formatStateUsing(async (ctx) => {

@@ -17,8 +17,17 @@ export class Trend {
 
     private constructor(
         private readonly builder: Builder<any>,
-        private readonly dateColumn = 'created_at',
+        private dateColumnName = 'created_at',
     ) {}
+
+    /** `dateColumn('date')` */
+    dateColumn(name: string) {
+        this.dateColumnName = name;
+        return this;
+    }
+    private get dateCol() {
+        return this.dateColumnName;
+    }
 
     static query(builder: Builder<any>) {
         return new Trend(builder);
@@ -72,8 +81,8 @@ export class Trend {
     }
 
     async aggregate(column: string, aggregate: 'sum' | 'count' | 'avg'): Promise<TrendValue[]> {
-        const date = sql`date_format(${sql.identifier(this.dateColumn)}, ${this.sqlFormat})`;
-        const query = this.builder.clone().whereBetween(this.dateColumn, [this.startDate.toDateTimeString(), this.endDate.toDateTimeString()]);
+        const date = sql`date_format(${sql.identifier(this.dateCol)}, ${this.sqlFormat})`;
+        const query = this.builder.clone().whereBetween(this.dateCol, [this.startDate.toDateTimeString(), this.endDate.toDateTimeString()]);
         const rows = await query.aggregateByDate(date, sql`${sql.raw(aggregate)}(${sql.raw(column)})`);
         const byDate = new Map<string, TrendValue>();
         for (const row of rows) byDate.set(String(row.date), { date: String(row.date), aggregate: row.aggregate });

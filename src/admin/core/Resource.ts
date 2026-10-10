@@ -98,6 +98,16 @@ export abstract class Resource {
         return [];
     }
 
+    /** `getGloballySearchableAttributes()` */
+    static getGloballySearchableAttributes(): string[] {
+        return [];
+    }
+
+    /** `getGlobalSearchResultTitle($record)` */
+    static getGlobalSearchResultTitle(record: Model<any>): string {
+        return this.getRecordTitle(record);
+    }
+
     /** `getEloquentQuery()` */
     static getEloquentQuery(): Builder<any, any> {
         return this.model.query();
