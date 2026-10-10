@@ -1,54 +1,48 @@
-# Stage 1:
-# Build the actual container with all of the needed PHP dependencies that will run the application.
-FROM --platform=$TARGETOS/$TARGETARCH php:8.3-fpm-alpine AS final
+# syntax=docker/dockerfile:1
+
+# Stage 1: install dependencies (cached as long as the lockfile does not change)
+FROM node:22-alpine AS deps
+WORKDIR /app
+RUN npm install -g pnpm@10
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
+
+# Stage 2: build the application (registers the bundled themes/extensions and compiles Next.js)
+FROM node:22-alpine AS build
+WORKDIR /app
+RUN npm install -g pnpm@10
+COPY --from=deps /app/node_modules ./node_modules
+COPY . ./
+ENV NEXT_TELEMETRY_DISABLED=1
+RUN pnpm build \
+    && find themes extensions -type f | sort | xargs sha256sum | sha256sum | cut -d' ' -f1 > .registry-hash
+
+# Stage 3: production image. Serves the panel with `next start` and runs the queue
+# worker + scheduler (`pnpm worker`) next to it, both supervised by supervisord.
+FROM node:22-alpine AS production
 WORKDIR /app
 
-RUN apk add --no-cache --update ca-certificates dcron curl git supervisor tar unzip nginx libpng-dev libxml2-dev libzip-dev icu-dev autoconf make g++ gcc libc-dev linux-headers gmp-dev \
-    && docker-php-ext-configure zip \
-    && docker-php-ext-install bcmath gd pdo_mysql zip intl sockets gmp \
-    && pecl install redis \
-    && docker-php-ext-enable redis \
-    && apk del autoconf make g++ gcc libc-dev
-RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+RUN apk add --no-cache ca-certificates curl supervisor tar netcat-openbsd \
+    && npm install -g pnpm@10
 
-COPY composer.json composer.lock ./
-RUN composer install --no-dev --no-autoloader --no-scripts
+ENV NODE_ENV=production \
+    NEXT_TELEMETRY_DISABLED=1 \
+    HOSTNAME=0.0.0.0 \
+    PORT=80
 
-COPY . ./
-RUN composer install --no-dev --optimize-autoloader
-
-RUN cp .env.example .env \
-    && chmod 777 -R bootstrap storage/* \
-    && rm -rf .env bootstrap/cache/*.php \
-    && chown -R nginx:nginx . \
-    && rm /usr/local/etc/php-fpm.conf \
-    && echo "* * * * * /usr/local/bin/php /app/artisan schedule:run >> /dev/null 2>&1" >> /var/spool/cron/crontabs/root \
-    && mkdir -p /var/run/php /var/run/nginx
-
-FROM --platform=$TARGETOS/$TARGETARCH node:22-alpine AS build
-WORKDIR /app
-
-COPY package.json package-lock.json ./
-RUN npm install
-
-COPY . ./
-COPY --from=final /app/vendor /app/vendor
-RUN npm run build
-
-# Switch back to the final stage
-FROM final AS production
-COPY --from=build /app/public /app/public
+# node_modules is kept complete (not pruned) so the entrypoint can rebuild when custom themes/extensions are added
+COPY --from=build /app /app
 
 # Copy themes and extensions to default locations for renewal on startup
-RUN cp -r /app/themes /app/themes_default && \
-    cp -r /app/extensions /app/extensions_default
+RUN cp -r /app/themes /app/themes_default \
+    && cp -r /app/extensions /app/extensions_default \
+    && mkdir -p storage/app/public storage/app/invoices storage/app/tickets storage/framework/cache storage/logs /var/log/supervisord \
+    && chown -R node:node /app
 
 # Environment variable to skip default themes/extensions renewal
 # Set PAYMENTER_SKIP_DEFAULT=true to keep any custom modifications to defaults
 ENV PAYMENTER_SKIP_DEFAULT=false
 
-COPY .github/docker/default.conf /etc/nginx/http.d/default.conf
-COPY .github/docker/www.conf /usr/local/etc/php-fpm.conf
 COPY .github/docker/supervisord.conf /etc/supervisord.conf
 
 EXPOSE 80
