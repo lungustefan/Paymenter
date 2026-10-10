@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import type { Model } from '@/server/orm';
 import { ResourcePage } from './ResourcePage';
-import { PageForm, type FormFooterAction } from './formPage';
+import { ContentCell, PageForm, type FormFooterAction } from './formPage';
 import { Schema } from '../../forms/Schema';
 import { fillForm, makeRenderContext, normalizeInput, validateForm, dehydrateForm } from '../../forms/process';
 import type { RenderContext } from '../../forms/Component';
@@ -30,6 +30,7 @@ export class EditRecord extends ResourcePage {
     override async mount() {
         this.record = await this.resolveRecord(this.params.record);
         this.abortUnless(await this.resource.canEdit(this.user, this.record));
+        await this.relationManagers();
     }
 
     /* ---- hooks (override in the resource's page) ---- */
@@ -91,7 +92,7 @@ export class EditRecord extends ResourcePage {
         const node = await schema.render(rc);
         return (
             <>
-                <PageForm initialState={state} schema={node} target={{ kind: 'form', id: 'form' }} actions={this.getFormActions()} />
+                <PageForm initialState={state} schema={node} target={{ kind: 'form', id: 'form' }} actions={this.getFormActions()} after={(await this.renderRelationManagers()) ?? <ContentCell hidden />} />
                 {await this.renderBelowForm()}
             </>
         );

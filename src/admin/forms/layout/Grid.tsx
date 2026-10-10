@@ -11,9 +11,10 @@ export class Grid extends Layout {
     }
 
     override async render(rc: RenderContext): Promise<ReactNode> {
-        const inner = await this.renderSchema(rc);
+        // an explicit `key()` is inherited by the components inside: their DOM ids get it as a prefix
+        const inner = await this.renderSchema(this.getKey() ? { ...rc, formId: `${rc.formId}.${this.getKey()}` } : rc);
         return (
-            <div id={this._id ?? this.getKey() ?? undefined} {...(this._extraAttributes as any)}>
+            <div id={this._id ?? (this.getKey() ? `${rc.formId}.${this.getKey()}` : undefined)} {...(this._extraAttributes as any)}>
                 {inner}
             </div>
         );

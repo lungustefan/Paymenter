@@ -9,6 +9,8 @@ import { DeleteAction } from '../../actions/builtin';
 import type { Breadcrumb } from '../../Header';
 import { trans } from '../../context';
 import { setPath } from '../../core/evaluate';
+import type { RelationManager } from '../../resources/RelationManager';
+import { ContentCell } from './formPage';
 
 /**
  * Port of Filament\Resources\Pages\Page: a page of a resource (list, create, edit, view, ...).
@@ -110,6 +112,41 @@ export abstract class ResourcePage extends Host {
             return found ? { action: found, ctx: this.actionContext({ action: found }) } : null;
         }
         return null;
+    }
+
+    /* ---- relation managers ---- */
+    private rmCache?: RelationManager[];
+    /** the relation managers of the resource that apply to the record of the page */
+    async relationManagers(): Promise<RelationManager[]> {
+        if (!this.rmCache) {
+            this.rmCache = [];
+            if (this.record) {
+                for (const Cls of this.resource.getRelations() as Array<new () => RelationManager>) {
+                    const rm = new Cls();
+                    rm.ownerRecord = this.record;
+                    rm.host = this;
+                    rm.user = this.user;
+                    if (!(await rm.canViewForRecord())) continue;
+                    rm.index = this.rmCache.length;
+                    this.rmCache.push(rm);
+                }
+            }
+        }
+        return this.rmCache;
+    }
+
+    override getTables(): Record<string, import('../../tables/Table').Table> {
+        const tables: Record<string, import('../../tables/Table').Table> = {};
+        for (const rm of this.rmCache ?? []) tables[`relationManager${rm.index}`] = rm.getTable();
+        return tables;
+    }
+
+    /** the cell(s) below the form that hold the relation managers */
+    async renderRelationManagers(): Promise<ReactNode> {
+        const managers = await this.relationManagers();
+        if (managers.length === 0) return null;
+        const nodes = await Promise.all(managers.map((m) => m.render(this.searchParams)));
+        return <>{nodes.map((n, i) => <ContentCell key={i}>{n}</ContentCell>)}</>;
     }
 
     /** the content below the header */

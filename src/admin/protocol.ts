@@ -10,9 +10,9 @@ export type AdminOp =
     /** submit a form: validate + save (page form) or run the action (modal form) */
     | { type: 'submit'; target: FormTarget; state: Record<string, any> }
     /** mount an action: returns its modal */
-    | { type: 'mount'; action: string; args?: Record<string, any>; records?: Array<string | number> }
+    | { type: 'mount'; action: string; args?: Record<string, any>; records?: Array<string | number>; state?: Record<string, any> }
     /** run an action that has no modal */
-    | { type: 'call'; action: string; args?: Record<string, any>; records?: Array<string | number> }
+    | { type: 'call'; action: string; args?: Record<string, any>; records?: Array<string | number>; state?: Record<string, any> }
     /** options of a searchable / lazy select */
     | { type: 'options'; target: FormTarget; state: Record<string, any>; path: string; search?: string; values?: Array<string | number> }
     /** table interactions that change data (toggle columns, inline inputs, reorder) */

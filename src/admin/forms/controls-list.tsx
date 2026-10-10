@@ -244,3 +244,32 @@ export function TagsInputControl({
 
 import { colorClass } from '../ui/colors';
 const badgeColorClass = (color: string) => colorClass('badge', color);
+
+/** `<input type="radio" class="fi-radio-input">` */
+export function RadioControl({ path, id, options, disabled, live, autoFocus }: { path: string; id: string; options: Array<{ value: string; label: string; description?: string; disabled?: boolean }>; disabled?: boolean; live?: Live; autoFocus?: boolean }) {
+    const [value, setValue] = useFieldValue(path);
+    const invalid = useInvalidClass(path);
+    return (
+        <>
+            {options.map((o, i) => (
+                <label key={o.value} className="fi-fo-radio-label">
+                    <input
+                        type="radio"
+                        autoFocus={i === 0 ? autoFocus : undefined}
+                        disabled={disabled || o.disabled}
+                        id={`${id}-${o.value}`}
+                        name={id}
+                        value={o.value}
+                        checked={value !== null && value !== undefined && String(value) === o.value}
+                        onChange={() => setValue(o.value, live ? { ...live, debounce: 0 } : undefined)}
+                        className={cn('fi-radio-input', invalid ? 'fi-invalid' : 'fi-valid')}
+                    />
+                    <div className="fi-fo-radio-label-text">
+                        <p>{o.label}</p>
+                        {o.description && <p className="fi-fo-radio-label-description">{o.description}</p>}
+                    </div>
+                </label>
+            ))}
+        </>
+    );
+}

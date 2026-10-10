@@ -24,6 +24,7 @@ export class ViewRecord extends ResourcePage {
     override async mount() {
         this.record = await this.resolveRecord(this.params.record);
         this.abortUnless(await this.resource.canView(this.user, this.record));
+        await this.relationManagers();
     }
 
     /** the infolist (the resource's `infolist()`, two columns by default) */
@@ -48,7 +49,7 @@ export class ViewRecord extends ResourcePage {
         return (
             <ContentGrid>
                 <ContentCell>{node}</ContentCell>
-                <ContentCell hidden />
+                {(await this.relationManagers()).length ? await this.renderRelationManagers() : <ContentCell hidden />}
             </ContentGrid>
         );
     }

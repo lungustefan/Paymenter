@@ -10,6 +10,8 @@ import { parseTableState } from '../tables/state';
 export interface ActionRef {
     action: Action;
     ctx: ActionContext;
+    /** the render context of the form the action belongs to (field actions): `$set()` calls change its state */
+    rc?: RenderContext;
 }
 
 /** a form resolved by its id */
@@ -37,13 +39,27 @@ export abstract class Host {
     }
 
     /** the action with this id (`header.delete`, `table.<id>.record.5.edit`, `field:name:hint:refresh`, ...) */
-    async findAction(id: string): Promise<ActionRef | null> {
+    async findAction(id: string, state?: Record<string, any>): Promise<ActionRef | null> {
+        if (id.startsWith('field:')) return this.findFieldAction(id, state);
         if (id.startsWith('table.')) {
             const [, tableId, ...rest] = id.split('.');
             const table = this.getTables()[tableId];
             return table ? table.findAction(rest.join('.')) : null;
         }
         return null;
+    }
+
+    /** `field:<statePath>:<hint|prefix|suffix>:<name>`: an action rendered inside a field of the page's form */
+    protected async findFieldAction(id: string, state?: Record<string, any>): Promise<ActionRef | null> {
+        const m = /^field:(.+):(hint|prefix|suffix):([^:]+)$/.exec(id);
+        if (!m) return null;
+        const form = await this.getForm('form', state);
+        if (!form) return null;
+        const component: any = await form.schema.findByStatePath(form.rc, m[1]);
+        const action = component?.inlineActions?.(m[2])?.find((a: Action) => a.getName() === m[3]);
+        if (!action) return null;
+        const ctx = { ...component.evalCtx(form.rc), action, record: form.rc.record, user: this.user, livewire: this, model: form.rc.model } as ActionContext;
+        return { action, ctx, rc: form.rc };
     }
 
     /** the form with this id (`form`) built around the given state */

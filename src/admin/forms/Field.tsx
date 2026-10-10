@@ -17,6 +17,15 @@ export function tableName(table: any): string {
     return getTableName(table.table ?? table);
 }
 
+/** the `$rule` of `unique(modifyRuleUsing: fn ($rule) => ...)` */
+export class UniqueRuleBuilder {
+    wheres: Array<[string, unknown]> = [];
+    where(column: string, value: unknown) {
+        this.wheres.push([column, value]);
+        return this;
+    }
+}
+
 /** a rule that needs the rendering context to be built (`unique(..., ignoreRecord: true)`) */
 export class RuleFactory {
     constructor(public make: (rc: RenderContext) => Rule | Promise<Rule>) {}
@@ -202,8 +211,7 @@ export abstract class Field extends Component {
     allowHtmlHelper(v = true) { this._htmlHelper = v; return this; }
 
     /** `->unique(table, column, ignorable, ignoreRecord)` */
-    unique(table: any, column?: string | null, ignorable?: any, ignoreRecord = false, modifyRule?: (q: any) => any) {
-        void modifyRule;
+    unique(table: any, column?: string | null, ignorable?: any, ignoreRecord = false, modifyRule?: (rule: UniqueRuleBuilder) => any) {
         this._rules.push(
             new RuleFactory((rc) => {
                 const t = tableName(table ?? rc.model ?? rc.record?.ctor);
@@ -212,6 +220,17 @@ export abstract class Field extends Component {
                 const ignore = ignorable ?? (ignoreRecord ? rc.record : null);
                 if (ignore && typeof ignore === 'object') rule += `,${ignore.getKey()},${ignore.ctor.primaryKey ?? 'id'}`;
                 else if (ignore !== null && ignore !== undefined) rule += `,${ignore}`;
+                // `modifyRuleUsing(fn ($rule) => $rule->where('deleted_at', null))`
+                if (modifyRule) {
+                    const builder = new UniqueRuleBuilder();
+                    modifyRule(builder);
+                    if (builder.wheres.length) {
+                        if (!ignore) rule += ',NULL';
+                        if (ignore && typeof ignore !== 'object') rule += '';
+                        if (!(ignore && typeof ignore === 'object')) rule += ',id';
+                        for (const [c, v] of builder.wheres) rule += `,${c},${v === null ? 'NULL' : v}`;
+                    }
+                }
                 return rule;
             }),
         );

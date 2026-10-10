@@ -65,7 +65,7 @@ export class Section extends Layout {
         const collapsed = (await this.ev(this._collapsed, rc)) === true;
         const hasAfterHeader = this._headerActions.length > 0;
         const hasHeader = !!icon || !!heading || !!description || collapsible || hasAfterHeader;
-        const content = await this.renderSchema(rc, { className: 'fi-section-content' });
+        const content = await this.renderSchema(rc, { className: 'fi-section-content', columns: this.getColumns() ?? { default: 1 } });
         const footer = this._footerActions.length
             ? await renderItems(rc, this._footerActions, { inline: true, alignment: this._footerAlignment === 'start' ? 'start' : this._footerAlignment, columns: null, gap: true, className: '' })
             : null;

@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from 'react';
 import { getPath, setPath } from '../core/evaluate';
-import { useAdminActions } from '../actions/client';
+import { useAdminActions, FormStateContext } from '../actions/client';
 import type { AdminActionResult, FormTarget } from '../protocol';
 
 export type { AdminActionResult };
@@ -164,10 +164,21 @@ export function FormProvider({
         [dispatch],
     );
 
+    // patches of the actions of the page (`$set()` in a hint action)
+    useEffect(() => {
+        if (formId !== 'form') return;
+        const onPatches = (e: Event) => mergePatches((e as CustomEvent).detail);
+        window.addEventListener('admin-form-patches', onPatches);
+        return () => window.removeEventListener('admin-form-patches', onPatches);
+    }, [formId, mergePatches]);
+    const formStateRef = useRef<{ current: (() => Record<string, any>) | null }>({ current: null });
+    formStateRef.current.current = () => structuredClone(stateRef.current);
+
     const ctx = useMemo<FormCtx>(() => ({ formId, state, errors, node, getValue: (p) => getPath(state, p), setValue, blur, submit, pending, options }), [formId, state, errors, node, setValue, blur, submit, pending, options]);
 
     return (
         <Ctx.Provider value={ctx}>
+            <FormStateContext.Provider value={formStateRef.current}>
             {as === 'div' ? (
                 <div id={formId} className={className} {...formProps}>
                     {children ?? <SchemaSlot />}
@@ -185,6 +196,7 @@ export function FormProvider({
                     {children ?? <SchemaSlot />}
                 </form>
             )}
+            </FormStateContext.Provider>
         </Ctx.Provider>
     );
 }

@@ -217,9 +217,16 @@ export class Table {
     }
 
     /* ---- data ---- */
+    /** relation managers query through the relation of their owner record */
+    protected _baseBuilder?: () => Builder<any>;
+    queryFrom(fn: () => Builder<any>) { this._baseBuilder = fn; return this; }
+
     protected baseQuery(): Builder<any> {
         let q: Builder<any>;
-        if (this._query) {
+        if (this._baseBuilder) {
+            q = this._baseBuilder();
+            if (this._query) this._query(q);
+        } else if (this._query) {
             q = this.model.query();
             this._query(q);
         } else q = this.resource ? this.resource.getEloquentQuery() : this.model.query();
@@ -634,7 +641,7 @@ export class Table {
                         ) : (
                             <TableHeaderCtn mode={headerMode}>
                                 {(this._heading || this._description || (headerActions.length > 0 && !reordering)) && (
-                                    <div className="fi-ta-header">
+                                    <div className={cn('fi-ta-header', headerActions.length > 0 && !reordering && 'fi-ta-header-adaptive-actions-position')}>
                                         {(this._heading || this._description) && (
                                             <div>
                                                 {this._heading && <h3 className="fi-ta-header-heading">{this._heading}</h3>}
