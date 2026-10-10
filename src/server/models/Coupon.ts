@@ -13,7 +13,7 @@ export class Coupon extends Model<{ products: Product[]; services: Service[] }> 
     static fillable = [
         'type', 'applies_to', 'time', 'code', 'value', 'max_uses', 'max_uses_per_user', 'starts_at', 'expires_at', 'recurring',
     ];
-    static casts = { max_uses: 'integer', max_uses_per_user: 'integer', value: 'float' };
+    static casts = { max_uses: 'integer', max_uses_per_user: 'integer', value: 'float', starts_at: 'datetime', expires_at: 'datetime' };
     static auditable = true;
 
     static relations: Record<string, RelationDef> = {

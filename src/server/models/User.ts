@@ -60,7 +60,7 @@ export class User extends Model<UserRelations> {
     static morphName = 'App\\Models\\User';
     static fillable = ['first_name', 'last_name', 'email', 'password', 'role_id', 'tfa_secret', 'email_verified_at'];
     static hidden = ['password', 'remember_token', 'tfa_secret'];
-    static casts = { password: 'hashed', tfa_secret: 'encrypted' };
+    static casts = { password: 'hashed', tfa_secret: 'encrypted', email_verified_at: 'datetime' };
     static auditable = true;
     static accessors = ['initials', 'avatar', 'name'];
 

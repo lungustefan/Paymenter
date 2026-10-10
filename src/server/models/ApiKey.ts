@@ -6,6 +6,7 @@ export interface ApiKey extends Row<typeof apiKeys> {}
 
 export class ApiKey extends Model {
     static table = apiKeys;
+    static casts = { last_used_at: 'datetime' };
     static morphName = 'App\\Models\\ApiKey';
     static fillable = ['name', 'permissions', 'token', 'user_id', 'type', 'ip_addresses', 'last_used_at', 'enabled'];
     static auditable = true;
