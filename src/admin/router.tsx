@@ -2,38 +2,66 @@ import type { ReactNode } from 'react';
 import { notFound } from 'next/navigation';
 import type { User } from '@/server/models/User';
 import { boot } from '@/server/bootstrap';
+import { makeTranslator } from '@/server/i18n';
+import { getLocale } from '@/server/page';
 import './panel';
 import { findPage, panelPages, panelResources } from './core/registry';
 import { matchPath } from '@/server/extensions/dispatch';
-import { renderResourcePage, resolveResourcePage } from './pages/resourcePages';
 import { PageFrame } from './Header';
+import { adminContext, runAdmin } from './context';
+import type { Host } from './core/host';
+import { AdminPage } from './core/Page';
+import { ResourcePage } from './pages/resource/ResourcePage';
+import type { PageRoute } from './core/Resource';
 
-export interface ResolvedRoute {
+export type SearchParams = Record<string, string | string[] | undefined>;
+
+export interface ResolvedHost {
+    host: Host;
+    /** `<title>` and heading of the page */
     title: string;
-    render: (ctx: { user: User; searchParams: Record<string, string | string[] | undefined> }) => Promise<ReactNode>;
+    /** the whole page (header + content) */
+    render: () => Promise<ReactNode>;
 }
 
-/** `/admin/...` -> a custom page or a resource page. */
-export async function resolveAdminRoute(segments: string[]): Promise<ResolvedRoute | null> {
+/** the admin context of a request (current user, translator, URL) */
+export async function adminRequest(user: User, pathname: string, searchParams: SearchParams) {
+    const locale = await getLocale();
+    return { user, locale, tr: makeTranslator(locale), pathname, searchParams };
+}
+
+/**
+ * `/admin/...` -> the page that answers it, created and mounted. Must be called inside `runAdmin`.
+ * Returns `null` when no page matches.
+ */
+export async function resolveHost(segments: string[], user: User, pathname: string, searchParams: SearchParams): Promise<ResolvedHost | null> {
     await boot();
     const path = segments.join('/');
 
     // custom pages (the dashboard is the page at the root)
-    const page = path === '' ? panelPages().find((p) => p.slug === '') : findPage(path);
-    if (page) {
+    const PageClass = path === '' ? panelPages().find((p) => p.slug === '') : findPage(path);
+    if (PageClass) {
+        if (!(await PageClass.canAccess(user))) notFound();
+        const page = new (PageClass as any)() as AdminPage;
+        prepare(page, user, pathname, searchParams, {});
+        await page.mount();
+        const heading = page.getHeading();
         return {
-            title: page.getTitle(),
-            async render({ user, searchParams }) {
-                if (!(await page.canAccess(user))) notFound();
-                const instance = new (page as any)();
-                instance.user = user;
-                instance.searchParams = searchParams;
-                await instance.mount();
-                const subheading = await instance.getSubheading();
-                const heading = page.getTitle();
+            host: page,
+            title: heading,
+            async render() {
+                const crumbs = page.getBreadcrumbs();
+                const content = await page.render();
                 return (
-                    <PageFrame classes={`fi-${page.slug || 'dashboard'}-page`} breadcrumbs={instance.getBreadcrumbs() ? Object.entries(instance.getBreadcrumbs()).map(([url, label]) => ({ label: String(label), url: url || undefined })) : null} heading={heading} subheading={subheading}>
-                        {await instance.render()}
+                    <PageFrame
+                        classes={page.getPageClasses().join(' ')}
+                        breadcrumbs={crumbs ? Object.entries(crumbs).map(([url, label]) => ({ label: String(label), url: /^\d+$/.test(url) || url === '' ? undefined : url })) : null}
+                        heading={heading}
+                        subheading={await page.getSubheading()}
+                        actions={await page.renderHeaderActions()}
+                        modalHost={!adminContext().modalsPlaced}
+                    >
+                        {content}
                     </PageFrame>
                 );
             },
@@ -41,18 +69,48 @@ export async function resolveAdminRoute(segments: string[]): Promise<ResolvedRou
     }
 
     // resources: the longest base path that prefixes the URL
+    const base = (r: { basePath(): string }) => r.basePath().slice('/admin/'.length);
     const resource = panelResources()
-        .filter((r) => path === r.basePath().slice('/admin/'.length) || path.startsWith(r.basePath().slice('/admin/'.length) + '/'))
+        .filter((r) => path === base(r) || path.startsWith(base(r) + '/'))
         .sort((a, b) => b.basePath().length - a.basePath().length)[0];
-    if (resource) {
-        const rest = '/' + path.slice(resource.basePath().length - '/admin/'.length).replace(/^\/+/, '');
-        const found = resolveResourcePage(resource, rest, matchPath);
-        if (found) {
-            return {
-                title: found.title,
-                render: (ctx) => renderResourcePage(found, ctx),
-            };
-        }
+    if (!resource) return null;
+
+    const rest = '/' + path.slice(base(resource).length).replace(/^\/+/, '');
+    for (const route of Object.values(resource.getPages()) as PageRoute[]) {
+        const params = matchPath(route.path, rest);
+        if (!params) continue;
+        const page = new (route.page as any)() as ResourcePage;
+        prepare(page, user, pathname, searchParams, params);
+        await page.mount();
+        const title = page.getTitle();
+        return {
+            host: page,
+            title,
+            async render() {
+                const content = await page.renderContent();
+                return (
+                    <PageFrame
+                        classes={page.getPageClasses().join(' ')}
+                        breadcrumbs={page.getBreadcrumbs()}
+                        heading={title}
+                        subheading={page.getSubheading()}
+                        actions={await page.renderHeaderActions()}
+                        modalHost={!adminContext().modalsPlaced}
+                    >
+                        {content}
+                    </PageFrame>
+                );
+            },
+        };
     }
     return null;
 }
+
+function prepare(host: Host, user: User, pathname: string, searchParams: SearchParams, params: Record<string, string>) {
+    host.user = user;
+    host.pathname = pathname;
+    host.searchParams = searchParams;
+    host.params = params;
+}
+
+export { runAdmin };

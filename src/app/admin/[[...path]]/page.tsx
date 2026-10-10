@@ -3,27 +3,37 @@ import { initRequest, requireUser } from '@/server/page';
 import { config } from '@/server/config';
 import { currentPath } from '@/server/request';
 import { AdminLayout } from '@/admin/layout/AdminLayout';
-import { resolveAdminRoute } from '@/admin/router';
+import { adminRequest, resolveHost, runAdmin } from '@/admin/router';
 
 export const dynamic = 'force-dynamic';
 
-export async function generateMetadata({ params }: { params: Promise<{ path?: string[] }> }) {
-    await initRequest();
-    const resolved = await resolveAdminRoute((await params).path ?? []);
-    const title = resolved?.title;
-    return { title: title ? `${title} - ${config('app.name', 'Paymenter')}` : config('app.name', 'Paymenter') };
+type SearchParams = Record<string, string | string[] | undefined>;
+
+export async function generateMetadata({ params, searchParams }: { params: Promise<{ path?: string[] }>; searchParams: Promise<SearchParams> }) {
+    const { user } = await initRequest();
+    const appName = config('app.name', 'Paymenter');
+    if (!user || !(await user.canAccessAdmin())) return { title: appName };
+    const segments = (await params).path ?? [];
+    const pathname = await currentPath();
+    const sp = await searchParams;
+    const title = await runAdmin(await adminRequest(user, pathname, sp), async () => (await resolveHost(segments, user, pathname, sp))?.title);
+    return { title: title ? `${title} - ${appName}` : appName };
 }
 
 /** Every /admin URL: the panel's pages and resources (what `Filament::registerPanel()` routes to). */
-export default async function AdminRoute({ params, searchParams }: { params: Promise<{ path?: string[] }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+export default async function AdminRoute({ params, searchParams }: { params: Promise<{ path?: string[] }>; searchParams: Promise<SearchParams> }) {
     const user = await requireUser();
     // `canAccessPanel`
     if (!(await user.canAccessAdmin())) notFound();
 
     const segments = (await params).path ?? [];
-    const resolved = await resolveAdminRoute(segments);
-    if (!resolved) notFound();
+    const pathname = await currentPath();
+    const sp = await searchParams;
 
-    const content = await resolved.render({ user, searchParams: await searchParams });
-    return <AdminLayout user={user} path={await currentPath()}>{content}</AdminLayout>;
+    const content = await runAdmin(await adminRequest(user, pathname, sp), async () => {
+        const resolved = await resolveHost(segments, user, pathname, sp);
+        if (!resolved) notFound();
+        return resolved.render();
+    });
+    return <AdminLayout user={user} path={pathname}>{content}</AdminLayout>;
 }

@@ -6,6 +6,7 @@ import { isRtl } from '@/server/locales';
 import { Head } from '@themes/default/layouts/Head';
 import { filamentPalette } from './palette';
 import { NotificationsHost } from './client';
+import { ActionsProvider } from '../actions/client';
 import type { NotificationData } from '../Notification';
 
 const darkModeScript = `const loadDarkMode = () => {
@@ -54,7 +55,7 @@ html.fi {
             </head>
             <body className="fi-body fi-panel-admin fi-body-has-navigation fi-body-has-topbar" suppressHydrationWarning>
                 <NotificationsHost initial={flashed} closeLabel="Close">
-                    {children}
+                    <ActionsProvider>{children}</ActionsProvider>
                 </NotificationsHost>
             </body>
         </html>

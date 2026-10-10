@@ -1,0 +1,16 @@
+{
+    "actions": {
+        "0": "Hacer clic para",
+        "copy": {
+            "label": "copiar"
+        },
+        "1": "o",
+        "download": {
+            "label": "descargar"
+        },
+        "2": "todos los códigos a la vez."
+    },
+    "messages": {
+        "copied": "Copiados"
+    }
+}

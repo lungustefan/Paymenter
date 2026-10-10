@@ -1,0 +1,8 @@
+{
+    "actions": {
+        "logout": {
+            "label": "Вийти"
+        }
+    },
+    "welcome": "Вітаємо"
+}

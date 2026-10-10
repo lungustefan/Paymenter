@@ -1,12 +1,15 @@
 import type { ReactNode } from 'react';
 import type { User } from '@/server/models/User';
 import { Cluster, titleCase } from './Resource';
+import { Host, type ActionRef } from './host';
+import { findByName, type Action, type ActionContext, type ActionGroup } from '../actions/Action';
+import { renderActionsGroup } from '../actions/render';
 
 /**
  * Port of Filament\Pages\Page: a custom admin page (Settings, Updates, ...). `render()` returns the
  * page content; the header (title, actions) is built by the admin shell from the static configuration.
  */
-export abstract class AdminPage {
+export abstract class AdminPage extends Host {
     static slug: string;
     static title: string | null = null;
     static navigationLabel: string | null = null;
@@ -18,10 +21,6 @@ export abstract class AdminPage {
     static shouldRegisterNavigation = true;
     /** `$maxContentWidth` of the page */
     static maxContentWidth: string | null = null;
-
-    user!: User;
-    params: Record<string, string> = {};
-    searchParams: Record<string, string | string[] | undefined> = {};
 
     static getTitle(): string {
         return this.title ?? titleCase(this.slug.replace(/-/g, ' '));
@@ -40,8 +39,34 @@ export abstract class AdminPage {
     }
 
     /** `getHeaderActions()` */
-    getHeaderActions(): any[] | Promise<any[]> {
+    getHeaderActions(): Array<Action | ActionGroup> {
         return [];
+    }
+
+    getHeading(): string {
+        return (this.constructor as typeof AdminPage).getTitle();
+    }
+
+    getPageClasses(): string[] {
+        const slug = (this.constructor as typeof AdminPage).slug;
+        return [`fi-${(slug || 'dashboard').replace('/', '-')}-page`];
+    }
+
+    actionContext(extra: Partial<ActionContext> = {}): ActionContext {
+        return { get: () => undefined, set: () => undefined, user: this.user, livewire: this, action: undefined as any, ...extra } as ActionContext;
+    }
+
+    async renderHeaderActions(): Promise<ReactNode> {
+        return renderActionsGroup(this.getHeaderActions(), this.actionContext(), 'header', { defaultStyle: 'button' });
+    }
+
+    override async findAction(id: string): Promise<ActionRef | null> {
+        if (id.startsWith('table.')) return super.findAction(id);
+        if (id.startsWith('header.')) {
+            const found = findByName(this.getHeaderActions(), id.slice('header.'.length));
+            return found ? { action: found, ctx: this.actionContext({ action: found }) } : null;
+        }
+        return null;
     }
 
     getHeaderWidgets(): any[] {
@@ -55,9 +80,6 @@ export abstract class AdminPage {
     getSubheading(): string | null | Promise<string | null> {
         return null;
     }
-
-    /** `mount()` - load state; throw to abort */
-    mount(): Promise<void> | void {}
 
     abstract render(): Promise<ReactNode> | ReactNode;
 
