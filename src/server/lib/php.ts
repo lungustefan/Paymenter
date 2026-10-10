@@ -166,3 +166,98 @@ export function uniqueBy<T>(items: T[], fn: (item: T) => unknown): T[] {
 export function decimalString(value: unknown, scale = 2): string {
     return value === null || value === undefined || value === '' ? '' : Number(value).toFixed(scale);
 }
+
+const urldecode = (s: string): string => {
+    const plus = s.replace(/\+/g, ' ');
+    try {
+        return decodeURIComponent(plus);
+    } catch {
+        return plus.replace(/%([0-9a-f]{2})/gi, (_m, h: string) => String.fromCharCode(parseInt(h, 16)));
+    }
+};
+
+/** PHP `parse_str()`: `a=1&b[]=2&c[d]=3` -> nested objects / arrays (`[]` and numeric keys make arrays). */
+export function parseStr(input: string): Record<string, any> {
+    const out: Record<string, any> = {};
+    for (const pair of input.split('&')) {
+        if (!pair) continue;
+        const eq = pair.indexOf('=');
+        const key = urldecode(eq === -1 ? pair : pair.slice(0, eq)).replace(/^ +/, '');
+        const value = eq === -1 ? '' : urldecode(pair.slice(eq + 1));
+        const bracket = key.indexOf('[');
+        const base = (bracket === -1 ? key : key.slice(0, bracket)).replace(/[ .]/g, '_');
+        if (!base) continue;
+        const indices = bracket === -1 ? [] : [...key.slice(bracket).matchAll(/\[([^\]]*)\]/g)].map((m) => m[1]);
+        if (indices.length === 0) {
+            out[base] = value;
+            continue;
+        }
+        let container: any = out;
+        let name: string | number = base;
+        for (const index of indices) {
+            if (container[name] === undefined || typeof container[name] !== 'object') {
+                container[name] = index === '' || /^\d+$/.test(index) ? [] : {};
+            }
+            container = container[name];
+            name = index === '' ? (Array.isArray(container) ? container.length : Object.keys(container).length) : index;
+        }
+        container[name] = value;
+    }
+    return out;
+}
+
+/** PHP `html_entity_decode()` for the entities that appear in API responses. */
+export function htmlEntityDecode(s: string): string {
+    return s
+        .replace(/&#(\d+);/g, (_m, n: string) => String.fromCodePoint(Number(n)))
+        .replace(/&#x([0-9a-f]+);/gi, (_m, n: string) => String.fromCodePoint(parseInt(n, 16)))
+        .replace(/&quot;/g, '"')
+        .replace(/&#039;|&apos;/g, "'")
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&nbsp;/g, ' ')
+        .replace(/&amp;/g, '&');
+}
+
+/** PHP `str_shuffle()` */
+export function strShuffle(s: string): string {
+    const chars = [...s];
+    for (let i = chars.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [chars[i], chars[j]] = [chars[j], chars[i]];
+    }
+    return chars.join('');
+}
+
+/** PHP `filter_var($value, FILTER_VALIDATE_DOMAIN)` (without FILTER_FLAG_HOSTNAME: only the length rules apply). */
+export function filterValidateDomain(value: string): boolean {
+    let domain = value;
+    if (domain.length > 0 && domain.endsWith('.')) domain = domain.slice(0, -1);
+    // The total length cannot exceed 253 characters (final dot not included)
+    if (domain.length > 253 || domain.length === 0 || domain.startsWith('.')) return false;
+    let label = 1;
+    for (let i = 0; i < domain.length; i++) {
+        if (domain[i] === '.') {
+            if (domain[i + 1] === '.') return false;
+            label = 1;
+        } else {
+            if (label > 63) return false;
+            label++;
+        }
+    }
+    return true;
+}
+
+const TRANSLITERATE: Record<string, string> = { ß: 'ss', æ: 'ae', Æ: 'AE', ø: 'o', Ø: 'O', đ: 'd', Đ: 'D', ł: 'l', Ł: 'L', œ: 'oe', Œ: 'OE', þ: 'th', Þ: 'TH', ð: 'd', Ð: 'D', ı: 'i' };
+
+/** Laravel `Str::transliterate()` (unknown characters become `?`). */
+export function transliterate(s: string, unknown = '?'): string {
+    return [...s]
+        .map((ch) => {
+            if (ch.charCodeAt(0) < 128) return ch;
+            if (TRANSLITERATE[ch]) return TRANSLITERATE[ch];
+            const base = ch.normalize('NFKD').replace(/[̀-ͯ]/g, '');
+            return /^[\x00-\x7F]+$/.test(base) && base !== '' ? base : unknown;
+        })
+        .join('');
+}

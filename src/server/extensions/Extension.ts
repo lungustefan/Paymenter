@@ -30,7 +30,7 @@ export class Extension {
     /** Admin enabled / updated the extension row */
     enabled?(extension: ExtensionModel): Promise<void> | void;
     updated?(extension: ExtensionModel): Promise<void> | void;
-    testConfig?(): Promise<void> | void;
+    testConfig?(): Promise<boolean | string | void> | boolean | string | void;
 
     /** Routes registered by this extension (webhooks etc.) */
     routes?(): ExtensionRoute[];

@@ -50,14 +50,17 @@ export function randomString(length = 16): string {
     return out;
 }
 
-/** `Str::password()` - mix of letters, numbers and symbols. */
+/** `Str::password()` - at least one letter, number and symbol, shuffled. */
 export function randomPassword(length = 32): string {
     const sets = ['abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ', '0123456789', '~!#$%^&*()-_.,<>?/\\{}[]|:;'];
     const all = sets.join('');
-    let out = '';
-    while (out.length < length) {
-        const bytes = crypto.randomBytes(2);
-        out += all[bytes.readUInt16BE(0) % all.length];
+    const pick = (chars: string) => chars[crypto.randomInt(0, chars.length)];
+    const out: string[] = sets.map(pick);
+    while (out.length < length) out.push(pick(all));
+    // shuffle
+    for (let i = out.length - 1; i > 0; i--) {
+        const j = crypto.randomInt(0, i + 1);
+        [out[i], out[j]] = [out[j], out[i]];
     }
-    return out;
+    return out.join('');
 }

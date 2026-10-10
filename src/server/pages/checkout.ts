@@ -1,4 +1,5 @@
 import { decimalString } from '@/server/lib/php';
+import type { Rule } from '@/server/validation';
 import { notFound, redirect } from 'next/navigation';
 import { once } from '@/server/request-store';
 import { Cart } from '@/server/cart';
@@ -107,7 +108,8 @@ export interface CheckoutField {
     default?: any;
     description?: string;
     link?: string;
-    validation?: string | string[];
+    /** server side only (rule objects of extensions are functions) */
+    validation?: Rule | Rule[];
     options?: Record<string, string>;
     /** config option children, with their price label per plan id */
     children?: { id: number; name: string; prices: Record<string, { label: string; available: boolean; free: boolean }> }[];
@@ -203,7 +205,8 @@ export function loadCheckout(categorySlug: string, productSlug: string, query: C
         }
 
         const fields = await getCheckoutConfigFields(product, checkoutConfig);
-        return { category, product, plans, plan: plan!, configOptions, optionState, checkoutConfig, fields, cartProductKey };
+        // rule objects cannot cross into client components
+        return { category, product, plans, plan: plan!, configOptions, optionState, checkoutConfig, fields: fields.map(({ validation: _validation, ...field }) => field), cartProductKey };
     });
 }
 

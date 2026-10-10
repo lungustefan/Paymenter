@@ -146,7 +146,9 @@ export async function validate<T extends Record<string, any> = Record<string, an
                 }
 
                 if (fn) {
-                    await fn(value, fail, { data, attribute: attr });
+                    // `$fail('The :attribute ...')` of rule objects / closures gets the attribute name filled in
+                    const display = attributeName(attr);
+                    await fn(value, (msg) => fail(msg.replaceAll(':attribute', display).replaceAll(':Attribute', display.charAt(0).toUpperCase() + display.slice(1)).replaceAll(':ATTRIBUTE', display.toUpperCase())), { data, attribute: attr });
                     continue;
                 }
 
