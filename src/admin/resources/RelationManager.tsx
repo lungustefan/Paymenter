@@ -7,7 +7,7 @@ import { Table } from '../tables/Table';
 import { Action } from '../actions/Action';
 import { CreateAction, EditAction, ViewAction } from '../actions/builtin';
 import { ContentCell, ContentGrid } from '../pages/resource/formPage';
-import { can } from '@/server/policies';
+import { canFilament as can } from '@/server/policies';
 import type { User } from '@/server/models/User';
 import { titleCase } from '../core/Resource';
 
@@ -35,6 +35,15 @@ export abstract class RelationManager {
         return this.constructor as typeof RelationManager;
     }
 
+    get relationshipName(): string {
+        return this.ctor.relationship;
+    }
+
+    /** the table of a relation manager has a heading and its own id / URL prefix (a page shows it without) */
+    tableId: string | null = null;
+    tablePrefix: string | null = null;
+    showHeading = true;
+
     /** `getRelatedResource()` */
     get related(): typeof Resource | null {
         const r = this.ctor.relatedResource;
@@ -45,11 +54,11 @@ export abstract class RelationManager {
     getTitle(): string {
         if (this.ctor.title) return this.ctor.title;
         if (this.related) return titleCase(this.related.getPluralModelLabel());
-        return headline(this.ctor.relationship);
+        return headline(this.relationshipName);
     }
 
     getRelatedModel(): any {
-        return this.ownerRecord.relationDef(this.ctor.relationship)!.related();
+        return this.ownerRecord.relationDef(this.relationshipName)!.related();
     }
 
     /** `canViewForRecord()`: the user may list the related records */
@@ -71,6 +80,11 @@ export abstract class RelationManager {
         return table;
     }
 
+    /** `getTableQuery()`: a query of its own instead of the relationship of the owner */
+    getTableQuery(): any | null {
+        return null;
+    }
+
     private makeSchema(operation: string): Schema {
         const schema = Schema.make().operation(operation).model(this.getRelatedModel());
         if (!schema.hasCustomColumns()) schema.columns(2);
@@ -80,15 +94,15 @@ export abstract class RelationManager {
     getTable(): Table {
         if (this.tableCache) return this.tableCache;
         const table = new Table();
-        table.id = `relationManager${this.index}`;
-        table.prefix = `rm${this.index}`;
+        table.id = this.tableId ?? `relationManager${this.index}`;
+        table.prefix = this.tablePrefix ?? `rm${this.index}`;
         table.livewire = this.host;
         table.user = this.user;
         table.model = this.getRelatedModel();
         table.ownerRecord = this.ownerRecord;
         table.resource = this.related ?? undefined;
-        table.queryFrom(() => this.ownerRecord.relation(this.ctor.relationship));
-        table.heading(this.getTitle());
+        table.queryFrom(() => this.getTableQuery() ?? this.ownerRecord.relation(this.relationshipName));
+        if (this.showHeading) table.heading(this.getTitle());
         const related = this.related;
         if (related) {
             related.table(table);
@@ -134,7 +148,7 @@ export abstract class RelationManager {
                 else {
                     if (!action.hasForm()) action.form(() => this.makeSchema('create'));
                     action.action(async (ctx) => {
-                        const record = await this.ownerRecord.relation(this.ctor.relationship).create(ctx.data ?? {});
+                        const record = await this.ownerRecord.relation(this.relationshipName).create(ctx.data ?? {});
                         if (ctx.formSchema) {
                             ctx.formRc.record = record;
                             await ctx.formSchema.saveRelationships(ctx.formRc, record, ctx.data ?? {});

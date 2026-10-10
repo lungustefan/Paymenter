@@ -5,10 +5,10 @@ import { titleCase } from '../core/Resource';
 import { attributesForForm } from '../core/attributes';
 
 /** `$this->getRecordTitle()` / `getModelLabel()` of the resource the action belongs to */
-const recordTitle = (ctx: ActionContext) => (ctx.resource ? ctx.resource.getRecordTitle(ctx.record ?? null) : '');
-const modelLabel = (ctx: ActionContext) => (ctx.resource ? ctx.resource.getModelLabel() : '');
+const recordTitle = (ctx: ActionContext) => (ctx.resource ? ctx.resource.getRecordTitle(ctx.record ?? null) : ((ctx as any).table?.getRecordTitle?.(ctx.record ?? null) ?? ''));
+const modelLabel = (ctx: ActionContext) => (ctx.resource ? ctx.resource.getModelLabel() : ((ctx as any).table?.getModelLabel?.() ?? ''));
 const titleCaseModelLabel = (ctx: ActionContext) => titleCase(modelLabel(ctx));
-const titleCasePluralModelLabel = (ctx: ActionContext) => (ctx.resource ? titleCase(ctx.resource.getPluralModelLabel()) : '');
+const titleCasePluralModelLabel = (ctx: ActionContext) => (ctx.resource ? titleCase(ctx.resource.getPluralModelLabel()) : titleCase((ctx as any).table?.getPluralModelLabel?.() ?? ''));
 
 /** Filament\Actions\CreateAction */
 export class CreateAction extends Action {

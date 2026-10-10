@@ -71,6 +71,18 @@ export async function can(user: User | null, ability: string, subject: ModelClas
     return user.hasPermission(check ?? `admin.${policy.prefix}.${ability}`);
 }
 
+/**
+ * Filament's authorization: a model without a policy (or a policy without the method) is not restricted
+ * (`Gate::getPolicyFor($model) === null` skips the check).
+ */
+export async function canFilament(user: User | null, ability: string, subject: ModelClass | Model<any> | string): Promise<boolean> {
+    if (!user) return false;
+    const morph = typeof subject === 'string' ? subject : ((subject as any).morphName ?? (subject as any).constructor?.morphName ?? '');
+    const policy = policies[String(morph).split('\\').pop() as string];
+    if (!policy || !policy.abilities.includes(ability)) return true;
+    return can(user, ability, subject);
+}
+
 export function policyFor(name: string): PolicyDef | undefined {
     return policies[name];
 }

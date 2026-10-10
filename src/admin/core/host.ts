@@ -80,6 +80,11 @@ export abstract class Host {
         return Promise.resolve({ ok: false });
     }
 
+    /** the widgets of the page (header, footer, dashboard): the targets of `widget` ops */
+    getWidgetClasses(): Promise<any[]> | any[] {
+        return [];
+    }
+
     /** table interactions: toggle / inline input / reorder / all keys */
     async tableUpdate(tableId: string, action: string, args: Record<string, any>): Promise<AdminActionResult> {
         const table = this.getTables()[tableId];

@@ -11,6 +11,12 @@ import { ConfigOptionResource } from './resources/ConfigOptionResource';
 import { CategoryResource } from './resources/CategoryResource';
 import { ProductResource } from './resources/ProductResource';
 import { RoleResource } from './resources/RoleResource';
+import { UserResource } from './resources/UserResource';
+import { ServiceCancellationResource, ServiceResource, ServicesCluster } from './resources/ServiceResource';
+import { InvoiceCluster, InvoiceResource, InvoiceTransactionResource } from './resources/InvoiceResource';
+import { OrderResource } from './resources/OrderResource';
+import { TicketResource } from './resources/TicketResource';
+import { ActiveUsers, Overview, Revenue, Support } from './widgets/PanelWidgets';
 import { TaxRateResource } from './resources/TaxRateResource';
 
 /** Everything the admin panel is made of (the contents of `app/Admin`). */
@@ -18,6 +24,6 @@ let registered = false;
 export function registerPanel() {
     if (registered) return;
     registered = true;
-    registerCore({ pages: [Dashboard], clusters: [ExtensionsCluster], resources: [CategoryResource, ProductResource, ConfigOptionResource, CouponResource, NotificationTemplateResource, ExtensionResource, GatewayResource, ServerResource, ApiResource, CurrencyResource, CustomPropertyResource, EmailLogResource, ErrorLogResource, FailedJobResource, HttpLogResource, RoleResource, TaxRateResource] });
+    registerCore({ widgets: [Overview, Revenue, Support, ActiveUsers], pages: [Dashboard], clusters: [ExtensionsCluster, ServicesCluster, InvoiceCluster], resources: [UserResource, OrderResource, TicketResource, ServiceResource, ServiceCancellationResource, InvoiceResource, InvoiceTransactionResource, CategoryResource, ProductResource, ConfigOptionResource, CouponResource, NotificationTemplateResource, ExtensionResource, GatewayResource, ServerResource, ApiResource, CurrencyResource, CustomPropertyResource, EmailLogResource, ErrorLogResource, FailedJobResource, HttpLogResource, RoleResource, TaxRateResource] });
 }
 registerPanel();

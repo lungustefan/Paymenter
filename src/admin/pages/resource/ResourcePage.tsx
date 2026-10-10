@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { notFound } from 'next/navigation';
 import type { Model } from '@/server/orm';
 import { Host, type ActionRef } from '../../core/host';
-import type { PageRoute, Resource } from '../../core/Resource';
+import type { NavigationItemInfo, PageRoute, Resource } from '../../core/Resource';
 import { Action, ActionGroup, findByName, type ActionContext } from '../../actions/Action';
 import { renderActionsGroup } from '../../actions/render';
 import { DeleteAction } from '../../actions/builtin';
@@ -11,6 +11,7 @@ import { trans } from '../../context';
 import { setPath } from '../../core/evaluate';
 import type { RelationManager } from '../../resources/RelationManager';
 import { ContentCell } from './formPage';
+import { renderWidgets, type WidgetClass } from '../../widgets/Widget';
 
 /**
  * Port of Filament\Resources\Pages\Page: a page of a resource (list, create, edit, view, ...).
@@ -21,6 +22,17 @@ export abstract class ResourcePage extends Host {
     /** the kind of page, used for the DOM classes (`fi-resource-create-record-page`) */
     static kind: string = 'page';
     static navigationLabel: string | null = null;
+    static navigationIcon: string | null = null;
+    static activeNavigationIcon: string | null = null;
+    static navigationSort: number | null = null;
+
+    /** the label of the page in the sub navigation of a record */
+    static getNavigationLabel(): string {
+        return this.navigationLabel ?? '';
+    }
+    static getNavigationIcon(): string {
+        return this.navigationIcon ?? 'heroicon-o-document-text';
+    }
 
     static route(path: string): PageRoute {
         return { page: this, path };
@@ -52,6 +64,27 @@ export abstract class ResourcePage extends Host {
         }
         crumbs.push({ label: this.getBreadcrumb() });
         return crumbs;
+    }
+
+    /** `generateNavigationItems()`: the links of the given pages of the resource, for the record of this page */
+    async generateNavigationItems(pages: Array<typeof ResourcePage>): Promise<NavigationItemInfo[]> {
+        const items: NavigationItemInfo[] = [];
+        const routes = Object.entries(this.resource.getPages());
+        for (const Page of pages) {
+            const found = routes.find(([, route]) => route.page === Page);
+            if (!found) continue;
+            const icon = Page.getNavigationIcon();
+            items.push({
+                label: Page.getNavigationLabel(),
+                url: this.resource.getUrl(found[0], { record: this.record }),
+                icon,
+                activeIcon: Page.activeNavigationIcon ?? icon,
+                group: null,
+                sort: Page.navigationSort,
+                isActive: this instanceof Page,
+            });
+        }
+        return items;
     }
 
     getSubheading(): string | null {
@@ -159,6 +192,36 @@ export abstract class ResourcePage extends Host {
 
     /** the content below the header */
     abstract renderContent(): Promise<ReactNode>;
+
+    /** `getHeaderWidgets()` / `getFooterWidgets()`: widgets above / below the content of the page */
+    getHeaderWidgets(): Promise<WidgetClass[]> | WidgetClass[] {
+        return [];
+    }
+    getFooterWidgets(): Promise<WidgetClass[]> | WidgetClass[] {
+        return [];
+    }
+    override async getWidgetClasses() {
+        return [...(await this.getHeaderWidgets()), ...(await this.getFooterWidgets())];
+    }
+
+    getHeaderWidgetsColumns(): number {
+        return 2;
+    }
+
+    /** the whole content of the page: widgets around what `renderContent()` gives */
+    async renderPage(): Promise<ReactNode> {
+        const page = { record: this.record, user: this.user, livewire: this };
+        const header = await renderWidgets(await this.getHeaderWidgets(), page, this.getHeaderWidgetsColumns());
+        const content = await this.renderContent();
+        const footer = await renderWidgets(await this.getFooterWidgets(), page, this.getHeaderWidgetsColumns());
+        return (
+            <>
+                {header}
+                {content}
+                {footer}
+            </>
+        );
+    }
 
     /** `abort_unless($resource::canX(), 403)` */
     protected abortUnless(allowed: boolean) {

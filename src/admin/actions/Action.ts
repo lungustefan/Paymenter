@@ -1,12 +1,21 @@
 import type { ReactNode } from 'react';
 import type { Schema } from '../forms/Schema';
 import type { Model } from '@/server/orm';
-import { can } from '@/server/policies';
+import { canFilament as can } from '@/server/policies';
 import { evaluate, type EvalContext, type Fn } from '../core/evaluate';
 import type { FilamentColorName } from '../ui/colors';
 import { trans } from '../context';
 
 export type ActionStyle = 'button' | 'link' | 'iconButton' | 'grouped' | 'badge';
+
+/** what an action returns to make the browser save a file (`response()->streamDownload()`) */
+export class Download {
+    constructor(
+        public name: string,
+        public content: Buffer | Uint8Array | string,
+        public mime = 'application/octet-stream',
+    ) {}
+}
 
 /** thrown by `$action->halt()`: stop without finishing, the modal stays open */
 export class Halt extends Error {

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useFieldValue, useInvalidClass } from './runtime';
+import { useFieldValue, useFormContext, useInvalidClass } from './runtime';
 import { uploadAdminFile, deleteAdminFile } from '../upload';
 import { cn } from '@themes/default/components/cn';
 
@@ -38,6 +38,8 @@ export function FileUploadControl({
     alignClass,
     isAvatar,
     messages,
+    disk = 'public',
+    namesPath,
 }: {
     path: string;
     id: string;
@@ -60,8 +62,14 @@ export function FileUploadControl({
     alignClass: string;
     isAvatar: boolean;
     messages: { uploading: string };
+    disk?: 'public' | 'local';
+    /** `storeFileNamesIn()`: state path of the map `stored path => original file name` */
+    namesPath?: string;
 }) {
     const [value, setValue] = useFieldValue(path);
+    const form = useFormContext();
+    const formRef = useRef(form);
+    formRef.current = form;
     const invalid = useInvalidClass(path);
     const input = useRef<HTMLInputElement>(null);
     const pondRef = useRef<any>(null);
@@ -86,6 +94,14 @@ export function FileUploadControl({
                     .filter((f) => f.status === 5 || f.origin === 1 || f.origin === 3)
                     .map((f) => (f.serverId as string) || (typeof f.source === 'string' ? f.source : null))
                     .filter(Boolean) as string[];
+                if (namesPath) {
+                    const names: Record<string, string> = {};
+                    for (const f of pond.getFiles() as any[]) {
+                        const key = (f.serverId as string) || (typeof f.source === 'string' ? f.source : null);
+                        if (key && paths.includes(key)) names[key] = f.filename;
+                    }
+                    formRef.current.setValue(namesPath, names);
+                }
                 setter.current(multiple ? paths : (paths[0] ?? null), live ? { ...live, debounce: 0 } : undefined);
             };
 
@@ -121,6 +137,7 @@ export function FileUploadControl({
                         const data = new FormData();
                         data.append('file', file, file.name);
                         data.append('directory', directory);
+                        data.append('disk', disk);
                         if (preserveFilenames) data.append('preserve', '1');
                         if (fileName) data.append('name', fileName);
                         progress(false, 0, 1);
@@ -130,7 +147,7 @@ export function FileUploadControl({
                         return { abort: () => undefined };
                     },
                     revert: (uniqueFileId: string, load: () => void) => {
-                        void deleteAdminFile(uniqueFileId).finally(load);
+                        void deleteAdminFile(uniqueFileId, disk).finally(load);
                     },
                     remove: (_source: string, load: () => void) => load(),
                 } as any,

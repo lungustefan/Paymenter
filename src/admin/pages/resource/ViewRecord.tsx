@@ -11,6 +11,13 @@ import { attributesForForm } from '../../core/attributes';
 export class ViewRecord extends ResourcePage {
     static override kind = 'resource-view-record';
 
+    static override getNavigationLabel() {
+        return this.navigationLabel ?? trans('filament-panels::resources/pages/view-record.breadcrumb');
+    }
+    static override getNavigationIcon() {
+        return this.navigationIcon ?? 'heroicon-o-eye';
+    }
+
     getTitle() {
         return trans('filament-panels::resources/pages/view-record.title', { label: this.resource.getRecordTitle(this.record) });
     }

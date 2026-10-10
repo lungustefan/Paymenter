@@ -21,11 +21,12 @@ export async function uploadAdminFile(data: FormData): Promise<UploadResult> {
     const directory = String(data.get('directory') ?? '').replace(/\.\.+/g, '');
     const preserve = data.get('preserve') === '1';
     const fixedName = data.get('name') ? String(data.get('name')) : undefined;
-    const relative = await storePublicFile(file, directory, fixedName ?? (preserve ? file.name.replace(/[^\w.\- ]+/g, '_') : undefined));
-    return { ok: true, path: relative, url: storageUrl(relative), name: file.name, size: file.size };
+    const disk = data.get('disk') === 'local' ? 'local' : 'public';
+    const relative = await storePublicFile(file, directory, fixedName ?? (preserve ? file.name.replace(/[^\w.\- ]+/g, '_') : undefined), disk);
+    return { ok: true, path: relative, url: disk === 'local' ? undefined : storageUrl(relative), name: file.name, size: file.size };
 }
 
-export async function deleteAdminFile(relative: string): Promise<boolean> {
+export async function deleteAdminFile(relative: string, disk: 'public' | 'local' = 'public'): Promise<boolean> {
     await requireAdminUser();
-    return deletePublicFile(relative);
+    return deletePublicFile(relative, disk === 'local' ? 'local' : 'public');
 }

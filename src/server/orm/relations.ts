@@ -89,7 +89,7 @@ function unique<T>(values: T[]): T[] {
 class BelongsTo extends BaseRelation {
     kind = 'belongsTo';
     single = true;
-    constructor(related: () => ModelCtor<any>, private foreignKey: string, private ownerKey?: string) {
+    constructor(related: () => ModelCtor<any>, public foreignKey: string, private ownerKey?: string) {
         super(related);
     }
     private owner() {

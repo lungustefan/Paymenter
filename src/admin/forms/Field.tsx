@@ -252,6 +252,14 @@ export abstract class Field extends Component {
     isRequired = async (rc: RenderContext) => (await this.ev(this._required, rc)) === true;
     isReadOnly = async (rc: RenderContext) => (await this.ev(this._readOnly, rc)) === true;
 
+    /** `formatStateUsing()`: an `afterStateHydrated` hook that replaces the state */
+    override async runAfterStateHydrated(rc: RenderContext): Promise<void> {
+        await super.runAfterStateHydrated(rc);
+        if (!this._formatStateUsing) return;
+        const path = this.getStatePath(rc);
+        setPath(rc.state, path, await this._formatStateUsing(this.evalCtx(rc, { state: getPath(rc.state, path) })));
+    }
+
     /** the value shown / saved when nothing was filled in */
     override async hydrateDefaults(rc: RenderContext, state: Record<string, any>, applyDefaults = true) {
         const path = this.getStatePath(rc);
@@ -294,8 +302,8 @@ export abstract class Field extends Component {
     }
 
     /** extra values of the context of an inline action (`model`, `record`, ...) */
-    async fieldActionContext(_rc: RenderContext, _action: Action): Promise<Record<string, any>> {
-        return {};
+    async fieldActionContext(rc: RenderContext, _action: Action): Promise<Record<string, any>> {
+        return { statePath: this.getStatePath(rc) };
     }
 
     protected actionId(rc: RenderContext, kind: string, action: Action) {
@@ -360,7 +368,7 @@ export abstract class Field extends Component {
     }
 
     /** `wrapInputHtml`: `<div class="fi-input-wrp">` with the prefix / suffix */
-    protected async wrapInput(rc: RenderContext, slot: ReactNode, className: string): Promise<ReactNode> {
+    protected async wrapInput(rc: RenderContext, slot: ReactNode, className: string, extraSuffix?: ReactNode): Promise<ReactNode> {
         const path = this.getStatePath(rc);
         const prefix = await this.ev(this._prefix, rc);
         const suffix = await this.ev(this._suffix, rc);
@@ -369,7 +377,7 @@ export abstract class Field extends Component {
         const prefixActions = await this.renderInlineActions(rc, 'prefix');
         const suffixActions = await this.renderInlineActions(rc, 'suffix');
         const hasPrefix = prefixActions.length > 0 || !!prefixIcon || !!prefix;
-        const hasSuffix = suffixActions.length > 0 || !!suffixIcon || !!suffix;
+        const hasSuffix = suffixActions.length > 0 || !!suffixIcon || !!suffix || !!extraSuffix;
         return (
             <Wrp path={path} className={cn(className, 'fi-input-wrp')} disabled={await this.isDisabled(rc)}>
                 {hasPrefix && (
@@ -384,7 +392,12 @@ export abstract class Field extends Component {
                     <div className={cn('fi-input-wrp-suffix', this._inlineSuffix && 'fi-inline', !!suffix && 'fi-input-wrp-suffix-has-label')}>
                         {suffix && <span className="fi-input-wrp-label">{suffix}</span>}
                         {suffixIcon && <Icon icon={suffixIcon} className={colorClass('inputWrapperIcon', this._suffixIconColor ?? 'gray')} />}
-                        {suffixActions.length > 0 && <div className="fi-input-wrp-actions">{suffixActions}</div>}
+                        {(suffixActions.length > 0 || !!extraSuffix) && (
+                            <div className="fi-input-wrp-actions">
+                                {suffixActions}
+                                {extraSuffix}
+                            </div>
+                        )}
                     </div>
                 )}
             </Wrp>

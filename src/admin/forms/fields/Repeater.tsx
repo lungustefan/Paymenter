@@ -45,9 +45,11 @@ export class Repeater extends Field {
         this._relationship = { name: name ?? this.getName() ?? '', modifyQuery };
         // `Str::headline($relationshipName)` is the label of a relationship repeater
         this._label = headline(this._relationship.name);
+        // a relationship repeater only reorders once it has an `orderColumn()`
+        this._reorderable = false;
         return this;
     }
-    orderColumn(v: string | null = 'sort') { this._orderColumn = v; return this; }
+    orderColumn(v: string | null = 'sort') { this._orderColumn = v; this._reorderable = !!v; return this; }
     reorderable(v: Fn<boolean> = true) { this._reorderable = v; return this; }
     reorderableWithButtons(v = true) { this._reorderWithButtons = v; return this; }
     cloneable(v: Fn<boolean> = true) { this._cloneable = v; return this; }
@@ -90,9 +92,23 @@ export class Repeater extends Field {
         return (await this.schemaItems(rc)).filter((c): c is Component => c instanceof Component);
     }
 
+    /** the related records of the items (`record-<id>`), for the closures that ask for `$record` of an item */
+    private rows = new Map<string, any>();
+    private rowsLoaded = false;
+    private async ensureRows(rc: RenderContext) {
+        if (this.rowsLoaded || !this._relationship || !rc.record) return;
+        this.rowsLoaded = true;
+        const q: Builder<any> = (rc.record as any).relation(this._relationship.name);
+        if (this._relationship.modifyQuery) this._relationship.modifyQuery(q);
+        for (const row of await q.get()) this.rows.set(`record-${row.getKey()}`, row);
+    }
+
     /** the render context of one item: its fields live under `<path>.<key>` */
     itemRc(rc: RenderContext, key: string, record?: any): RenderContext {
-        return { ...rc, container: `${this.getStatePath(rc)}.${key}`, record: record === undefined ? rc.record : record };
+        // the fields of an item belong to the related model (`->model($relatedModel)` of the item schema)
+        const owner = rc.model ?? rc.record?.ctor;
+        const model = this._relationship ? (owner?.relations?.[this._relationship.name]?.related?.() ?? rc.model) : rc.model;
+        return { ...rc, model, container: `${this.getStatePath(rc)}.${key}`, record: record === undefined ? (this.rows.get(key) ?? (this._relationship ? null : rc.record)) : record };
     }
 
     protected items(rc: RenderContext): Record<string, any> {
@@ -149,7 +165,12 @@ export class Repeater extends Field {
         if (this._orderColumn) q.orderBy(this._orderColumn);
         const rows = await q.get();
         const items: Record<string, any> = {};
-        for (const row of rows) items[`record-${row.getKey()}`] = { ...(await rowData(row)) };
+        this.rows.clear();
+        for (const row of rows) {
+            items[`record-${row.getKey()}`] = { ...(await rowData(row)) };
+            this.rows.set(`record-${row.getKey()}`, row);
+        }
+        this.rowsLoaded = true;
         setPath(state, path, items);
         const probe = { ...rc, state };
         for (const row of rows) {
@@ -160,6 +181,7 @@ export class Repeater extends Field {
     }
 
     override async getHydrationEntries(rc: RenderContext) {
+        await this.ensureRows(rc);
         const out: Array<{ component: Component; rc: RenderContext }> = [];
         for (const key of Object.keys(this.items(rc))) {
             const irc = this.itemRc(rc, key);
@@ -256,6 +278,7 @@ export class Repeater extends Field {
 
     override async collectRules(rc: RenderContext, rules: Record<string, any[]>, attributes: Record<string, string>) {
         if (!(await this.isVisible(rc))) return;
+        await this.ensureRows(rc);
         const path = this.getStatePath(rc);
         const label = (await this.getLabel(rc)) ?? path;
         const list: any[] = [];
@@ -283,6 +306,7 @@ export class Repeater extends Field {
 
     override async dehydrate(rc: RenderContext, out: Record<string, any>): Promise<void> {
         if (!(await this.isVisible(rc))) return;
+        await this.ensureRows(rc);
         // a relationship repeater is saved with the record (`saveRelationships()`), not as a column
         if (this._relationship) return;
         const list: Record<string, any>[] = [];
@@ -330,6 +354,7 @@ export class Repeater extends Field {
     /* ---- rendering ---- */
 
     override async render(rc: RenderContext): Promise<ReactNode> {
+        await this.ensureRows(rc);
         const path = this.getStatePath(rc);
         const id = `${rc.formId}.${path}`;
         const keys = Object.keys(this.items(rc));

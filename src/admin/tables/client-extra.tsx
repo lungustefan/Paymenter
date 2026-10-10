@@ -8,6 +8,7 @@ import { useAdminActions } from '../actions/client';
 import { FormProvider } from '../forms/runtime';
 import { Dropdown } from '../layout/client';
 import { cn } from '@themes/default/components/cn';
+import { buildQuery } from './state';
 
 /** `fi-ta-header-ctn`: hidden until records are selected when the table only has bulk actions */
 export function TableHeaderCtn({ mode, children }: { mode: 'visible' | 'selection' | 'hidden'; children: ReactNode }) {
@@ -282,4 +283,27 @@ export function TablePoll({ interval }: { interval: string }) {
         return () => clearInterval(id);
     }, [interval, router]);
     return null;
+}
+
+/** the tabs of a list page: the open one lives in `?activeTab=` (`$activeTab` of Filament's ListRecords) */
+export function ListTabs({ id, tabs, active, defaultTab }: { id: string; tabs: Array<{ key: string; icon: ReactNode; label: string; badge?: ReactNode }>; active: string; defaultTab: string }) {
+    const router = useRouter();
+    const select = (key: string) => {
+        const url = new URL(window.location.href);
+        const query = buildQuery(url.searchParams, { activeTab: key === defaultTab ? null : key, page: null });
+        router.replace(query ? `${url.pathname}?${query}` : url.pathname, { scroll: false });
+    };
+    return (
+        <div id={id} className="fi-sc-tabs">
+            <nav role="tablist" className="fi-tabs">
+                {tabs.map((t) => (
+                    <button key={t.key} type="button" role="tab" aria-selected={active === t.key ? 'true' : 'false'} onClick={() => select(t.key)} className={cn('fi-tabs-item', active === t.key && 'fi-active')}>
+                        {t.icon}
+                        <span className="fi-tabs-item-label">{t.label}</span>
+                        {t.badge}
+                    </button>
+                ))}
+            </nav>
+        </div>
+    );
 }

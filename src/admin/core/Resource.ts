@@ -1,7 +1,7 @@
 import type { Model, ModelCtor } from '@/server/orm';
 import type { Builder } from '@/server/orm';
 import type { User } from '@/server/models/User';
-import { can } from '@/server/policies';
+import { canFilament as can } from '@/server/policies';
 import { slug as kebabSlug } from '@/server/lib/php';
 import type { Schema } from '../forms/Schema';
 import type { Table } from '../tables/Table';
@@ -86,6 +86,11 @@ export abstract class Resource {
     }
 
     static getRelations(): any[] {
+        return [];
+    }
+
+    /** `getRecordSubNavigation($page)`: the links between the pages of one record (users: edit, services, invoices, ...) */
+    static async getRecordSubNavigation(_page: any): Promise<NavigationItemInfo[]> {
         return [];
     }
 

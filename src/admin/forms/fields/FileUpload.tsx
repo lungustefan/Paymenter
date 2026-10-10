@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { Field } from '../Field';
 import { getPath, setPath, type RenderContext } from '../Component';
 import { FileUploadControl, type ExistingFile } from '../controls-upload';
-import { mimeFor, publicDiskPath } from '@/server/storage';
+import { diskPath, mimeFor } from '@/server/storage';
 import { storageUrl } from '@/server/routes';
 import { trans } from '../../context';
 import type { Fn } from '../../core/evaluate';
@@ -28,6 +28,8 @@ export class FileUpload extends Field {
     protected _downloadable = false;
     protected _openable = false;
     protected _alignment?: string;
+    protected _private = false;
+    protected _namesIn?: string;
 
     multiple(v: Fn<boolean> = true) { this._multiple = v; return this; }
     acceptedFileTypes(v: string[]) { this._accepted = v; return this; }
@@ -38,7 +40,9 @@ export class FileUpload extends Field {
     maxFiles(v: number) { this._maxFiles = v; return this; }
     directory(v: Fn<string>) { this._directory = v; return this; }
     disk(_v: string) { return this; }
-    visibility(_v: string) { return this; }
+    visibility(v: string) { this._private = v === 'private'; return this; }
+    /** `storeFileNamesIn('attachment_names')` */
+    storeFileNamesIn(v: string) { this._namesIn = v; return this; }
     preserveFilenames(v = true) { this._preserveFilenames = v; return this; }
     getUploadedFileNameForStorageUsing(fn: (ctx: any) => string) { this._fileName = fn; return this; }
     previewable(v = true) { this._previewable = v; return this; }
@@ -82,11 +86,11 @@ export class FileUpload extends Field {
         const list: string[] = (Array.isArray(value) ? value : value ? [value] : []).filter((v: any) => typeof v === 'string');
         const out: ExistingFile[] = [];
         for (const rel of list) {
-            const full = publicDiskPath(rel);
+            const full = diskPath(this._private ? 'local' : 'public', rel);
             let size = 0;
             if (full && fs.existsSync(full)) size = fs.statSync(full).size;
             else continue;
-            out.push({ path: rel, name: rel.split('/').pop() ?? rel, size, type: mimeFor(rel), url: storageUrl(rel) });
+            out.push({ path: rel, name: rel.split('/').pop() ?? rel, size, type: mimeFor(rel), url: this._private ? '' : storageUrl(rel) });
         }
         return out;
     }
@@ -117,6 +121,8 @@ export class FileUpload extends Field {
                 live={this._live}
                 alignClass={align}
                 isAvatar={this._avatar}
+                disk={this._private ? 'local' : 'public'}
+                namesPath={this._namesIn}
                 messages={{ uploading: trans('filament-forms::components.file_upload.uploading_message') }}
             />
         );

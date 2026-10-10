@@ -18,7 +18,9 @@ export type AdminOp =
     /** table interactions that change data (toggle columns, inline inputs, reorder) */
     | { type: 'table'; table: string; action: 'toggle' | 'input' | 'reorder' | 'allKeys'; record?: string | number; column?: string; value?: unknown; order?: Array<string | number> }
     /** a page-defined livewire method (`wire:click="method"`) */
-    | { type: 'page'; method: string; args?: any[]; state?: Record<string, any> };
+    | { type: 'page'; method: string; args?: any[]; state?: Record<string, any> }
+    /** a method of a widget of the page (`$wire.set('filter', ...)` of a chart) */
+    | { type: 'widget'; widget: string; method: string; args?: any[] };
 
 /** result of a server action of the admin panel */
 export interface AdminActionResult {
@@ -42,5 +44,7 @@ export interface AdminActionResult {
     close?: boolean;
     /** options of a select */
     options?: Array<{ value: string | number; label: string; group?: string }>;
+    /** a file for the browser to save (`response()->streamDownload()`) */
+    download?: { name: string; mime: string; base64: string };
     data?: any;
 }

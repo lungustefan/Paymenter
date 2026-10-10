@@ -64,6 +64,18 @@ export function ActionsProvider({ children }: { children: ReactNode }) {
             if (result.patches && Object.keys(result.patches).length) window.dispatchEvent(new CustomEvent('admin-form-patches', { detail: result.patches }));
             // a field action re-renders the whole form (a Livewire request morphs the component)
             if (result.schema !== undefined && !result.modal) window.dispatchEvent(new CustomEvent('admin-form-schema', { detail: result.schema }));
+            if (result.download) {
+                // `response()->streamDownload()`: the browser saves the file
+                const bytes = Uint8Array.from(atob(result.download.base64), (c) => c.charCodeAt(0));
+                const url = URL.createObjectURL(new Blob([bytes], { type: result.download.mime }));
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = result.download.name;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                setTimeout(() => URL.revokeObjectURL(url), 10_000);
+            }
             if (result.redirect) router.push(result.redirect);
             else if (result.refresh) router.refresh();
             if (result.close) setModals((m) => m.slice(0, -1));

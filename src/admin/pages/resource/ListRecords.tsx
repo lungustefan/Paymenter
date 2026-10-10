@@ -6,6 +6,23 @@ import { Schema } from '../../forms/Schema';
 import { CreateAction, DeleteAction, EditAction, ViewAction } from '../../actions/builtin';
 import { Action, ActionGroup, findByName } from '../../actions/Action';
 import { trans } from '../../context';
+import { Icon } from '../../ui/Icon';
+import { ListTabs } from '../../tables/client-extra';
+import type { Builder } from '@/server/orm/builder';
+
+/** Filament\Schemas\Components\Tabs\Tab as the list pages use it */
+export class ListTab {
+    protected _icon: string | null = null;
+    protected _modify?: (q: Builder<any>) => Builder<any> | void;
+    constructor(readonly label: string) {}
+    static make(label: string) {
+        return new ListTab(label);
+    }
+    icon(v: string) { this._icon = v; return this; }
+    getIcon() { return this._icon; }
+    modifyQueryUsing(fn: (q: Builder<any>) => Builder<any> | void) { this._modify = fn; return this; }
+    modifyQuery(q: Builder<any>) { return this._modify ? (this._modify(q) ?? q) : q; }
+}
 
 /** Port of Filament\Resources\Pages\ListRecords */
 export class ListRecords extends ResourcePage {
@@ -24,6 +41,24 @@ export class ListRecords extends ResourcePage {
     }
     override async mount() {
         this.abortUnless(await this.resource.canViewAny(this.user));
+    }
+
+    /** `getTabs()`: filters of the table query, shown as tabs above the table */
+    getTabs(): Record<string, ListTab> {
+        return {};
+    }
+    getDefaultActiveTab(): string | number | null {
+        return null;
+    }
+    /** `$activeTab`: the `?activeTab=` of the URL, else the default tab, else the first one */
+    getActiveTab(): string | null {
+        const tabs = Object.keys(this.getTabs());
+        if (tabs.length === 0) return null;
+        const asked = this.searchParams.activeTab;
+        const key = Array.isArray(asked) ? asked[0] : asked;
+        if (key && tabs.includes(key)) return key;
+        const def = this.getDefaultActiveTab();
+        return def !== null && tabs.includes(String(def)) ? String(def) : tabs[0];
     }
 
     /** `table(Table $table)` of the page: the resource's table, configured for the page */
@@ -72,6 +107,9 @@ export class ListRecords extends ResourcePage {
                 return null;
             });
             this.tableCache = this.configureTable(this.resource.table(table));
+            // the open tab narrows the query of the table
+            const tab = this.getActiveTab();
+            if (tab) table.modifyQueryUsing(((previous) => (q: Builder<any>) => this.getTabs()[tab].modifyQuery(previous ? (previous(q) ?? q) : q))((table as any)._modifyQuery));
             for (const list of [this.tableCache.getRecordActions(), this.tableCache.getToolbarActions(), this.tableCache.getHeaderActions()]) this.configureTableActions(list);
         }
         return this.tableCache;
@@ -113,9 +151,18 @@ export class ListRecords extends ResourcePage {
 
     async renderContent(): Promise<ReactNode> {
         const table = this.getTable();
+        const tabs = Object.entries(this.getTabs());
+        const active = this.getActiveTab();
+        const defaultTab = tabs.length ? (this.getDefaultActiveTab() !== null && this.getTabs()[String(this.getDefaultActiveTab())] ? String(this.getDefaultActiveTab()) : tabs[0][0]) : '';
         return (
             <ContentGrid>
-                <ContentCell hidden id={undefined} />
+                {tabs.length > 0 ? (
+                    <ContentCell>
+                        <ListTabs id="content.resourceTabs" active={active!} defaultTab={defaultTab} tabs={tabs.map(([key, t]) => ({ key, label: t.label, icon: t.getIcon() ? <Icon icon={t.getIcon()!} /> : null }))} />
+                    </ContentCell>
+                ) : (
+                    <ContentCell hidden id={undefined} />
+                )}
                 <ContentCell>{await table.render({ pathname: this.pathname, searchParams: this.searchParams, user: this.user })}</ContentCell>
             </ContentGrid>
         );

@@ -19,8 +19,8 @@ export function SchemaGrid({ columns, className = '', extra, inline, alignment, 
 }
 
 /** `Component::toSchemaHtml()`: the `fi-grid-col` wrapper around every component of a schema */
-export function SchemaCell({ component, visible, inline, children }: { component: Component; visible: boolean; inline?: boolean; children?: ReactNode }) {
-    const span = resolveSpan(component.getColumnSpan() as any);
+export function SchemaCell({ component, visible, inline, columnSpan, children }: { component: Component; visible: boolean; inline?: boolean; columnSpan?: any; children?: ReactNode }) {
+    const span = resolveSpan(columnSpan as any);
     const start = toBreakpoints(component.getColumnStart());
     const order = toBreakpoints(component.getColumnOrder());
     const col = inline ? { className: '', style: {} } : gridColumnProps(span as any, start, order, !visible);
@@ -54,7 +54,7 @@ export async function renderItems(rc: RenderContext, items: SchemaItem[], option
             // layouts without columns of their own take the ones of the grid they sit in (`getAllColumns()`)
             if ('containerColumns' in item) (item as any).containerColumns = resolveColumns(options.columns as any);
             cells.push(
-                <SchemaCell key={key} component={item} visible={visible} inline={options.inline}>
+                <SchemaCell key={key} component={item} visible={visible} inline={options.inline} columnSpan={await item.resolveColumnSpan(rc)}>
                     {visible ? await item.render(rc) : null}
                 </SchemaCell>,
             );

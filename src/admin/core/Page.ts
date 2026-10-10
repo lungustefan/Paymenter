@@ -51,7 +51,7 @@ export abstract class AdminPage extends Host {
 
     getPageClasses(): string[] {
         const slug = (this.constructor as typeof AdminPage).slug;
-        return [`fi-${(slug || 'dashboard').replace('/', '-')}-page`];
+        return slug ? [`fi-${slug.replace('/', '-')}-page`] : [];
     }
 
     actionContext(extra: Partial<ActionContext> = {}): ActionContext {
