@@ -15,6 +15,8 @@ export interface ActionResult<T = unknown> {
     /** leave the single-page navigation (admin panel, external URLs) */
     hard?: boolean;
     data?: T;
+    /** React node returned to the client (e.g. a gateway's payment form) */
+    view?: import('react').ReactNode;
 }
 
 /** Wrap an action body: DisplayException => error toast, ValidationError => field errors. */
