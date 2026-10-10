@@ -5,7 +5,7 @@ import { boot } from '@/server/bootstrap';
 import { makeTranslator } from '@/server/i18n';
 import { getLocale } from '@/server/page';
 import './panel';
-import { findPage, panelPages, panelResources } from './core/registry';
+import { clusterNavigation, findPage, panelPages, panelResources } from './core/registry';
 import { matchPath } from '@/server/extensions/dispatch';
 import { PageFrame } from './Header';
 import { adminContext, runAdmin } from './context';
@@ -51,6 +51,8 @@ export async function resolveHost(segments: string[], user: User, pathname: stri
             title: heading,
             async render() {
                 const crumbs = page.getBreadcrumbs();
+                const cluster = (PageClass as any).cluster;
+                const subNavigation = cluster ? { label: cluster.label(), items: await clusterNavigation(cluster, user, pathname) } : null;
                 const content = await page.render();
                 return (
                     <PageFrame
@@ -60,6 +62,7 @@ export async function resolveHost(segments: string[], user: User, pathname: stri
                         subheading={await page.getSubheading()}
                         actions={await page.renderHeaderActions()}
                         modalHost={!adminContext().modalsPlaced}
+                        subNavigation={subNavigation}
                     >
                         {content}
                     </PageFrame>
@@ -88,8 +91,11 @@ export async function resolveHost(segments: string[], user: User, pathname: stri
             title,
             async render() {
                 const content = await page.renderContent();
+                const cluster = resource.cluster;
+                const subNavigation = cluster ? { label: cluster.label(), items: await clusterNavigation(cluster, user, pathname) } : null;
                 return (
                     <PageFrame
+                        subNavigation={subNavigation}
                         classes={page.getPageClasses().join(' ')}
                         breadcrumbs={page.getBreadcrumbs()}
                         heading={title}

@@ -308,7 +308,7 @@ export class Select extends Field {
                     maxItemsMessage={this._maxItems ? trans('filament-forms::components.select.max_items_message', { count: this._maxItems }) : undefined}
                     optionsLimit={this._optionsLimit}
                     disabledValues={(entries ?? []).flatMap((e) => ('group' in e ? e.options : [e])).filter((o) => this._disableOptionWhen?.(o.value, o.label)).map((o) => o.value)}
-                    selectedLabel={trans('filament-forms::components.select.clear_selection')}
+                    selectedLabel="Clear selection"
                 />
             );
         }

@@ -32,7 +32,7 @@ export type ColumnSpan = number | 'full' | Record<string, number | 'full' | null
  * the rendering context (`$get`, `$set`, `$record`, `$operation`, ...).
  */
 export abstract class Component {
-    key: string | null = null;
+    protected _key: string | null = null;
     protected _label?: Fn<string | null | false>;
     protected _hiddenLabel = false;
     protected _visible: Fn<boolean> = true;
@@ -60,7 +60,7 @@ export abstract class Component {
     parent: Component | null = null;
 
     constructor(key?: string | null) {
-        this.key = key ?? null;
+        this._key = key ?? null;
     }
 
     /* ---- fluent configuration shared by all components ---- */
@@ -94,10 +94,12 @@ export abstract class Component {
     mutateDehydratedStateUsing(fn: (ctx: EvalContext) => any) { this._mutateDehydratedStateUsing = fn; return this; }
 
     /* ---- identity ---- */
-    getKey(): string | null { return this.key; }
+    /** `->key('settings')`: the key of a layout component (its id in the DOM) */
+    key(v: string) { this._key = v; return this; }
+    getKey(): string | null { return this._key; }
     /** does this component own a state entry? (layout components do not) */
     hasStatePath(): boolean { return false; }
-    getName(): string | null { return this.key; }
+    getName(): string | null { return this._key; }
 
     /** path of this component's state relative to the form root */
     getStatePath(ctx: RenderContext): string {

@@ -43,9 +43,9 @@ async function run(host: Host, op: AdminOp): Promise<AdminActionResult> {
             case 'submit':
                 return op.target.kind === 'form' ? await host.submitForm(op.target.id, op.state, op.target.args) : await submitAction(host, op.target, op.state);
             case 'mount':
-                return await mount(host, op.action, op.args ?? {}, op.records);
+                return await mount(host, op.action, op.args ?? {}, op.records, op.state);
             case 'call':
-                return await call(host, op.action, op.args ?? {}, op.records);
+                return await call(host, op.action, op.args ?? {}, op.records, op.state);
             case 'options':
                 return await options(host, op.target, op.state, op.path, op.search, op.values);
             case 'table':
@@ -101,8 +101,8 @@ async function options(host: Host, target: FormTarget, state: Record<string, any
 
 /* ---- actions ---- */
 
-async function resolveAction(host: Host, id: string, args: Record<string, any>, keys?: Array<string | number>) {
-    const ref = await host.findAction(id);
+async function resolveAction(host: Host, id: string, args: Record<string, any>, keys?: Array<string | number>, state?: Record<string, any>) {
+    const ref = await host.findAction(id, state ? normalizeInput(state) : undefined);
     if (!ref) return null;
     const ctx: ActionContext = { ...ref.ctx, action: ref.action, arguments: { ...ref.action.getArguments(), ...args } };
     ctx.records = await recordsFor({ ...ref, ctx }, keys);
@@ -111,15 +111,15 @@ async function resolveAction(host: Host, id: string, args: Record<string, any>, 
     return ref;
 }
 
-async function mount(host: Host, id: string, args: Record<string, any>, keys?: Array<string | number>): Promise<AdminActionResult> {
-    const ref = await resolveAction(host, id, args, keys);
+async function mount(host: Host, id: string, args: Record<string, any>, keys?: Array<string | number>, state?: Record<string, any>): Promise<AdminActionResult> {
+    const ref = await resolveAction(host, id, args, keys, state);
     if (!ref) return { ok: false };
     if (!ref.action.shouldOpenModal()) return execute(host, ref, {}, {});
     return { ok: true, modal: await renderActionModal({ host, ref, actionId: id, args, records: keys }) as ReactNode };
 }
 
-async function call(host: Host, id: string, args: Record<string, any>, keys?: Array<string | number>): Promise<AdminActionResult> {
-    const ref = await resolveAction(host, id, args, keys);
+async function call(host: Host, id: string, args: Record<string, any>, keys?: Array<string | number>, state?: Record<string, any>): Promise<AdminActionResult> {
+    const ref = await resolveAction(host, id, args, keys, state);
     if (!ref) return { ok: false };
     return execute(host, ref, {}, args);
 }
@@ -149,11 +149,14 @@ async function submitAction(host: Host, target: Extract<FormTarget, { kind: 'act
 async function execute(host: Host, ref: ActionRef, data: Record<string, any>, args: Record<string, any>, form: { formSchema?: any; formRc?: any } = {}): Promise<AdminActionResult> {
     void host;
     const ctx: ActionContext = { ...ref.ctx, data, arguments: { ...(ref.ctx.arguments ?? {}), ...args }, ...form };
+    const before = ref.rc ? structuredClone(ref.rc.state) : null;
     const outcome = await ref.action.execute(ctx);
+    // `$set()` calls of a field action change the state of the form
+    const patches = ref.rc && before ? diffState(before, ref.rc.state) : undefined;
     if (outcome.halted) return { ok: true, halted: true };
     if (outcome.cancelled) return { ok: true, close: true };
     const redirect = await ref.action.getSuccessRedirectUrl(ctx);
-    return { ok: true, close: true, refresh: !redirect, redirect: redirect ? relativeUrl(redirect) : null };
+    return { ok: true, close: true, refresh: ref.rc ? false : !redirect, redirect: redirect ? relativeUrl(redirect) : null, patches };
 }
 
 export { Halt, Cancel };

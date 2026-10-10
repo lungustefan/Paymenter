@@ -22,8 +22,8 @@ interface ActionsApi {
     dispatch: (op: AdminOp) => Promise<AdminActionResult>;
     /** applies notifications / redirect / refresh of a result */
     apply: (result: AdminActionResult) => AdminActionResult;
-    mount: (action: string, args?: Record<string, any>, records?: Array<string | number>) => Promise<void>;
-    call: (action: string, args?: Record<string, any>, records?: Array<string | number>) => Promise<AdminActionResult>;
+    mount: (action: string, args?: Record<string, any>, records?: Array<string | number>, state?: Record<string, any>) => Promise<void>;
+    call: (action: string, args?: Record<string, any>, records?: Array<string | number>, state?: Record<string, any>) => Promise<AdminActionResult>;
     openModal: (node: ReactNode) => void;
     closeModal: () => void;
     modals: ModalEntry[];
@@ -44,6 +44,8 @@ export interface SelectionApi {
     clear: () => void;
 }
 export const SelectionContext = createContext<SelectionApi | null>(null);
+/** gives the actions inside a form access to its current state */
+export const FormStateContext = createContext<{ current: (() => Record<string, any>) | null }>({ current: null });
 
 export function ActionsProvider({ children }: { children: ReactNode }) {
     const router = useRouter();
@@ -58,6 +60,8 @@ export function ActionsProvider({ children }: { children: ReactNode }) {
     const apply = useCallback(
         (result: AdminActionResult) => {
             for (const n of result.notifications ?? []) notify(n);
+            // `$set()` calls of an action: the form of the page takes the new values
+            if (result.patches && Object.keys(result.patches).length) window.dispatchEvent(new CustomEvent('admin-form-patches', { detail: result.patches }));
             if (result.redirect) router.push(result.redirect);
             else if (result.refresh) router.refresh();
             if (result.close) setModals((m) => m.slice(0, -1));
@@ -75,10 +79,10 @@ export function ActionsProvider({ children }: { children: ReactNode }) {
     const closeModal = useCallback(() => setModals((m) => m.slice(0, -1)), []);
 
     const mount = useCallback(
-        async (action: string, args?: Record<string, any>, records?: Array<string | number>) => {
+        async (action: string, args?: Record<string, any>, records?: Array<string | number>, state?: Record<string, any>) => {
             setBusy(true);
             try {
-                const result = await dispatch({ type: 'mount', action, args, records });
+                const result = await dispatch({ type: 'mount', action, args, records, state });
                 apply({ ...result, close: false });
                 if (result.modal) openModal(result.modal);
             } finally {
@@ -89,10 +93,10 @@ export function ActionsProvider({ children }: { children: ReactNode }) {
     );
 
     const call = useCallback(
-        async (action: string, args?: Record<string, any>, records?: Array<string | number>) => {
+        async (action: string, args?: Record<string, any>, records?: Array<string | number>, state?: Record<string, any>) => {
             setBusy(true);
             try {
-                return apply(await dispatch({ type: 'call', action, args, records }));
+                return apply(await dispatch({ type: 'call', action, args, records, state }));
             } finally {
                 setBusy(false);
             }
@@ -177,12 +181,15 @@ export function ActionTrigger({
     const { mount, call, busy } = useAdminActions();
     const selection = useContext(SelectionContext);
     const ref = useRef<HTMLElement | null>(null);
+    const formState = useContext(FormStateContext);
 
     const run = useCallback(() => {
         if (disabled || mode === 'link') return;
         const records = bulk ? (selection?.selected ?? []) : undefined;
         if (bulk && (!records || records.length === 0)) return;
-        void (mode === 'mount' ? mount(actionId, args, records) : call(actionId, args, records));
+        // actions inside a field send the state of the form along (`$get()` in their closures)
+        const state = actionId.startsWith('field:') ? formState.current?.() : undefined;
+        void (mode === 'mount' ? mount(actionId, args, records, state) : call(actionId, args, records, state));
     }, [actionId, args, bulk, call, disabled, mode, mount, selection]);
 
     useEffect(() => {

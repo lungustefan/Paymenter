@@ -41,12 +41,15 @@ export function PageForm({
     target,
     actions,
     formId = 'form',
+    after,
 }: {
     initialState: Record<string, any>;
     schema: ReactNode;
     target: FormTarget;
     actions: FormFooterAction[];
     formId?: string;
+    /** more cells of the page's content grid (relation managers) */
+    after?: ReactNode;
 }) {
     const cell = (node: ReactNode, key: string) => <ContentCell key={key}>{node}</ContentCell>;
     return (
@@ -105,6 +108,7 @@ export function PageForm({
                     </ContentGrid>
                 </FormProvider>
             </ContentCell>
+            {after}
         </ContentGrid>
     );
 }
