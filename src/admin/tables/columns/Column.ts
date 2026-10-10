@@ -3,6 +3,7 @@ import { sql } from 'drizzle-orm';
 import { evaluate, type EvalContext, type Fn } from '../../core/evaluate';
 import type { Builder } from '@/server/orm';
 import type { Table } from '../Table';
+import { dbValue } from '../../core/attributes';
 
 export interface ColumnContext extends EvalContext {
     column: Column;
@@ -223,7 +224,7 @@ export abstract class Column {
     private async readSegment(item: any, segment: string): Promise<any> {
         if (item === null || item === undefined) return null;
         if (typeof item.relationDef === 'function' && item.relationDef(segment)) return item.rel(segment);
-        if (typeof item.getAttribute === 'function') return item.getAttribute(segment);
+        if (typeof item.getAttribute === 'function') return dbValue(item, segment, await item.getAttribute(segment));
         return item[segment];
     }
 

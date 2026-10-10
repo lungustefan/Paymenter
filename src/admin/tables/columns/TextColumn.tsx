@@ -10,7 +10,7 @@ import { CopyableText } from '../client';
 type Maybe<T> = T | null | undefined;
 
 /** PHP's string conversion of a value (`true` -> `1`, `false` / `null` -> ``) */
-export const phpString = (v: unknown): string => (v === null || v === undefined || v === false ? '' : v === true ? '1' : typeof v === 'object' ? JSON.stringify(v) : String(v));
+export const phpString = (v: unknown): string => (v === null || v === undefined || v === false ? '' : v === true ? '1' : v instanceof Carbon ? v.toDateTimeString() : v instanceof Date ? new Carbon(v).toDateTimeString() : typeof v === 'object' ? JSON.stringify(v) : String(v));
 
 const isBlank = (v: unknown) => v === null || v === undefined || (typeof v === 'string' && v.trim() === '') || (Array.isArray(v) && v.length === 0);
 

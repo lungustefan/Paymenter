@@ -11,6 +11,7 @@ import { trans } from '../../context';
 import type { AdminActionResult } from '../../protocol';
 import { Halt } from '../../actions/Action';
 import { relativeUrl } from '@/server/routes';
+import { attributesForForm } from '../../core/attributes';
 
 /** Port of Filament\Resources\Pages\EditRecord */
 export class EditRecord extends ResourcePage {
@@ -84,7 +85,7 @@ export class EditRecord extends ResourcePage {
         const schema = this.makeSchema();
         const rc = this.makeRc();
         await this.beforeFill();
-        const data = await this.mutateFormDataBeforeFill(this.record!.attributesToArray());
+        const data = await this.mutateFormDataBeforeFill(attributesForForm(this.record!));
         const state = await fillForm(schema, rc, data);
         await this.afterFill();
         const node = await schema.render(rc);
