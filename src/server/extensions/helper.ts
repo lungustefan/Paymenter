@@ -7,7 +7,7 @@ import { cacheGet, cachePut } from '@/server/cache';
 import { currentDb, transaction } from '@/server/orm';
 import { recordAudit } from '@/server/orm/audit';
 import type { Extension as ExtensionBase } from './Extension';
-import type { ConfigDefinition, ExtensionMeta, ExtensionRoute } from './types';
+import type { ConfigDefinition, ExtensionMeta, ExtensionPage, ExtensionRoute } from './types';
 import { Extension } from '@/server/models/Extension';
 import { Gateway } from '@/server/models/Gateway';
 import { Server } from '@/server/models/Server';
@@ -333,6 +333,7 @@ export class ExtensionHelper {
 
     /** Routes contributed by all booted extensions. */
     static routes: Array<ExtensionRoute & { extension: string }> = [];
+    static pages: Array<ExtensionPage & { extension: string }> = [];
 
     static async bootExtensions() {
         const rows = await Extension.query()
@@ -340,6 +341,7 @@ export class ExtensionHelper {
             .get();
         const seen = new Set<string>();
         this.routes = [];
+        this.pages = [];
         for (const row of rows) {
             if (seen.has(row.extension)) continue;
             seen.add(row.extension);
@@ -349,6 +351,10 @@ export class ExtensionHelper {
                 for (const r of instance.routes?.() ?? []) {
                     this.routes.push({ ...r, extension: row.extension });
                     if (r.name) (await import('@/server/routes')).registerRoute(r.name, r.path);
+                }
+                for (const p of instance.pages?.() ?? []) {
+                    this.pages.push({ ...p, extension: row.extension });
+                    if (p.name) (await import('@/server/routes')).registerRoute(p.name, p.path);
                 }
             } catch (e: any) {
                 if (!String(e?.message ?? '').endsWith('not found')) console.error(`[extension:${row.extension}] boot failed:`, e?.message ?? e);

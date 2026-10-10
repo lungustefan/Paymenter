@@ -1,4 +1,4 @@
-import type { ConfigDefinition, ExtensionMeta, ExtensionRoute } from './types';
+import type { ConfigDefinition, ExtensionMeta, ExtensionPage, ExtensionRoute } from './types';
 import type { Extension as ExtensionModel } from '@/server/models/Extension';
 
 /**
@@ -34,4 +34,6 @@ export class Extension {
 
     /** Routes registered by this extension (webhooks etc.) */
     routes?(): ExtensionRoute[];
+    /** Pages of the client area contributed by this extension */
+    pages?(): ExtensionPage[];
 }

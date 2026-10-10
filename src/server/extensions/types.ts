@@ -36,6 +36,22 @@ export interface ExtensionRouteContext {
     form: () => Promise<FormData>;
     text: () => Promise<string>;
     user: import('@/server/models/User').User | null;
+    /** `$request->all()`: query string merged with the JSON / form body */
+    all: () => Promise<Record<string, any>>;
+    ip: string | null;
+}
+
+/** A page contributed by an extension (rendered inside the theme's layout). */
+export interface ExtensionPage {
+    /** Laravel route name, e.g. `announcements.index` */
+    name?: string;
+    /** path like `/announcements/{slug}` */
+    path: string;
+    /** require an authenticated user */
+    auth?: boolean;
+    title?: string;
+    sidebar?: boolean;
+    render: (ctx: { params: Record<string, string>; searchParams: Record<string, string | string[] | undefined>; user: import('@/server/models/User').User | null }) => Promise<import('react').ReactNode> | import('react').ReactNode;
 }
 
 export type ConfigDefinition = SettingDefinition;
