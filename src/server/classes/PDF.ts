@@ -1,3 +1,4 @@
+import { decimalString } from '@/server/lib/php';
 import fs from 'node:fs';
 import path from 'node:path';
 import PDFDocument from 'pdfkit';
@@ -192,7 +193,7 @@ async function renderInvoice(invoice: Invoice): Promise<Buffer> {
     };
     if (Number(total.tax) > 0) {
         row(t('invoices.subtotal'), total.format(total.price - Number(total.tax)));
-        row(`${tax?.name} (${tax?.rate}%)`, total.formatted.tax);
+        row(`${tax?.name} (${decimalString(tax?.rate)}%)`, total.formatted.tax);
         row(t('invoices.total'), String(total), true, true);
     } else {
         row(t('invoices.total'), String(total), true, true);

@@ -6,7 +6,7 @@ import type { Extension as ExtensionModel } from '@/server/models/Extension';
  * `config(key)` returns the saved settings of this installed extension.
  */
 export class Extension {
-    static meta: ExtensionMeta;
+    static meta?: ExtensionMeta;
     /** views usable from `pay()` / `getView()`: name -> React component module key */
     static views: Record<string, any> = {};
 

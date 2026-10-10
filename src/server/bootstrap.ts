@@ -11,11 +11,16 @@ import { loadThemes } from './themes';
  * Application boot - what Laravel's service providers do once per process:
  * load settings, register listeners and jobs, boot enabled extensions.
  */
-const g = globalThis as unknown as { __paymenterBooted?: Promise<void> };
+/**
+ * Registries (event listeners, named routes, extension routes, jobs) are module state, and Next.js can
+ * load the same module more than once (instrumentation, route handlers and server actions are separate
+ * bundles), so every module instance boots itself the first time it is used.
+ */
+let booted: Promise<void> | null = null;
 
 export function boot(): Promise<void> {
-    if (!g.__paymenterBooted) {
-        g.__paymenterBooted = (async () => {
+    if (!booted) {
+        booted = (async () => {
             loadEnv();
             await loadThemes();
             await ensureSettings(true);
@@ -25,9 +30,12 @@ export function boot(): Promise<void> {
             } catch {
                 /* tables may not exist before the first migration */
             }
-        })();
+        })().catch((e) => {
+            booted = null;
+            throw e;
+        });
     }
-    return g.__paymenterBooted;
+    return booted;
 }
 
 export { ensureSettings };

@@ -1,3 +1,4 @@
+import { decimalString } from '@/server/lib/php';
 import { Cart as CartService } from '@/server/cart';
 import { setting } from '@/server/config';
 import { Settings } from '@/server/classes/Settings';
@@ -41,7 +42,7 @@ export default async function Cart() {
                           subtotal: total.format(total.subtotal),
                           tax: total.tax > 0 ? total.format(total.tax) : null,
                           taxName: (tax?.name as string) ?? '',
-                          taxRate: String(tax?.rate ?? ''),
+                          taxRate: decimalString(tax?.rate),
                           total: total.format(total.total),
                       }
                     : null
