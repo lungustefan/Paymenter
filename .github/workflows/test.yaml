@@ -45,6 +45,9 @@ jobs:
       - name: Install Dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Generate extension/theme registry
+        run: pnpm registry
+
       - name: Typecheck
         run: pnpm typecheck
 

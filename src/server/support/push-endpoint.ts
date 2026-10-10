@@ -19,6 +19,9 @@ export function isAllowedPushEndpoint(endpoint: string): boolean {
         return false;
     }
     if (u.protocol !== 'https:' || !u.hostname || u.username || u.password || u.port) return false;
+    // WHATWG URL drops the default port (":443"), PHP's parse_url() keeps it: look at the authority itself
+    const authority = /^[a-z][a-z0-9+.-]*:\/\/([^/?#]*)/i.exec(endpoint.trim())?.[1] ?? '';
+    if (/:\d*$/.test(authority.slice(authority.lastIndexOf('@') + 1).replace(/^\[.*\]/, ''))) return false;
     const host = u.hostname.toLowerCase().replace(/\.$/, '');
     for (const allowed of WHITELIST) {
         if (allowed === host) return true;
