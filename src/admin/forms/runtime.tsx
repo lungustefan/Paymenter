@@ -23,6 +23,8 @@ interface FormCtx {
     pending: boolean;
     /** options of a lazy select */
     options: (path: string, search?: string, values?: Array<string | number>) => Promise<NonNullable<AdminActionResult['options']>>;
+    /** a repeater action (add / clone / delete / move): runs on the server, which answers with the new state + schema */
+    mutate: (path: string, m: { op: 'add' | 'clone' | 'delete' | 'move' | 'moveUp' | 'moveDown'; key?: string; order?: string[]; afterItem?: string }) => Promise<void>;
 }
 
 const Ctx = createContext<FormCtx | null>(null);
@@ -106,6 +108,19 @@ export function FormProvider({
         [dispatch, mergePatches],
     );
 
+    const mutate = useCallback<FormCtx['mutate']>(
+        (path, m) =>
+            new Promise<void>((resolve) => {
+                startTransition(async () => {
+                    const result = await dispatch({ type: 'refresh', target: targetRef.current, state: structuredClone(stateRef.current), changed: null, mutate: { path, ...m } });
+                    mergePatches(result.patches, result.state);
+                    if (result.schema !== undefined) setNode(result.schema);
+                    resolve();
+                });
+            }),
+        [dispatch, mergePatches],
+    );
+
     const setValue = useCallback<FormCtx['setValue']>(
         (path, value, live) => {
             setState((s) => {
@@ -174,7 +189,7 @@ export function FormProvider({
     const formStateRef = useRef<{ current: (() => Record<string, any>) | null }>({ current: null });
     formStateRef.current.current = () => structuredClone(stateRef.current);
 
-    const ctx = useMemo<FormCtx>(() => ({ formId, state, errors, node, getValue: (p) => getPath(state, p), setValue, blur, submit, pending, options }), [formId, state, errors, node, setValue, blur, submit, pending, options]);
+    const ctx = useMemo<FormCtx>(() => ({ formId, state, errors, node, getValue: (p) => getPath(state, p), setValue, blur, submit, pending, options, mutate }), [formId, state, errors, node, setValue, blur, submit, pending, options, mutate]);
 
     return (
         <Ctx.Provider value={ctx}>

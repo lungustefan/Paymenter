@@ -39,7 +39,7 @@ async function run(host: Host, op: AdminOp): Promise<AdminActionResult> {
     try {
         switch (op.type) {
             case 'refresh':
-                return await refresh(host, op.target, op.state, op.changed);
+                return await refresh(host, op.target, op.state, op.changed, op.mutate);
             case 'submit':
                 return op.target.kind === 'form' ? await host.submitForm(op.target.id, op.state, op.target.args) : await submitAction(host, op.target, op.state);
             case 'mount':
@@ -81,12 +81,20 @@ async function recordsFor(ref: ActionRef, keys?: Array<string | number>) {
 }
 
 /** a live field changed: run `afterStateUpdated`, return the patches and the re-rendered schema */
-async function refresh(host: Host, target: FormTarget, state: Record<string, any>, changed: string | null): Promise<AdminActionResult> {
+async function refresh(host: Host, target: FormTarget, state: Record<string, any>, changed: string | null, mutate?: Extract<AdminOp, { type: 'refresh' }>['mutate']): Promise<AdminActionResult> {
     const { schema, rc } = await formFor(host, target, normalizeInput(state));
     const before = structuredClone(rc.state);
+    if (mutate) {
+        const found = await schema.findByStatePath(rc, mutate.path);
+        const repeater = found?.component as unknown as { mutate?: (rc: any, m: any) => Promise<void> } | undefined;
+        if (!found || !repeater?.mutate) return { ok: false };
+        await repeater.mutate(found.rc, mutate);
+        // the whole state of the form changed (an item went away), so it is replaced rather than patched
+        return { ok: true, state: structuredClone(rc.state), schema: await schema.render(rc) };
+    }
     if (changed) {
-        const component = await schema.findByStatePath(rc, changed);
-        if (component) await component.runAfterStateUpdated(rc);
+        const found = await schema.findByStatePath(rc, changed);
+        if (found) await found.component.runAfterStateUpdated(found.rc);
     }
     await schema.hydrateDefaults(rc, rc.state, true);
     return { ok: true, patches: diffState(before, rc.state), schema: await schema.render(rc) };
@@ -94,9 +102,10 @@ async function refresh(host: Host, target: FormTarget, state: Record<string, any
 
 async function options(host: Host, target: FormTarget, state: Record<string, any>, path: string, search?: string, values?: Array<string | number>): Promise<AdminActionResult> {
     const { schema, rc } = await formFor(host, target, normalizeInput(state));
-    const component = (await schema.findByStatePath(rc, path)) as unknown as Select | null;
-    if (!component || typeof (component as any).optionsFor !== 'function') return { ok: false };
-    return { ok: true, options: await component.optionsFor(rc, search, values) };
+    const found = await schema.findByStatePath(rc, path);
+    const component = found?.component as unknown as Select | undefined;
+    if (!found || !component || typeof (component as any).optionsFor !== 'function') return { ok: false };
+    return { ok: true, options: await component.optionsFor(found.rc, search, values) };
 }
 
 /* ---- actions ---- */

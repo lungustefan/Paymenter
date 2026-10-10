@@ -21,7 +21,7 @@ export type Alignment = 'start' | 'center' | 'end' | 'left' | 'right' | 'justify
 /** `str($name)->camel()->kebab()` used for the `fi-ta-cell-<name>` classes */
 export const kebabName = (name: string) =>
     name
-        .replace(/[.\s_-]+(.)?/g, (_m, c: string | undefined) => (c ? c.toUpperCase() : ''))
+        .replace(/[\s_-]+(.)?/g, (_m, c: string | undefined) => (c ? c.toUpperCase() : ''))
         .replace(/^(.)/, (c) => c.toLowerCase())
         .replace(/([a-z0-9])([A-Z])/g, '$1-$2')
         .toLowerCase();
