@@ -55,11 +55,12 @@ export abstract class Host {
         if (!m) return null;
         const form = await this.getForm('form', state);
         if (!form) return null;
-        const component: any = await form.schema.findByStatePath(form.rc, m[1]);
+        const found = await form.schema.findByStatePath(form.rc, m[1]);
+        const component: any = found?.component;
         const action = component?.inlineActions?.(m[2])?.find((a: Action) => a.getName() === m[3]);
-        if (!action) return null;
-        const ctx = { ...component.evalCtx(form.rc), action, record: form.rc.record, user: this.user, livewire: this, model: form.rc.model } as ActionContext;
-        return { action, ctx, rc: form.rc };
+        if (!found || !action) return null;
+        const ctx = { ...component.evalCtx(found.rc), action, record: found.rc.record, user: this.user, livewire: this, model: found.rc.model } as ActionContext;
+        return { action, ctx, rc: found.rc };
     }
 
     /** the form with this id (`form`) built around the given state */

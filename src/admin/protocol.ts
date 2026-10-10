@@ -6,7 +6,7 @@ export type FormTarget = { kind: 'form'; id: string; args?: Record<string, any> 
 
 export type AdminOp =
     /** `afterStateUpdated` + re-render of a form after a live field changed */
-    | { type: 'refresh'; target: FormTarget; state: Record<string, any>; changed: string | null }
+    | { type: 'refresh'; target: FormTarget; state: Record<string, any>; changed: string | null; mutate?: { path: string; op: 'add' | 'clone' | 'delete' | 'move' | 'moveUp' | 'moveDown'; key?: string; order?: string[]; afterItem?: string } }
     /** submit a form: validate + save (page form) or run the action (modal form) */
     | { type: 'submit'; target: FormTarget; state: Record<string, any> }
     /** mount an action: returns its modal */

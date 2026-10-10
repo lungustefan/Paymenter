@@ -184,7 +184,7 @@ export class Schema {
         return renderItems(rc, this._components, { columns: this._columns, extra: this._extra, inline: this._inline, alignment: this._alignment, gap: this._gap, dense: this._dense });
     }
 
-    async findByStatePath(rc: RenderContext, path: string): Promise<Component | null> {
+    async findByStatePath(rc: RenderContext, path: string): Promise<{ component: Component; rc: RenderContext } | null> {
         for (const c of this.getFlatComponents()) {
             const found = await c.findByStatePath(rc, path);
             if (found) return found;

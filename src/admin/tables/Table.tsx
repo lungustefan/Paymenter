@@ -11,6 +11,7 @@ import { parseTableState, type TableState } from './state';
 import { Icon } from '../ui/Icon';
 import { badgeClass, buttonClass, iconButtonClass } from '../ui/classes';
 import { cn } from '@themes/default/components/cn';
+import { plural } from '../core/Resource';
 import { GroupCheckbox, PageButton, PageCheckbox, PerPageSelect, RecordCheckbox, SearchInput, SelectionIndicator, SortButton, TableRoot, TableRow } from './client';
 import { ActionDropdown, ActionTrigger, ModalHost } from '../actions/client';
 import { renderFiltersForm, FiltersPanel, type BaseFilter } from './filters';
@@ -151,6 +152,9 @@ export class Table {
     query(fn: (q: Builder<any>) => void) { this._query = fn; return this; }
     modifyQueryUsing(fn: (q: Builder<any>) => Builder<any> | void) { this._modifyQuery = fn; return this; }
     heading(v: string) { this._heading = v; return this; }
+    /** `recordTitleAttribute('name')`: how a record is named in messages */
+    protected _recordTitleAttribute?: string;
+    recordTitleAttribute(v: string) { this._recordTitleAttribute = v; return this; }
     description(v: string) { this._description = v; return this; }
     emptyStateHeading(v: string) { this._emptyHeading = v; return this; }
     emptyStateDescription(v: string | null) { this._emptyDescription = v; return this; }
@@ -180,8 +184,17 @@ export class Table {
     getToolbarActions() { return this._toolbarActions; }
     getHeaderActions() { return this._headerActions; }
     getColumn(name: string) { return this._columns.find((c) => c.getName() === name); }
-    getModelLabel() { return this._modelLabel ?? this.resource?.getModelLabel() ?? ''; }
-    getPluralModelLabel() { return this._pluralModelLabel ?? this.resource?.getPluralModelLabel() ?? ''; }
+    /** the label of the model: the resource's, else the class name (`ServiceCancellation` -> `service cancellation`) */
+    getModelLabel() {
+        if (this._modelLabel) return this._modelLabel;
+        if (this.resource) return this.resource.getModelLabel();
+        return (this.model?.name ?? '').replace(/([a-z0-9])([A-Z])/g, '$1 $2').toLowerCase();
+    }
+    getPluralModelLabel() {
+        if (this._pluralModelLabel) return this._pluralModelLabel;
+        if (this.resource) return this.resource.getPluralModelLabel();
+        return plural(this.getModelLabel());
+    }
     isReorderable() { return !!this._reorder; }
     getReorderColumn() { return this._reorder?.column ?? null; }
     isSearchable() { return this._columns.some((c) => c.isGloballySearchable()); }
@@ -644,7 +657,7 @@ export class Table {
                                     <div className={cn('fi-ta-header', headerActions.length > 0 && !reordering && 'fi-ta-header-adaptive-actions-position')}>
                                         {(this._heading || this._description) && (
                                             <div>
-                                                {this._heading && <h3 className="fi-ta-header-heading">{this._heading}</h3>}
+                                                {this._heading && (this.ownerRecord ? <h2 className="fi-ta-header-heading">{this._heading}</h2> : <h3 className="fi-ta-header-heading">{this._heading}</h3>)}
                                                 {this._description && <p className="fi-ta-header-description">{this._description}</p>}
                                             </div>
                                         )}
@@ -678,7 +691,7 @@ export class Table {
                             <div role="status" aria-live="polite" aria-atomic="true" className="fi-sr-only">
                                 {transChoice('filament-tables::table.result_count', result.total, { count: result.total })}
                             </div>
-                            <table aria-label={pluralLabel} className="fi-ta-table">
+                            <table aria-label={this._heading ?? pluralLabel} className="fi-ta-table">
                                 <thead>
                                     <tr>
                                         {records.length > 0 &&

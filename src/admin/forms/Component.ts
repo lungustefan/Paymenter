@@ -174,8 +174,9 @@ export abstract class Component {
     hasAfterStateUpdated() { return this._afterStateUpdated.length > 0; }
 
     /** the component (this one or below it) that owns a state path */
-    async findByStatePath(rc: RenderContext, path: string): Promise<Component | null> {
-        if (this.hasStatePath() && this.getStatePath(rc) === path) return this;
+    /** the component (this one or below it) that owns a state path, with the render context it renders in */
+    async findByStatePath(rc: RenderContext, path: string): Promise<{ component: Component; rc: RenderContext } | null> {
+        if (this.hasStatePath() && this.getStatePath(rc) === path) return { component: this, rc };
         for (const child of await this.getChildren(rc)) {
             const found = await child.findByStatePath(rc, path);
             if (found) return found;
