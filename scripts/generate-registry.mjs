@@ -31,7 +31,7 @@ for (const typeDir of dirs(path.join(root, 'extensions'))) {
     for (const name of dirs(path.join(root, 'extensions', typeDir))) {
         const dir = path.join(root, 'extensions', typeDir, name);
         const entry = entryFiles(dir, ['index.ts', 'index.tsx', 'index.js']);
-        if (entry) extensions.push({ typeDir, type, name, middleware: !!entryFiles(dir, ['middleware.ts', 'middleware.tsx', 'middleware.js']) });
+        if (entry) extensions.push({ typeDir, type, name, middleware: !!entryFiles(dir, ['middleware.ts', 'middleware.tsx', 'middleware.js']), admin: !!entryFiles(dir, ['admin.ts', 'admin.tsx', 'admin.js']) });
     }
 }
 
@@ -50,6 +50,11 @@ const lines = [
     'export interface ExtensionEntry { type: string; name: string; dir: string; load: () => Promise<any>; }',
     'export const extensionRegistry: ExtensionEntry[] = [',
     ...extensions.map((e) => `    { type: ${JSON.stringify(e.type)}, name: ${JSON.stringify(e.name)}, dir: ${JSON.stringify(e.typeDir + '/' + e.name)}, load: () => import('@extensions/${e.typeDir}/${e.name}') },`),
+    '];',
+    '',
+    '/** extensions with an `admin` module: the resources / pages they add to the admin panel (Filament `discoverResources` of an enabled extension) */',
+    'export const adminRegistry: { type: string; name: string; load: () => Promise<any> }[] = [',
+    ...extensions.filter((e) => e.admin).map((e) => `    { type: ${JSON.stringify(e.type)}, name: ${JSON.stringify(e.name)}, load: () => import('@extensions/${e.typeDir}/${e.name}/admin') },`),
     '];',
     '',
     '/** extensions with a `middleware` module: it runs in the proxy (the Laravel `web` middleware stack) */',

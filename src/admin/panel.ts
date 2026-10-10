@@ -17,6 +17,11 @@ import { InvoiceCluster, InvoiceResource, InvoiceTransactionResource } from './r
 import { OrderResource } from './resources/OrderResource';
 import { TicketResource } from './resources/TicketResource';
 import { ActiveUsers, Overview, Revenue, Support } from './widgets/PanelWidgets';
+import { AuditResource } from './resources/AuditResource';
+import { Settings } from './pages/Settings';
+import { Updates } from './pages/Updates';
+import { Extension } from './pages/Extension';
+import { CronStats } from './pages/CronStats';
 import { TaxRateResource } from './resources/TaxRateResource';
 
 /** Everything the admin panel is made of (the contents of `app/Admin`). */
@@ -24,6 +29,6 @@ let registered = false;
 export function registerPanel() {
     if (registered) return;
     registered = true;
-    registerCore({ widgets: [Overview, Revenue, Support, ActiveUsers], pages: [Dashboard], clusters: [ExtensionsCluster, ServicesCluster, InvoiceCluster], resources: [UserResource, OrderResource, TicketResource, ServiceResource, ServiceCancellationResource, InvoiceResource, InvoiceTransactionResource, CategoryResource, ProductResource, ConfigOptionResource, CouponResource, NotificationTemplateResource, ExtensionResource, GatewayResource, ServerResource, ApiResource, CurrencyResource, CustomPropertyResource, EmailLogResource, ErrorLogResource, FailedJobResource, HttpLogResource, RoleResource, TaxRateResource] });
+    registerCore({ widgets: [Overview, Revenue, Support, ActiveUsers], pages: [Dashboard, Extension, Settings, Updates, CronStats], clusters: [ExtensionsCluster, ServicesCluster, InvoiceCluster], resources: [AuditResource, UserResource, OrderResource, TicketResource, ServiceResource, ServiceCancellationResource, InvoiceResource, InvoiceTransactionResource, CategoryResource, ProductResource, ConfigOptionResource, CouponResource, NotificationTemplateResource, ExtensionResource, GatewayResource, ServerResource, ApiResource, CurrencyResource, CustomPropertyResource, EmailLogResource, ErrorLogResource, FailedJobResource, HttpLogResource, RoleResource, TaxRateResource] });
 }
 registerPanel();

@@ -65,6 +65,9 @@ importers:
       email-reply-parser:
         specifier: ^2.3.9
         version: 2.3.9
+      fflate:
+        specifier: ^0.8.3
+        version: 0.8.3
       filepond:
         specifier: ^4.32.12
         version: 4.32.12

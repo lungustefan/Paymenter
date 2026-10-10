@@ -77,10 +77,6 @@ async function navigable<T extends { shouldRegisterNavigation(): boolean | Promi
 /** Items of a cluster's sub navigation (the resources and pages inside it). */
 export async function clusterNavigation(cluster: typeof Cluster, user: User | null, currentPath: string): Promise<NavigationItemInfo[]> {
     const items: NavigationItemInfo[] = [];
-    for (const page of await navigable(panelPages().filter((p) => p.cluster === cluster))) {
-        if (!(await page.canAccess(user))) continue;
-        items.push({ label: page.getNavigationLabel(), url: page.getUrl(), icon: page.navigationIcon, activeIcon: page.activeNavigationIcon ?? page.navigationIcon, group: null, sort: page.navigationSort, isActive: currentPath === page.getUrl() || currentPath.startsWith(page.getUrl() + '/'), cluster: cluster.slug });
-    }
     for (const resource of await navigable(panelResources().filter((r) => r.cluster === cluster))) {
         if (!(await resource.canAccess(user))) continue;
         const base = resource.basePath();
@@ -96,6 +92,10 @@ export async function clusterNavigation(cluster: typeof Cluster, user: User | nu
             isActive: currentPath === base || currentPath.startsWith(base + '/'),
             cluster: cluster.slug,
         });
+    }
+    for (const page of await navigable(panelPages().filter((p) => p.cluster === cluster))) {
+        if (!(await page.canAccess(user))) continue;
+        items.push({ label: page.getNavigationLabel(), url: page.getUrl(), icon: page.navigationIcon, activeIcon: page.activeNavigationIcon ?? page.navigationIcon, group: null, sort: page.navigationSort, isActive: currentPath === page.getUrl() || currentPath.startsWith(page.getUrl() + '/'), cluster: cluster.slug });
     }
     return stableSort(items);
 }

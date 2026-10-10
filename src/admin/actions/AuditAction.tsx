@@ -7,7 +7,7 @@ import { Icon } from '../ui/Icon';
 const classBasename = (type: string) => type.split('\\').pop() ?? type;
 
 /** owen-it `Audit::getModified()`: `{ attribute: { old, new } }` */
-function getModified(audit: Audit) {
+export function getModified(audit: Audit) {
     const modified: Record<string, { old?: unknown; new?: unknown }> = {};
     for (const state of ['old', 'new'] as const) {
         const values = state === 'old' ? audit.oldValues : audit.newValues;
