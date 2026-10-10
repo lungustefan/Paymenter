@@ -3,7 +3,7 @@ import { ResourcePage } from './ResourcePage';
 import { ContentCell, ContentGrid } from './formPage';
 import { Table } from '../../tables/Table';
 import { CreateAction, DeleteAction, EditAction, ViewAction } from '../../actions/builtin';
-import { Action, ActionGroup } from '../../actions/Action';
+import { Action, ActionGroup, findByName } from '../../actions/Action';
 import { trans } from '../../context';
 
 /** Port of Filament\Resources\Pages\ListRecords */
@@ -38,17 +38,25 @@ export class ListRecords extends ResourcePage {
             table.user = this.user;
             table.model = this.resource.model;
             table.resource = this.resource;
-            // the default record URL: the edit page (or the view page)
-            const pages = this.resource.getPages();
-            const hasUrl = pages.edit || pages.view;
-            if (hasUrl) {
-                table.recordUrl(async (record: any) => {
-                    const resource = this.resource;
-                    if (resource.hasPage('view') && (await resource.canView(this.user, record))) return resource.getUrl('view', { record });
-                    if (resource.hasPage('edit') && (await resource.canEdit(this.user, record))) return resource.getUrl('edit', { record });
-                    return null;
-                });
-            }
+            // the default record URL: the view / edit action of the table, else the resource's view / edit page
+            table.recordUrl(async (record: any) => {
+                const resource = this.resource;
+                const t = this.tableCache!;
+                for (const name of ['view', 'edit']) {
+                    const action = findByName(t.getRecordActions(), name);
+                    if (!action) continue;
+                    const ctx = t.recordActionContext(action, record);
+                    if (!(await action.isVisible(ctx))) continue;
+                    const url = await action.getUrl(ctx);
+                    if (url) return url;
+                }
+                for (const name of ['view', 'edit'] as const) {
+                    if (!resource.hasPage(name)) continue;
+                    if (!(await (name === 'view' ? resource.canView(this.user, record) : resource.canEdit(this.user, record)))) continue;
+                    return resource.getUrl(name, { record });
+                }
+                return null;
+            });
             this.tableCache = this.configureTable(this.resource.table(table));
             for (const list of [this.tableCache.getRecordActions(), this.tableCache.getToolbarActions(), this.tableCache.getHeaderActions()]) this.configureTableActions(list);
         }

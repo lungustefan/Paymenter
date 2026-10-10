@@ -51,6 +51,8 @@ export async function renderItems(rc: RenderContext, items: SchemaItem[], option
         const key = item instanceof Component ? (item.getKey() ?? `c${index}`) : `a${index}`;
         index++;
         if (item instanceof Component) {
+            // layouts without columns of their own take the ones of the grid they sit in (`getAllColumns()`)
+            if ('containerColumns' in item) (item as any).containerColumns = resolveColumns(options.columns as any);
             cells.push(
                 <SchemaCell key={key} component={item} visible={visible} inline={options.inline}>
                     {visible ? await item.render(rc) : null}
@@ -166,15 +168,15 @@ export class Schema {
     }
 
     /** every field below this schema, depth first (layouts included) */
-    getAllComponents(): Component[] {
+    async getAllComponents(rc: RenderContext): Promise<Component[]> {
         const out: Component[] = [];
-        const walk = (list: Component[]) => {
+        const walk = async (list: Component[]) => {
             for (const c of list) {
                 out.push(c);
-                walk(c.getChildComponents());
+                await walk(await c.getChildren(rc));
             }
         };
-        walk(this.getFlatComponents());
+        await walk(this.getFlatComponents());
         return out;
     }
 
@@ -182,9 +184,9 @@ export class Schema {
         return renderItems(rc, this._components, { columns: this._columns, extra: this._extra, inline: this._inline, alignment: this._alignment, gap: this._gap, dense: this._dense });
     }
 
-    findByStatePath(rc: RenderContext, path: string): Component | null {
+    async findByStatePath(rc: RenderContext, path: string): Promise<Component | null> {
         for (const c of this.getFlatComponents()) {
-            const found = c.findByStatePath(rc, path);
+            const found = await c.findByStatePath(rc, path);
             if (found) return found;
         }
         return null;

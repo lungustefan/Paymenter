@@ -33,7 +33,7 @@ export type ColumnSpan = number | 'full' | Record<string, number | 'full' | null
  */
 export abstract class Component {
     key: string | null = null;
-    protected _label?: Fn<string | null>;
+    protected _label?: Fn<string | null | false>;
     protected _hiddenLabel = false;
     protected _visible: Fn<boolean> = true;
     protected _hidden: Fn<boolean> = false;
@@ -64,7 +64,7 @@ export abstract class Component {
     }
 
     /* ---- fluent configuration shared by all components ---- */
-    label(v: Fn<string | null>) { this._label = v; return this; }
+    label(v: Fn<string | null | false>) { this._label = v; return this; }
     hiddenLabel(v = true) { this._hiddenLabel = v; return this; }
     visible(v: Fn<boolean>) { this._visible = v; return this; }
     hidden(v: Fn<boolean>) { this._hidden = v; return this; }
@@ -145,7 +145,8 @@ export abstract class Component {
 
     async getLabel(rc: RenderContext): Promise<string | null> {
         const label = await this.ev(this._label, rc);
-        if (label !== undefined) return label;
+        // `label(false)` falls back to the headline of the field name, like the original does
+        if (label !== undefined && label !== false) return label;
         return this.defaultLabel();
     }
 
@@ -170,17 +171,24 @@ export abstract class Component {
     hasAfterStateUpdated() { return this._afterStateUpdated.length > 0; }
 
     /** the component (this one or below it) that owns a state path */
-    findByStatePath(rc: RenderContext, path: string): Component | null {
+    async findByStatePath(rc: RenderContext, path: string): Promise<Component | null> {
         if (this.hasStatePath() && this.getStatePath(rc) === path) return this;
-        for (const child of this.getChildComponents()) {
-            const found = child.findByStatePath(rc, path);
+        for (const child of await this.getChildren(rc)) {
+            const found = await child.findByStatePath(rc, path);
             if (found) return found;
         }
         return null;
     }
 
-    /** child components (layout components) */
+    /** static child components (layout components) */
     getChildComponents(): Component[] { return []; }
+
+    /** the children for a render: closures of a layout (`schema(fn ($get) => [...])`) are evaluated here */
+    async getChildren(_rc: RenderContext): Promise<Component[]> {
+        const list = this.getChildComponents();
+        for (const c of list) c.parent = this;
+        return list;
+    }
 
     /** `afterStateUpdated` closures */
     async runAfterStateUpdated(rc: RenderContext): Promise<void> {
@@ -192,23 +200,23 @@ export abstract class Component {
 
     /** default state of this component (and its children) written into `state` */
     async hydrateDefaults(rc: RenderContext, state: Record<string, any>, applyDefaults = true): Promise<void> {
-        for (const child of this.getChildComponents()) await child.hydrateDefaults(rc, state, applyDefaults);
+        for (const child of await this.getChildren(rc)) await child.hydrateDefaults(rc, state, applyDefaults);
     }
 
     /** `loadStateFromRelationships()`: to-many relationship fields read their ids from the record */
     async loadRelationshipState(rc: RenderContext, record: any, state: Record<string, any>): Promise<void> {
-        for (const child of this.getChildComponents()) await child.loadRelationshipState(rc, record, state);
+        for (const child of await this.getChildren(rc)) await child.loadRelationshipState(rc, record, state);
     }
 
     /** `saveRelationships()`: after the record was saved */
     async saveRelationships(rc: RenderContext, record: any, data: Record<string, any>): Promise<void> {
-        for (const child of this.getChildComponents()) await child.saveRelationships(rc, record, data);
+        for (const child of await this.getChildren(rc)) await child.saveRelationships(rc, record, data);
     }
 
     /** collect validation rules of this component and its children: `statePath -> rules` */
     async collectRules(rc: RenderContext, rules: Record<string, any[]>, attributes: Record<string, string>): Promise<void> {
         if (!(await this.isVisible(rc))) return;
-        for (const child of this.getChildComponents()) await child.collectRules(rc, rules, attributes);
+        for (const child of await this.getChildren(rc)) await child.collectRules(rc, rules, attributes);
     }
 
     /** `dehydrateState`: write this component's value into the output (only when dehydrated) */
@@ -222,7 +230,7 @@ export abstract class Component {
             if (value !== undefined || path) setPath(out, path, value);
             if (this._mutateDehydratedStateUsing) setPath(out, path, await this._mutateDehydratedStateUsing(this.evalCtx(rc, { state: getPath(out, path) })));
         }
-        for (const child of this.getChildComponents()) await child.dehydrate(rc, out);
+        for (const child of await this.getChildren(rc)) await child.dehydrate(rc, out);
     }
 
     abstract render(rc: RenderContext): Promise<ReactNode>;

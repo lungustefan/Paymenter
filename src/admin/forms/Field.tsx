@@ -160,8 +160,8 @@ export abstract class Field extends Component {
     protected _htmlHelper = false;
     protected _formatStateUsing?: (ctx: any) => any;
 
-    static make(name?: string): any {
-        return new (this as any)(name);
+    static make<T extends Field>(this: new (key?: string | null) => T, name?: string): T {
+        return new this(name);
     }
 
     override hasStatePath() {
@@ -169,6 +169,8 @@ export abstract class Field extends Component {
     }
 
     required(v: Fn<boolean> = true) { this._required = v; return this; }
+    /** `nullable()`: every optional field is validated as `nullable` already */
+    nullable(_v: Fn<boolean> = true) { return this; }
     markAsRequired(v: Fn<boolean>) { this._markAsRequired = v; return this; }
     helperText(v: Fn<FieldText | null>) { this._helperText = v; return this; }
     hint(v: Fn<FieldText | null>) { this._hint = v; return this; }
@@ -204,7 +206,7 @@ export abstract class Field extends Component {
         void modifyRule;
         this._rules.push(
             new RuleFactory((rc) => {
-                const t = tableName(table);
+                const t = tableName(table ?? rc.model ?? rc.record?.ctor);
                 const col = column ?? this.getName();
                 let rule = `unique:${t},${col}`;
                 const ignore = ignorable ?? (ignoreRecord ? rc.record : null);

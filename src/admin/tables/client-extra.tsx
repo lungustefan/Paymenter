@@ -19,8 +19,11 @@ export function TableHeaderCtn({ mode, children }: { mode: 'visible' | 'selectio
 
 export function ToolbarWrapper({ mode, children }: { mode: 'visible' | 'selection' | 'hidden'; children: ReactNode }) {
     const t = useTable();
-    if (mode === 'selection' && t.selected.length === 0) return <div style={{ display: 'none' }}>{children}</div>;
-    return <>{children}</>;
+    return (
+        <div className="fi-ta-header-toolbar" style={mode === 'selection' && t.selected.length === 0 ? { display: 'none' } : undefined}>
+            {children}
+        </div>
+    );
 }
 
 /** enable / disable reordering (`?reordering=1`) */
