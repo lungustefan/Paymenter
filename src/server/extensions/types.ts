@@ -9,12 +9,11 @@ export interface ExtensionMeta {
     icon?: string;
 }
 
-/** What `pay()` / `getView()` may return: a registered view, raw HTML, or a redirect. */
-export type ExtensionView =
-    | string
-    | { view: string; props?: Record<string, unknown> }
-    | { redirect: string }
-    | { html: string };
+/**
+ * What `pay()` / `getView()` may return: a React node (rendered in the payment modal / service page),
+ * `{ html }` for pre-rendered markup, or a redirect (a plain string is a redirect URL for gateways).
+ */
+export type ExtensionView = import('react').ReactNode | { redirect: string } | { html: string };
 
 /** A route contributed by an extension (webhooks, callbacks, extra pages). */
 export interface ExtensionRoute {

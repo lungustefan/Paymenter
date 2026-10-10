@@ -15,6 +15,7 @@ const module: ThemeModule = {
         'products.checkout': () => import('./views/products/Checkout'),
         'services.show': () => import('./views/services/Show'),
         'services.upgrade': () => import('./views/services/Upgrade'),
+        'invoices.show': () => import('./views/invoices/Show'),
         dashboard: () => import('./views/Dashboard'),
         'services.index': () => import('./views/ServicesIndex'),
         'invoices.index': () => import('./views/InvoicesIndex'),
