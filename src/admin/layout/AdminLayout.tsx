@@ -9,6 +9,7 @@ import { Icon } from '../ui/Icon';
 import { colorClass } from '../ui/colors';
 import { SidebarGroup, SidebarLink, SidebarOverlay, SidebarPanel, SidebarRoot, SidebarToggleButtons, UserMenu } from './client';
 import { GlobalSearch } from './GlobalSearch';
+import { touchClientRefs } from '../clientRefs';
 
 /** `<x-filament-panels::logo>` */
 function Logo() {
@@ -118,6 +119,7 @@ function AdminFooter() {
 
 /** The panel chrome of Filament's `layout.index`: topbar, sidebar and the main container. */
 export async function AdminLayout({ user, path, children }: { user: User; path: string; children: ReactNode }) {
+    touchClientRefs();
     const groups: NavigationGroup[] = await buildNavigation(user, path);
     const name = await user.name();
 

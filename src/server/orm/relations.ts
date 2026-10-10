@@ -18,6 +18,8 @@ export interface RelationDef {
     query(parent: Model<any>): RelationBuilder<any>;
     /** Correlated subquery used by has()/whereHas(). */
     exists(parentCtor: ModelCtor<any>, callback?: (q: Builder<any>) => void): { select: SQL };
+    /** `(select related.column from related where <link> limit 1)` - for ordering by a related column */
+    columnSubquery?(parentCtor: ModelCtor<any>, column: string): SQL;
     /** True when the relation yields a single model (or null). */
     single: boolean;
 }
@@ -111,6 +113,10 @@ class BelongsTo extends BaseRelation {
         const link = sql`${rel.table}.${sql.identifier(this.owner())} = ${parentCtor.table}.${sql.identifier(this.foreignKey)}`;
         return this.correlated(parentCtor, b, link);
     }
+    columnSubquery(parentCtor: ModelCtor<any>, column: string) {
+        const rel = this.related();
+        return sql`(select ${rel.table}.${sql.identifier(column)} from ${rel.table} where ${rel.table}.${sql.identifier(this.owner())} = ${parentCtor.table}.${sql.identifier(this.foreignKey)} limit 1)`;
+    }
 }
 
 class HasOneOrMany extends BaseRelation {
@@ -150,6 +156,10 @@ class HasOneOrMany extends BaseRelation {
         const rel = this.related();
         const link = sql`${rel.table}.${sql.identifier(this.foreignKey)} = ${parentCtor.table}.${sql.identifier(this.local(parentCtor))}`;
         return this.correlated(parentCtor, b, link);
+    }
+    columnSubquery(parentCtor: ModelCtor<any>, column: string) {
+        const rel = this.related();
+        return sql`(select ${rel.table}.${sql.identifier(column)} from ${rel.table} where ${rel.table}.${sql.identifier(this.foreignKey)} = ${parentCtor.table}.${sql.identifier(this.local(parentCtor))} limit 1)`;
     }
 }
 

@@ -1,0 +1,7 @@
+{
+    "actions": {
+        "delete": {
+            "label": "Usuń"
+        }
+    }
+}

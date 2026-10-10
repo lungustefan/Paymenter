@@ -9,8 +9,9 @@ export type IconSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl';
  * Filament's icon helper: `heroicon-o-trash`, `heroicon-m-plus`, ... and `ri-*` (Remix) names
  * rendered as `<svg class="fi-icon fi-size-md">`.
  */
-export function Icon({ icon, size = 'md', className, ...rest }: { icon: string; size?: IconSize | null } & Omit<SVGProps<SVGSVGElement>, 'ref'>) {
+export function Icon({ icon: iconName, size = 'md', className, ...rest }: { icon: string; size?: IconSize | null } & Omit<SVGProps<SVGSVGElement>, 'ref'>) {
     const classes = cn(className, 'fi-icon', size && `fi-size-${size}`);
+    const icon = resolveIcon(iconName, size);
     if (icon.startsWith('ri-')) {
         const inner = remixIcons[icon.replace(/^ri-/, '')] ?? '';
         return <svg className={classes} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" data-slot="icon" {...rest} dangerouslySetInnerHTML={{ __html: inner }} />;
@@ -31,6 +32,18 @@ export function Icon({ icon, size = 'md', className, ...rest }: { icon: string; 
             dangerouslySetInnerHTML={{ __html: data.inner }}
         />
     );
+}
+
+/**
+ * `Heroicon::PencilSquare` is written `heroicon:pencil-square`: the variant follows the size of the icon
+ * (micro below medium, mini at medium, solid above) like `Heroicon::getIconForSize()`.
+ */
+export function resolveIcon(icon: string, size: IconSize | null | undefined): string {
+    if (!icon.startsWith('heroicon:')) return icon;
+    const name = icon.slice('heroicon:'.length);
+    if (size === 'xs' || size === 'sm') return `heroicon-c-${name}`;
+    if (size === 'lg' || size === 'xl' || size === '2xl') return `heroicon-s-${name}`;
+    return `heroicon-m-${name}`;
 }
 
 /** `generate_loading_indicator_html()` */

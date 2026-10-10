@@ -33,18 +33,27 @@ function loadGroup(namespaceDir: string, cacheKey: string, locale: string): Reco
     if (groups) return groups;
     groups = {};
     const dir = path.join(namespaceDir, locale);
-    try {
-        for (const file of fs.readdirSync(dir)) {
-            if (!file.endsWith('.json')) continue;
-            try {
-                groups[file.replace(/\.json$/, '')] = JSON.parse(fs.readFileSync(path.join(dir, file), 'utf8'));
-            } catch {
-                /* ignore broken file */
+    // `group/sub` files live in sub folders (`filament-panels::auth/login.title`)
+    const walk = (current: string, prefix: string) => {
+        let entries: fs.Dirent[] = [];
+        try {
+            entries = fs.readdirSync(current, { withFileTypes: true });
+        } catch {
+            /* locale does not exist */
+            return;
+        }
+        for (const entry of entries) {
+            if (entry.isDirectory()) walk(path.join(current, entry.name), `${prefix}${entry.name}/`);
+            else if (entry.name.endsWith('.json')) {
+                try {
+                    groups![prefix + entry.name.replace(/\.json$/, '')] = JSON.parse(fs.readFileSync(path.join(current, entry.name), 'utf8'));
+                } catch {
+                    /* ignore broken file */
+                }
             }
         }
-    } catch {
-        /* locale does not exist */
-    }
+    };
+    walk(dir, '');
     cache.set(key, groups);
     return groups;
 }
@@ -67,7 +76,7 @@ export function availableLanguages(): string[] {
     try {
         const dirs = fs
             .readdirSync(langPath(), { withFileTypes: true })
-            .filter((d) => d.isDirectory())
+            .filter((d) => d.isDirectory() && d.name !== 'vendor')
             .map((d) => d.name)
             .sort();
         return dirs.length ? dirs : ['en'];

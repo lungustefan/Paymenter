@@ -24,7 +24,10 @@ function scan(dir) {
         const p = path.join(dir, e.name);
         if (e.isDirectory()) scan(p);
         else if (/\.(tsx?|jsx?|json)$/.test(e.name) && !p.endsWith('heroicons.ts')) {
-            for (const m of fs.readFileSync(p, 'utf8').matchAll(/\bheroicon-([osmc])-([a-z0-9]+(?:-[a-z0-9]+)*)/g)) names.add(`heroicon-${m[1]}-${m[2]}`);
+            const text = fs.readFileSync(p, 'utf8');
+            for (const m of text.matchAll(/\bheroicon-([osmc])-([a-z0-9]+(?:-[a-z0-9]+)*)/g)) names.add(`heroicon-${m[1]}-${m[2]}`);
+            // `heroicon:name` is a size dependent icon (Filament's \`Heroicon::Name\` enum): micro, mini and solid are needed
+            for (const m of text.matchAll(/['"`]heroicon:([a-z0-9]+(?:-[a-z0-9]+)*)['"`]/g)) for (const style of ['c', 'm', 's']) names.add(`heroicon-${style}-${m[1]}`);
         }
     }
 }

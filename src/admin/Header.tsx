@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { Icon } from './ui/Icon';
+import { ModalHost } from './actions/client';
 
 export interface Breadcrumb {
     label: string;
@@ -37,7 +38,7 @@ export function Breadcrumbs({ items }: { items: Breadcrumb[] }) {
 }
 
 /** `filament-panels::page.header` + the page wrapper */
-export function PageFrame({ classes, breadcrumbs, heading, subheading, actions, children }: { classes: string; breadcrumbs?: Breadcrumb[] | null; heading: ReactNode; subheading?: ReactNode; actions?: ReactNode; children: ReactNode }) {
+export function PageFrame({ classes, breadcrumbs, heading, subheading, actions, modalHost = true, children }: { classes: string; breadcrumbs?: Breadcrumb[] | null; heading: ReactNode; subheading?: ReactNode; actions?: ReactNode; modalHost?: boolean; children: ReactNode }) {
     const hasCrumbs = !!breadcrumbs && breadcrumbs.length > 0;
     return (
         <div className={`fi-page ${classes}`}>
@@ -54,6 +55,7 @@ export function PageFrame({ classes, breadcrumbs, heading, subheading, actions, 
                     <div className="fi-page-content">{children}</div>
                 </div>
             </div>
+            {modalHost && <ModalHost />}
         </div>
     );
 }

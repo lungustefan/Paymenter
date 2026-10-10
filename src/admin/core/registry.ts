@@ -17,9 +17,18 @@ const registry: PanelRegistry = { pages: [], clusters: [], resources: [], widget
 /** what extensions contributed (replaced when extensions are booted again) */
 const fromExtensions = new Map<string, Partial<PanelRegistry>>();
 
+/** two registrations of the same thing (a hot reloaded module re-registers itself): same kind of entry, same URL */
+const sameEntry = (a: any, b: any) => a === b || (a.slug !== undefined && a.slug === b.slug && (a.cluster?.slug ?? null) === (b.cluster?.slug ?? null));
+
+function upsert(list: any[], entry: any) {
+    const index = list.findIndex((e) => sameEntry(e, entry));
+    if (index === -1) list.push(entry);
+    else list[index] = entry;
+}
+
 export function registerCore(entries: Partial<PanelRegistry>) {
     for (const key of ['pages', 'clusters', 'resources', 'widgets'] as const) {
-        for (const e of entries[key] ?? []) if (!(registry[key] as any[]).includes(e)) (registry[key] as any[]).push(e);
+        for (const e of entries[key] ?? []) upsert(registry[key] as any[], e);
     }
 }
 

@@ -112,6 +112,23 @@ export abstract class Resource {
         return this.navigationLabel ?? titleCase(this.getPluralModelLabel());
     }
 
+    static getTitleCaseModelLabel(): string {
+        return titleCase(this.getModelLabel());
+    }
+
+    static getTitleCasePluralModelLabel(): string {
+        return titleCase(this.getPluralModelLabel());
+    }
+
+    /** the breadcrumb of the resource's index page */
+    static getBreadcrumb(): string {
+        return this.getTitleCasePluralModelLabel();
+    }
+
+    static hasPage(name: string): boolean {
+        return name in this.getPages();
+    }
+
     /** `getRecordTitle($record)` */
     static getRecordTitle(record: Model<any> | null): string {
         if (!record) return titleCase(this.getModelLabel());
