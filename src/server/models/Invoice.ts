@@ -33,6 +33,7 @@ export class Invoice extends Model<InvoiceRelations> {
     static STATUS_CANCELLED = 'cancelled';
 
     static table = invoices;
+    static casts = { due_at: 'date' };
     static morphName = 'App\\Models\\Invoice';
     static fillable = ['number', 'user_id', 'currency_code', 'due_at', 'status'];
     static auditable = true;

@@ -671,8 +671,8 @@ export class Model<R extends Record<string, any> = Record<string, any>> {
         return (this as any)[name];
     }
 
-    /** Array/JSON form following Eloquent's serialization rules. */
-    async toArray(): Promise<Record<string, any>> {
+    /** Column values in their JSON form (dates as ISO strings, decimals as strings), like Eloquent's `attributesToArray()`. */
+    attributesToArray(): Record<string, any> {
         const C = this.ctor;
         const out: Record<string, any> = {};
         const columns = getTableColumns(C.table) as Record<string, MySqlColumn>;
@@ -686,12 +686,19 @@ export class Model<R extends Record<string, any> = Record<string, any>> {
                 v = isTimestampColumn(name) || cast === 'datetime' || cast === 'date' ? v.toJSON() : v.toDateTimeString();
             } else if (typeof v === 'boolean' && cast !== 'boolean') {
                 v = v ? 1 : 0;
-            } else if (ctype === 'MySqlDecimal' && v !== null && cast !== 'float') {
+            } else if (ctype.startsWith('MySqlDecimal') && v !== null && cast !== 'float') {
                 const scale = (column as any).scale ?? 2;
                 v = Number(v).toFixed(scale);
             }
             out[name] = v;
         }
+        return out;
+    }
+
+    /** Array/JSON form following Eloquent's serialization rules. */
+    async toArray(): Promise<Record<string, any>> {
+        const C = this.ctor;
+        const out = this.attributesToArray();
         for (const [name, value] of Object.entries(this.$relations)) {
             if (C.hidden.includes(name)) continue;
             out[toSnake(name)] = Array.isArray(value)

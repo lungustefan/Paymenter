@@ -13,6 +13,7 @@ const LAST_ACTIVITY_UPDATE = 60;
 
 export class UserSession extends Model<{ user: User }> {
     static table = userSessions;
+    static casts = { last_activity: 'datetime', expires_at: 'datetime' };
     static morphName = 'App\\Models\\UserSession';
     static timestamps = false;
     static fillable = ['user_id', 'ip_address', 'user_agent', 'last_activity', 'expires_at'];

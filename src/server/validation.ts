@@ -349,7 +349,9 @@ export async function validate<T extends Record<string, any> = Record<string, an
                     case 'before_or_equal': {
                         const other = getPath(data, params[0]) ?? params[0];
                         const a = new Date(value).getTime();
-                        const b = new Date(other).getTime();
+                        const startOfToday = new Date(new Date().setHours(0, 0, 0, 0));
+                        const relative: Record<string, number> = { today: startOfToday.getTime(), now: Date.now(), tomorrow: startOfToday.getTime() + 86400000, yesterday: startOfToday.getTime() - 86400000 };
+                        const b = other in relative ? relative[other as string] : new Date(other).getTime();
                         const ok = name === 'after' ? a > b : name === 'after_or_equal' ? a >= b : name === 'before' ? a < b : a <= b;
                         if (!ok) fail(message(attr, name, { date: String(other) }));
                         break;
