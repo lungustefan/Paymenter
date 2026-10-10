@@ -10,6 +10,10 @@ const module: ThemeModule = {
     AppLayout,
     views: {
         home: () => import('./views/Home'),
+        'products.index': () => import('./views/products/Index'),
+        'products.show': () => import('./views/products/Show'),
+        'products.checkout': () => import('./views/products/Checkout'),
+        cart: () => import('./views/Cart'),
         'auth.login': () => import('./views/auth/Login'),
         'auth.register': () => import('./views/auth/Register'),
         'auth.2fa': () => import('./views/auth/Tfa'),
