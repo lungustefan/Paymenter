@@ -6,7 +6,7 @@ import { initRequest } from '@/server/page';
 import { Cart } from '@/server/cart';
 import { findCategory } from '@/server/pages/products';
 import { computePricing, getCheckoutConfigFields, pricingView, type PricingView } from '@/server/pages/checkout';
-import { validate } from '@/server/validation';
+import { validate, type Rule } from '@/server/validation';
 import { route, relativeUrl } from '@/server/routes';
 import type { Product } from '@/server/models/Product';
 
@@ -57,7 +57,7 @@ export async function addToCartAction(input: CheckoutInput): Promise<ActionResul
         }
         for (const config of checkoutFields) {
             attributes[`checkoutConfig.${config.name}`] = config.label ?? config.name;
-            const r: string[] = [];
+            const r: Rule[] = [];
             if (config.required) r.push('required');
             switch (config.type) {
                 case 'text':
@@ -72,7 +72,7 @@ export async function addToCartAction(input: CheckoutInput): Promise<ActionResul
                     r.push('nullable', 'boolean');
                     break;
             }
-            if (config.validation) r.push(...(Array.isArray(config.validation) ? config.validation : String(config.validation).split('|')));
+            if (config.validation) r.push(...(Array.isArray(config.validation) ? config.validation : typeof config.validation === 'function' ? [config.validation] : String(config.validation).split('|')));
             if (r.length) rules[`checkoutConfig.${config.name}`] = r;
         }
         await validate({ plan_id: input.planId, configOptions: input.configOptions, checkoutConfig: input.checkoutConfig }, rules, { locale, attributes });
