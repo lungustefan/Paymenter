@@ -302,6 +302,33 @@ register('worker', 'Run the queue worker and the scheduler in one process (used 
     process.exit(0);
 });
 
+register('app:import-from-whmcs', 'Import data from a WHMCS database (usage: <dbname> [username] [host] [port])', async (args) => {
+    const required = async (question: string, hidden = false) => {
+        for (;;) {
+            const v = await ask(question, hidden);
+            if (v !== '') return v;
+            console.log('Required.');
+        }
+    };
+    const { importFromWhmcs, ImportFailedException } = await import('@/server/commands/import-from-whmcs');
+    try {
+        await importFromWhmcs(
+            { dbname: args[0], username: args[1], host: args[2], port: args[3] },
+            {
+                text: (question, placeholder) => required(placeholder ? `${question} [${placeholder}]` : question),
+                password: (question) => required(question, true),
+            },
+        );
+    } catch (e) {
+        if (e instanceof ImportFailedException) {
+            console.error(e.message);
+            process.exitCode = 1;
+            return;
+        }
+        throw e;
+    }
+});
+
 /* ------------------------------ compat no-ops ------------------------------ */
 
 for (const [name, description] of [

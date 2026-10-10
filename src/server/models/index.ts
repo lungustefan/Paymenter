@@ -30,6 +30,10 @@ import { InvoiceItem } from './InvoiceItem';
 import { InvoiceSnapshot } from './InvoiceSnapshot';
 import { InvoiceTransaction } from './InvoiceTransaction';
 import { Notification } from './Notification';
+import { OauthAccessToken } from './OauthAccessToken';
+import { OauthAuthCode } from './OauthAuthCode';
+import { OauthClient } from './OauthClient';
+import { OauthRefreshToken } from './OauthRefreshToken';
 import { NotificationPreference } from './NotificationPreference';
 import { NotificationSubscription } from './NotificationSubscription';
 import { NotificationTemplate } from './NotificationTemplate';
@@ -58,7 +62,8 @@ import { UserSession } from './UserSession';
 export const models = {
     ApiKey, Audit, BillingAgreement, Cart, CartItem, Category, ConfigOption, ConfigOptionProduct, Coupon, CouponProduct, Credit,
     CronStat, Currency, CustomProperty, DebugLog, EmailLog, Extension, FailedJob, Gateway, Invoice, InvoiceItem, InvoiceSnapshot,
-    InvoiceTransaction, Notification, NotificationPreference, NotificationSubscription, NotificationTemplate, Order, Plan,
+    InvoiceTransaction, Notification, NotificationPreference, NotificationSubscription, NotificationTemplate, OauthAccessToken,
+    OauthAuthCode, OauthClient, OauthRefreshToken, Order, Plan,
     Price: PriceModel, Product, ProductUpgrade, Property, Role, Server, Service, ServiceCancellation, ServiceConfig,
     ServiceUpgrade, Setting, TaxRate, Ticket, TicketMailLog, TicketMessage, TicketMessageAttachment, User,
     UserAuthenticationLog, UserSession,
@@ -84,7 +89,8 @@ registerBladeStatic('Invoice', {
 export {
     ApiKey, Audit, BillingAgreement, Cart, CartItem, Category, ConfigOption, ConfigOptionProduct, Coupon, CouponProduct, Credit,
     CronStat, Currency, CustomProperty, DebugLog, EmailLog, Extension, FailedJob, Gateway, Invoice, InvoiceItem, InvoiceSnapshot,
-    InvoiceTransaction, Notification, NotificationPreference, NotificationSubscription, NotificationTemplate, Order, Plan,
+    InvoiceTransaction, Notification, NotificationPreference, NotificationSubscription, NotificationTemplate, OauthAccessToken,
+    OauthAuthCode, OauthClient, OauthRefreshToken, Order, Plan,
     PriceModel, Product, ProductUpgrade, Property, Role, Server, Service, ServiceCancellation, ServiceConfig, ServiceUpgrade,
     Setting, TaxRate, Ticket, TicketMailLog, TicketMessage, TicketMessageAttachment, User, UserAuthenticationLog, UserSession,
 };
