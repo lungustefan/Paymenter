@@ -1,6 +1,6 @@
 {
     "name": "paymenter",
-    "version": "1.5.9",
+    "version": "2.0.0-alpha.2",
     "private": true,
     "description": "Paymenter is a self-hosted, open-source, and free invoicing and billing software built with Next.js.",
     "keywords": [
