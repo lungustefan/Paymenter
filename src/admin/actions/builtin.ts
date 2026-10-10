@@ -2,6 +2,7 @@ import { Action, BulkAction, type ActionContext } from './Action';
 import { trans, transChoice } from '../context';
 import { Notification } from '../Notification';
 import { titleCase } from '../core/Resource';
+import { attributesForForm } from '../core/attributes';
 
 /** `$this->getRecordTitle()` / `getModelLabel()` of the resource the action belongs to */
 const recordTitle = (ctx: ActionContext) => (ctx.resource ? ctx.resource.getRecordTitle(ctx.record ?? null) : '');
@@ -53,7 +54,7 @@ export class EditAction extends Action {
         this.tableIcon('heroicon:pencil-square');
         this.groupedIcon('heroicon:pencil-square');
         this.ability('update');
-        this.fillForm((ctx) => ({ ...(ctx.record as any).attributesToArray() }));
+        this.fillForm((ctx) => attributesForForm(ctx.record));
         this.action(async (ctx) => {
             await (ctx.record as any).update(ctx.data ?? {});
         });
@@ -76,7 +77,7 @@ export class ViewAction extends Action {
         this.groupedIcon('heroicon:eye');
         this.ability('view');
         this.disabledSchema();
-        this.fillForm((ctx) => ({ ...(ctx.record as any).attributesToArray() }));
+        this.fillForm((ctx) => attributesForForm(ctx.record));
     }
 }
 
