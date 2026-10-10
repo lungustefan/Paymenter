@@ -1,35 +1,45 @@
+# Dependencies / build output
 /node_modules
-/public/build
-/public/default/*
-/public/storage
-/storage/*.key
-.env
-.env.backup
-.env.production
-Homestead.json
-Homestead.yaml
-auth.json
-npm-debug.log
-yarn-error.log
-/.fleet
-/.idea
-/.vscode
-themes/*
-extensions/Others/Pages
-extensions/Servers/LicenseManager
-extensions/Servers/Proxmox
-!themes/default
-# Next.js / Node
 /.next
 /out
-/node_modules
 next-env.d.ts
 *.tsbuildinfo
 /src/generated
+/public/build
+/public/default/*
+/public/storage
+/.registry-hash
+/coverage
+
+# Local configuration
+.env
+.env.backup
+.env.production
+.env.update-backup
+/storage/*.key
+
+# Logs
+npm-debug.log
+yarn-error.log
+pnpm-debug.log
+
+# Editors
+/.fleet
+/.idea
+/.vscode
+
+# Third-party themes and extensions (the bundled ones are tracked)
+themes/*
+!themes/default
+extensions/Others/Pages
+extensions/Servers/LicenseManager
+extensions/Servers/Proxmox
 
 # Local data
 /storage/app/public/*
 !/storage/app/public/.gitkeep
+/storage/app/invoices/*
+/storage/app/tickets/*
 /storage/logs/*
 !/storage/logs/.gitkeep
 /storage/framework/*
