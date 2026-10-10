@@ -17,6 +17,13 @@ import { attributesForForm } from '../../core/attributes';
 export class EditRecord extends ResourcePage {
     static override kind = 'resource-edit-record';
 
+    static override getNavigationLabel() {
+        return this.navigationLabel ?? trans('filament-panels::resources/pages/edit-record.breadcrumb');
+    }
+    static override getNavigationIcon() {
+        return this.navigationIcon ?? 'heroicon-o-pencil-square';
+    }
+
     getTitle() {
         return trans('filament-panels::resources/pages/edit-record.title', { label: this.resource.getRecordTitle(this.record) });
     }

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { useFieldValue } from './runtime';
+import { uploadAdminFile } from '../upload';
 
 type Live = { onBlur?: boolean; debounce?: number } | false | undefined;
 
@@ -17,6 +18,7 @@ export function MarkdownEditorControl({
     maxHeight,
     toolbar,
     titles,
+    attachmentsDirectory,
     live,
 }: {
     path: string;
@@ -29,6 +31,7 @@ export function MarkdownEditorControl({
     maxHeight?: string | null;
     toolbar: string[][];
     titles: Record<string, string>;
+    attachmentsDirectory: string;
     live?: Live;
 }) {
     const [value, setValue] = useFieldValue(path);
@@ -60,6 +63,7 @@ export function MarkdownEditorControl({
                 table: { name: 'table', action: EasyMDE.drawTable, title: titles.table },
                 undo: { name: 'undo', action: EasyMDE.undo, title: titles.undo },
                 redo: { name: 'redo', action: EasyMDE.redo, title: titles.redo },
+                attachFiles: { name: 'upload-image', title: titles.attach_files },
             };
             const items: any[] = [];
             for (const group of toolbar) {
@@ -79,7 +83,18 @@ export function MarkdownEditorControl({
                 placeholder,
                 previewImagesInEditor: true,
                 spellChecker: false,
-                status: false,
+                status: ['upload-image'],
+                uploadImage: toolbar.some((g) => g.includes('attachFiles')),
+                imageAccept: 'image/png, image/jpeg, image/gif, image/avif, image/webp',
+                imageUploadFunction: (file: File, onSuccess: (url: string) => void, onError: (message: string) => void) => {
+                    const data = new FormData();
+                    data.append('file', file, file.name);
+                    data.append('directory', attachmentsDirectory);
+                    uploadAdminFile(data)
+                        .then((r) => (r.ok && r.url ? onSuccess(r.url) : onError(r.error ?? 'Upload failed')))
+                        .catch(() => onError('Upload failed'));
+                },
+                imageTexts: { sbInit: '', sbOnDragEnter: '', sbOnDrop: '', sbProgress: '', sbOnUploaded: '', sizeUnits: ',,' },
                 toolbar: items.length ? items : false,
             } as any);
             editorRef.current = editor;

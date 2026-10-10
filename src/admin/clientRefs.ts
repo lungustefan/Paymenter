@@ -20,8 +20,12 @@ import * as formActions from './forms/FormActions';
 import * as formRuntime from './forms/runtime';
 import * as formLayoutClient from './forms/layout/client';
 import * as layoutClient from './layout/client';
+import * as widgetsClient from './widgets/client';
+import * as tablesClient from './tables/client';
+import * as tablesClientExtra from './tables/client-extra';
+import * as ticketClient from './resources/ticket-client';
 
-export const clientRefs = { actionsClient, modalClient, formControls, formControlsExtra, formControlsList, formControlsRich, formControlsUpload, formControlsMarkdown, formControlsColor, formControlsRepeater, formControlsSelect, formActions, columnsClient, formRuntime, formLayoutClient, layoutClient };
+export const clientRefs = { actionsClient, modalClient, formControls, formControlsExtra, formControlsList, formControlsRich, formControlsUpload, formControlsMarkdown, formControlsColor, formControlsRepeater, formControlsSelect, formActions, columnsClient, formRuntime, formLayoutClient, layoutClient, widgetsClient, tablesClient, tablesClientExtra, ticketClient };
 
 /** touching the references keeps the bundler from dropping the modules */
 export const touchClientRefs = () => Object.keys(clientRefs).length;

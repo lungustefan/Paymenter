@@ -25,7 +25,7 @@ export interface RenderContext {
     changedPath?: string | null;
 }
 
-export type ColumnSpan = number | 'full' | Record<string, number | 'full' | null>;
+export type ColumnSpan = number | 'full' | 'hidden' | Record<string, number | 'full' | 'hidden' | null>;
 
 /**
  * Base of every form / layout component. Options are stored as value-or-closure and resolved with
@@ -38,7 +38,8 @@ export abstract class Component {
     protected _visible: Fn<boolean> = true;
     protected _hidden: Fn<boolean> = false;
     protected _disabled: Fn<boolean> = false;
-    protected _columnSpan?: ColumnSpan;
+    /** `CanSpanColumns::$columnSpan`: breakpoint => span, closures sit under numeric keys */
+    protected _columnSpan?: Array<[string | number, any]>;
     protected _columnStart?: number | Record<string, number>;
     protected _columnOrder?: number | Record<string, number>;
     protected _maxWidth?: string;
@@ -66,14 +67,29 @@ export abstract class Component {
     /* ---- fluent configuration shared by all components ---- */
     label(v: Fn<string | null | false>) { this._label = v; return this; }
     hiddenLabel(v = true) { this._hiddenLabel = v; return this; }
+    /** `translateLabel()`: labels are looked up in the translations (a no-op, like a key without a translation) */
+    translateLabel(_v = true) { return this; }
     visible(v: Fn<boolean>) { this._visible = v; return this; }
     hidden(v: Fn<boolean>) { this._hidden = v; return this; }
     visibleOn(v: string | string[]) { this._visibleOn = v; return this; }
     hiddenOn(v: string | string[]) { this._hiddenOn = v; return this; }
     disabled(v: Fn<boolean> = true) { this._disabled = v; return this; }
     disabledOn(v: string | string[]) { this._disabledOn = v; return this; }
-    columnSpan(v: ColumnSpan) { this._columnSpan = v; return this; }
-    columnSpanFull() { this._columnSpan = 'full'; return this; }
+    columnSpan(v: ColumnSpan | ((ctx: any) => any) | null) {
+        const list = (this._columnSpan ??= []);
+        if (typeof v === 'function') {
+            list.push([list.filter(([k]) => typeof k === 'number').length, v]);
+            return this;
+        }
+        const entries: Array<[string, any]> = v !== null && typeof v === 'object' ? Object.entries(v) : [['default', 1], ['lg', v]];
+        for (const [key, value] of entries) {
+            const existing = list.find(([k]) => k === key);
+            if (existing) existing[1] = value;
+            else list.push([key, value]);
+        }
+        return this;
+    }
+    columnSpanFull() { return this.columnSpan({ default: 'full' }); }
     columnStart(v: number | Record<string, number>) { this._columnStart = v; return this; }
     columnOrder(v: number | Record<string, number>) { this._columnOrder = v; return this; }
     maxWidth(v: string) { this._maxWidth = v; return this; }
@@ -167,6 +183,25 @@ export abstract class Component {
     isLabelHidden() { return this._hiddenLabel; }
     getExtraAttributes() { return this._extraAttributes; }
     getColumnSpan() { return this._columnSpan; }
+    /** `getColumnSpan()` with closures evaluated */
+    async resolveColumnSpan(rc: RenderContext): Promise<Record<string, any>> {
+        const span: Record<string, any> = this._columnSpan ? Object.fromEntries(this._columnSpan.map(([k, v]) => [String(k), v])) : { default: 1, sm: null, md: null, lg: null, xl: null, '2xl': null };
+        for (const [key, raw] of this._columnSpan ?? []) {
+            const value = await this.ev(raw, rc);
+            if (value !== null && typeof value === 'object') {
+                delete span[String(key)];
+                Object.assign(span, value);
+                continue;
+            }
+            if (typeof key === 'number') {
+                span.default = value;
+                delete span[String(key)];
+                continue;
+            }
+            span[key] = value;
+        }
+        return span;
+    }
     getColumnStart() { return this._columnStart; }
     getColumnOrder() { return this._columnOrder; }
     getMaxWidth() { return this._maxWidth; }

@@ -75,6 +75,7 @@ export abstract class Column {
 
     /* ---- fluent configuration ---- */
     label(v: CFn<string | null>) { this._label = v; return this; }
+    translateLabel(_v = true) { return this; }
     sortable(condition: boolean | string[] | CFn<boolean> = true, query?: (ctx: { query: Builder<any>; direction: 'asc' | 'desc' }) => void) {
         if (Array.isArray(condition)) {
             this._sortable = true;

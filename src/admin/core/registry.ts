@@ -18,7 +18,7 @@ const registry: PanelRegistry = { pages: [], clusters: [], resources: [], widget
 const fromExtensions = new Map<string, Partial<PanelRegistry>>();
 
 /** two registrations of the same thing (a hot reloaded module re-registers itself): same kind of entry, same URL */
-const sameEntry = (a: any, b: any) => a === b || (a.slug !== undefined && a.slug === b.slug && (a.cluster?.slug ?? null) === (b.cluster?.slug ?? null));
+const sameEntry = (a: any, b: any) => a === b || (a.widgetId !== undefined && a.widgetId === b.widgetId) || (a.slug !== undefined && a.slug === b.slug && (a.cluster?.slug ?? null) === (b.cluster?.slug ?? null));
 
 function upsert(list: any[], entry: any) {
     const index = list.findIndex((e) => sameEntry(e, entry));
@@ -49,6 +49,7 @@ function all<K extends keyof PanelRegistry>(key: K): PanelRegistry[K] {
 export const panelPages = () => all('pages');
 export const panelClusters = () => all('clusters');
 export const panelResources = () => all('resources');
+export const panelWidgets = () => all('widgets');
 
 export function findResource(slugPath: string): typeof Resource | undefined {
     return panelResources().find((r) => `${r.cluster ? r.cluster.slug + '/' : ''}${r.getSlug()}` === slugPath);

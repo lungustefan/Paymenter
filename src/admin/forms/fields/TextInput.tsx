@@ -2,7 +2,8 @@ import type { ReactNode } from 'react';
 import { Field } from '../Field';
 import type { RenderContext } from '../Component';
 import { TextInputControl } from '../controls';
-import { MoneyInput } from '../controls-extra';
+import { MoneyInput, RevealButtons, RevealInput, RevealRoot } from '../controls-extra';
+import { trans } from '../../context';
 import type { Fn } from '../../core/evaluate';
 import type { Rule } from '@/server/validation';
 
@@ -124,6 +125,8 @@ export class TextInput extends Field {
             <>
                 {this._money ? (
                     <MoneyInput path={path} live={live} money={this._money} {...(attrs as any)} />
+                ) : this._revealable ? (
+                    <RevealInput path={path} live={live} {...(attrs as any)} />
                 ) : (
                     <TextInputControl path={path} live={live} {...(attrs as any)} />
                 )}
@@ -136,6 +139,10 @@ export class TextInput extends Field {
                 )}
             </>
         );
+        if (this._revealable) {
+            const reveal = <RevealButtons showLabel={trans('filament-forms::components.text_input.actions.show_password.label')} hideLabel={trans('filament-forms::components.text_input.actions.hide_password.label')} />;
+            return this.wrap(rc, <RevealRoot>{await this.wrapInput(rc, slot, 'fi-fo-text-input', reveal)}</RevealRoot>);
+        }
         return this.wrap(rc, await this.wrapInput(rc, slot, 'fi-fo-text-input'));
     }
 

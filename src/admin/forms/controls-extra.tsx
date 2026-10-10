@@ -1,6 +1,9 @@
 'use client';
 
+import { createContext, useContext, useState, type ReactNode } from 'react';
 import { useFormContext, useFieldValue } from './runtime';
+import { TextInputControl } from './controls';
+import { Icon } from '../ui/Icon';
 
 /** Alpine mask's `$money($input, decimal, thousands, precision)` */
 export function formatMoney(input: string, decimal = '.', thousands = '', precision = 2): string {
@@ -29,5 +32,38 @@ export function MoneyInput({ path, live, money, ...attrs }: { path: string; live
             onChange={(e) => setValue(formatMoney(e.target.value, money.decimal, money.thousands, money.precision), live ? (live.onBlur ? live : { debounce: live.debounce ?? 500 }) : undefined)}
             onBlur={() => blur(path, live)}
         />
+    );
+}
+
+
+/* ---- revealable password (`x-data="{ isPasswordRevealed: false }"`) ---- */
+
+const RevealContext = createContext<{ revealed: boolean; set: (v: boolean) => void }>({ revealed: false, set: () => undefined });
+
+export function RevealRoot({ children }: { children: ReactNode }) {
+    const [revealed, set] = useState(false);
+    return <RevealContext.Provider value={{ revealed, set }}>{children}</RevealContext.Provider>;
+}
+
+/** the input of a revealable password: its type follows the show / hide buttons */
+export function RevealInput(props: React.ComponentProps<typeof TextInputControl>) {
+    const { revealed } = useContext(RevealContext);
+    return <TextInputControl {...props} type={revealed ? 'text' : 'password'} />;
+}
+
+const revealButton = 'fi-ac-icon-btn-action fi-icon-btn fi-size-sm';
+
+/** `ShowPasswordAction` / `HidePasswordAction` */
+export function RevealButtons({ showLabel, hideLabel }: { showLabel: string; hideLabel: string }) {
+    const { revealed, set } = useContext(RevealContext);
+    return (
+        <>
+            <button title={showLabel} aria-label={showLabel} type="button" className={revealButton} style={revealed ? { display: 'none' } : undefined} onClick={() => set(true)}>
+                <Icon icon="heroicon-m-eye" size="md" />
+            </button>
+            <button title={hideLabel} aria-label={hideLabel} type="button" className={revealButton} style={revealed ? undefined : { display: 'none' }} onClick={() => set(false)}>
+                <Icon icon="heroicon-m-eye-slash" size="md" />
+            </button>
+        </>
     );
 }

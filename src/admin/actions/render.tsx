@@ -181,5 +181,5 @@ export async function renderActionsGroup(actions: Array<Action | ActionGroup>, c
         index++;
     }
     if (rendered.length === 0) return null;
-    return <div className={cn('fi-ac', `fi-align-${opts.alignment ?? 'start'}`, opts.className)}>{rendered}</div>;
+    return <div className={cn('fi-ac', opts.alignment !== '' && `fi-align-${opts.alignment ?? 'start'}`, opts.className)}>{rendered}</div>;
 }

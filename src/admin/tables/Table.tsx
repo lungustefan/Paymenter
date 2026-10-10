@@ -11,7 +11,7 @@ import { parseTableState, type TableState } from './state';
 import { Icon } from '../ui/Icon';
 import { badgeClass, buttonClass, iconButtonClass } from '../ui/classes';
 import { cn } from '@themes/default/components/cn';
-import { plural } from '../core/Resource';
+import { plural, titleCase } from '../core/Resource';
 import { GroupCheckbox, PageButton, PageCheckbox, PerPageSelect, RecordCheckbox, SearchInput, SelectionIndicator, SortButton, TableRoot, TableRow } from './client';
 import { ActionDropdown, ActionTrigger, ModalHost } from '../actions/client';
 import { renderFiltersForm, FiltersPanel, type BaseFilter } from './filters';
@@ -151,6 +151,9 @@ export class Table {
     protected _recordTitleAttribute?: string;
     recordTitleAttribute(v: string) { this._recordTitleAttribute = v; return this; }
     description(v: string) { this._description = v; return this; }
+    /** the heading of the table is an `h2` (a table that is the only heading on its page) or an `h3` */
+    protected _headingTag?: 'h2' | 'h3';
+    headingTag(v: 'h2' | 'h3') { this._headingTag = v; return this; }
     emptyStateHeading(v: string) { this._emptyHeading = v; return this; }
     emptyStateDescription(v: string | null) { this._emptyDescription = v; return this; }
     emptyStateIcon(v: string) { this._emptyIcon = v; return this; }
@@ -180,6 +183,17 @@ export class Table {
     getHeaderActions() { return this._headerActions; }
     getColumn(name: string) { return this._columns.find((c) => c.getName() === name); }
     /** the label of the model: the resource's, else the class name (`ServiceCancellation` -> `service cancellation`) */
+    /** `getRecordTitle($record)` of a table without a resource: the `recordTitleAttribute()` or the model label */
+    getRecordTitle(record: any): string {
+        if (this.resource) return this.resource.getRecordTitle(record);
+        const attr = this._recordTitleAttribute;
+        if (attr && record) {
+            const value = attr.split('.').reduce((o: any, k) => o?.[k] ?? o?.$relations?.[k], record);
+            if (value !== undefined && value !== null) return String(value);
+        }
+        return titleCase(this.getModelLabel());
+    }
+
     getModelLabel() {
         if (this._modelLabel) return this._modelLabel;
         if (this.resource) return this.resource.getModelLabel();
@@ -191,6 +205,10 @@ export class Table {
         return plural(this.getModelLabel());
     }
     isReorderable() { return !!this._reorder; }
+    /** `hasAction('create')`: an action of this name anywhere in the table */
+    hasAction(name: string): boolean {
+        return [this._headerActions, this._toolbarActions, this._recordActions, this._emptyStateActions].some((list) => !!findByName(list, name));
+    }
     getReorderColumn() { return this._reorder?.column ?? null; }
     isSearchable() { return this._columns.some((c) => c.isGloballySearchable()); }
     isSearchableByColumn() { return this._columns.some((c) => c.isIndividuallySearchable()); }
@@ -575,7 +593,7 @@ export class Table {
         const searchLabel = trans('filament-tables::table.fields.search.label');
 
         const emptyHeading = this._emptyHeading ?? trans('filament-tables::table.empty.heading', { model: pluralLabel });
-        const emptyDescription = this._emptyDescription !== undefined ? this._emptyDescription : state.search.trim() || indicators.length ? null : trans('filament-tables::table.empty.description', { model: this.getModelLabel() });
+        const emptyDescription = this._emptyDescription !== undefined ? this._emptyDescription : state.search.trim() || indicators.length || !this.hasAction('create') ? null : trans('filament-tables::table.empty.description', { model: this.getModelLabel() });
 
         const filtersForm = hasFiltersTrigger ? await renderFiltersForm(this, state.filters, this._filtersFormColumns) : null;
 
@@ -662,7 +680,7 @@ export class Table {
                                     <div className={cn('fi-ta-header', headerActions.length > 0 && !reordering && 'fi-ta-header-adaptive-actions-position')}>
                                         {(this._heading || this._description) && (
                                             <div>
-                                                {this._heading && (this.ownerRecord ? <h2 className="fi-ta-header-heading">{this._heading}</h2> : <h3 className="fi-ta-header-heading">{this._heading}</h3>)}
+                                                {this._heading && ((this._headingTag ?? (this.ownerRecord ? 'h2' : 'h3')) === 'h2' ? <h2 className="fi-ta-header-heading">{this._heading}</h2> : <h3 className="fi-ta-header-heading">{this._heading}</h3>)}
                                                 {this._description && <p className="fi-ta-header-description">{this._description}</p>}
                                             </div>
                                         )}
@@ -673,7 +691,13 @@ export class Table {
                                         )}
                                     </div>
                                 )}
-                                {toolbarMode === 'hidden' ? null : <ToolbarWrapper mode={toolbarMode}>{toolbar}</ToolbarWrapper>}
+                                {toolbarMode === 'hidden' ? (
+                                    <div className="fi-ta-header-toolbar" style={{ display: 'none' }}>
+                                        <div className="fi-ta-actions fi-align-start fi-wrapped" />
+                                    </div>
+                                ) : (
+                                    <ToolbarWrapper mode={toolbarMode}>{toolbar}</ToolbarWrapper>
+                                )}
                             </TableHeaderCtn>
                         )}
                         {reordering ? (
@@ -722,7 +746,7 @@ export class Table {
                                     <div className="fi-ta-empty-state-icon-bg">
                                         <Icon icon={this._emptyIcon} size="lg" />
                                     </div>
-                                    <h3 className="fi-ta-empty-state-heading">{emptyHeading}</h3>
+                                    {this._heading ? <h3 className="fi-ta-empty-state-heading">{emptyHeading}</h3> : <h2 className="fi-ta-empty-state-heading">{emptyHeading}</h2>}
                                     {emptyDescription && <p className="fi-ta-empty-state-description">{emptyDescription}</p>}
                                     {await (async () => {
                                         const actions = await visibleOf(this._emptyStateActions);

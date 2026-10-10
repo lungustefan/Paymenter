@@ -443,6 +443,15 @@ export class Builder<M extends Model<any>, Ctor extends ModelCtor<M> = ModelCtor
         return v === null || v === undefined ? null : Number(v);
     }
 
+    /** `select <date> as date, <aggregate> as aggregate ... group by <date> order by date` (the Trend helper) */
+    async aggregateByDate(dateExpr: SQL, aggregateExpr: SQL): Promise<Array<{ date: string; aggregate: any }>> {
+        const c = this.clone().applyScopes();
+        const where = c.compileWheres();
+        const query = sql`select ${dateExpr} as date, ${aggregateExpr} as aggregate from ${this.table}${where ? sql` where ${where}` : sql``} group by ${dateExpr} order by date`;
+        const [rows] = (await currentDb().execute(query)) as any;
+        return rows;
+    }
+
     async count(column = '*'): Promise<number> {
         return (await this.aggregate('count', column)) ?? 0;
     }

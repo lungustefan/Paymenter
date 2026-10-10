@@ -48,7 +48,7 @@ export abstract class BaseFilter {
     table!: Table;
     protected _label?: string;
     protected _query?: (ctx: FilterContext) => void | Builder<any>;
-    protected _indicateUsing?: (ctx: FilterContext) => string | string[] | null | undefined | false;
+    protected _indicateUsing?: (ctx: FilterContext) => string | string[] | null | undefined | false | Promise<string | string[] | null | undefined | false>;
     protected _indicator?: string;
     protected _default: any = undefined;
     protected _schema?: Fn<Component[]>;
@@ -66,7 +66,7 @@ export abstract class BaseFilter {
     /** `->form([...])` / `->schema([...])` */
     form(v: Fn<Component[]>) { this._schema = v; return this; }
     schema(v: Fn<Component[]>) { return this.form(v); }
-    indicateUsing(fn: (ctx: FilterContext) => string | string[] | null | undefined | false) { this._indicateUsing = fn; return this; }
+    indicateUsing(fn: NonNullable<BaseFilter["_indicateUsing"]>) { this._indicateUsing = fn; return this; }
     indicator(v: string) { this._indicator = v; return this; }
     default(v: any) { this._default = v; return this; }
     hidden(v: Fn<boolean> = true) { this._hidden = v; return this; }

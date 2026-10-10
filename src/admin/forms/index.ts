@@ -20,3 +20,4 @@ export { DateTimePicker, DatePicker, TimePicker } from './fields/DateTimePicker'
 export { ColorPicker } from './fields/ColorPicker';
 export { Radio } from './fields/Radio';
 export { Repeater } from './fields/Repeater';
+export { Actions } from './layout/Actions';

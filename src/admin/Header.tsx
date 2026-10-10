@@ -45,7 +45,7 @@ export function PageFrame({ classes, breadcrumbs, heading, subheading, actions, 
     const hasCrumbs = !!breadcrumbs && breadcrumbs.length > 0;
     const sub = subNavigation && subNavigation.items.length > 0 ? subNavigation : null;
     return (
-        <div className={`fi-page${sub ? ' fi-page-has-sub-navigation fi-page-has-sub-navigation-start' : ''} ${classes}`}>
+        <div className={`fi-page${sub ? ' fi-page-has-sub-navigation fi-page-has-sub-navigation-start' : ''}${classes ? ` ${classes}` : ''}`}>
             <div className="fi-page-header-main-ctn">
                 {sub && (
                     <>

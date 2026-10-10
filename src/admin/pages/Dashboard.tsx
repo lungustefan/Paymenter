@@ -1,4 +1,6 @@
 import { AdminPage } from '../core/Page';
+import { panelWidgets } from '../core/registry';
+import { renderWidgets } from '../widgets/Widget';
 
 export class Dashboard extends AdminPage {
     static slug = '';
@@ -11,7 +13,12 @@ export class Dashboard extends AdminPage {
         return '/admin';
     }
 
+    override getWidgetClasses() {
+        return panelWidgets();
+    }
+
+    /** the widgets of the panel, two columns wide (`Dashboard::getColumns()`) */
     render() {
-        return null;
+        return renderWidgets(panelWidgets(), { user: this.user, livewire: this }, 2);
     }
 }

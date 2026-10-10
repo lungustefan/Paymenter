@@ -90,9 +90,14 @@ export async function resolveHost(segments: string[], user: User, pathname: stri
             host: page,
             title,
             async render() {
-                const content = await page.renderContent();
+                const content = await page.renderPage();
                 const cluster = resource.cluster;
-                const subNavigation = cluster ? { label: cluster.label(), items: await clusterNavigation(cluster, user, pathname) } : null;
+                let subNavigation = cluster ? { label: cluster.label(), items: await clusterNavigation(cluster, user, pathname) } : null;
+                if (page.record) {
+                    // the links between the pages of one record (`getRecordSubNavigation()`)
+                    const items = await resource.getRecordSubNavigation(page);
+                    if (items.length) subNavigation = { label: items.find((i) => i.isActive)?.label ?? '', items };
+                }
                 return (
                     <PageFrame
                         subNavigation={subNavigation}

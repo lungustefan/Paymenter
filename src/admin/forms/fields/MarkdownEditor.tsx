@@ -5,7 +5,7 @@ import { MarkdownEditorControl } from '../controls-markdown';
 import { trans } from '../../context';
 import type { Fn } from '../../core/evaluate';
 
-const DEFAULT_TOOLBAR: string[][] = [['bold', 'italic', 'strike', 'link'], ['heading'], ['blockquote', 'codeBlock', 'bulletList', 'orderedList'], ['table'], ['undo', 'redo']];
+const DEFAULT_TOOLBAR: string[][] = [['bold', 'italic', 'strike', 'link'], ['heading'], ['blockquote', 'codeBlock', 'bulletList', 'orderedList'], ['table', 'attachFiles'], ['undo', 'redo']];
 
 /** Filament\Forms\Components\MarkdownEditor (EasyMDE) */
 export class MarkdownEditor extends Field {
@@ -20,8 +20,9 @@ export class MarkdownEditor extends Field {
     disableAllToolbarButtons(v: Fn<boolean> | boolean = true) { this._disableAll = v === true; return this; }
     minHeight(v: Fn<string | null>) { this._minHeight = v; return this; }
     maxHeight(v: Fn<string | null>) { this._maxHeight = v; return this; }
+    protected _attachmentsDirectory: string = 'attachments';
     fileAttachmentsDisk(_v: string) { return this; }
-    fileAttachmentsDirectory(_v: string) { return this; }
+    fileAttachmentsDirectory(v: string) { this._attachmentsDirectory = v; return this; }
 
     override async render(rc: RenderContext): Promise<ReactNode> {
         const path = this.getStatePath(rc);
@@ -52,7 +53,9 @@ export class MarkdownEditor extends Field {
                     table: trans('filament-forms::components.markdown_editor.tools.table'),
                     undo: trans('filament-forms::components.markdown_editor.tools.undo'),
                     redo: trans('filament-forms::components.markdown_editor.tools.redo'),
+                    attach_files: trans('filament-forms::components.markdown_editor.tools.attach_files'),
                 }}
+                attachmentsDirectory={this._attachmentsDirectory}
                 live={this._live}
             />
         );

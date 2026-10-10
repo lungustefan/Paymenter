@@ -9,7 +9,7 @@ import type { Host, ActionRef } from '../core/host';
 import { fillForm, normalizeInput, validateForm, dehydrateForm, diffState } from '../forms/process';
 import type { Select } from '../forms/fields/Select';
 import { buildActionForm, renderActionModal } from '../actions/modal';
-import { Halt, Cancel, type ActionContext } from '../actions/Action';
+import { Halt, Cancel, Download, type ActionContext } from '../actions/Action';
 import { relativeUrl } from '@/server/routes';
 
 export async function handleDispatch(url: string, op: AdminOp): Promise<AdminActionResult> {
@@ -52,6 +52,15 @@ async function run(host: Host, op: AdminOp): Promise<AdminActionResult> {
                 return await host.tableUpdate(op.table, op.action, { record: op.record, column: op.column, value: op.value, order: op.order });
             case 'page':
                 return await host.callMethod(op.method, op.args ?? [], op.state);
+            case 'widget': {
+                const Class = (await host.getWidgetClasses()).find((w: any) => w.widgetId === op.widget);
+                if (!Class) return { ok: false };
+                const widget = new Class();
+                widget.user = host.user;
+                widget.livewire = host;
+                widget.record = (host as any).record ?? null;
+                return { ok: true, data: await widget.callMethod(op.method, op.args ?? []) };
+            }
         }
     } catch (e) {
         if (e instanceof ValidationError) return { ok: false, errors: e.errors };
@@ -166,7 +175,8 @@ async function execute(host: Host, ref: ActionRef, data: Record<string, any>, ar
     if (outcome.cancelled) return { ok: true, close: true };
     const redirect = await ref.action.getSuccessRedirectUrl({ ...ctx, result: outcome.result });
     const schema = ref.rc && ref.schema ? await ref.schema.render(ref.rc) : undefined;
-    return { ok: true, close: true, refresh: ref.rc ? false : !redirect, redirect: redirect ? relativeUrl(redirect) : null, patches, schema };
+    const download = outcome.result instanceof Download ? { name: outcome.result.name, mime: outcome.result.mime, base64: Buffer.from(outcome.result.content as any).toString('base64') } : undefined;
+    return { ok: true, close: true, refresh: ref.rc || download ? false : !redirect, redirect: redirect ? relativeUrl(redirect) : null, patches, schema, download };
 }
 
 export { Halt, Cancel };

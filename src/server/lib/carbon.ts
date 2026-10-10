@@ -142,6 +142,7 @@ export class Carbon {
     /** `add{Unit}s` with the billing unit stored on plans ('hour' | 'day' | 'week' | 'month' | 'year'). */
     addUnit(unit: string, amount: number): Carbon {
         switch (unit) {
+            case 'minute': return this.addMinutes(amount);
             case 'hour': return this.addHours(amount);
             case 'day': return this.addDays(amount);
             case 'week': return this.addWeeks(amount);

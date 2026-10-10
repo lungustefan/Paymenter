@@ -41,7 +41,7 @@ export class Select extends Field {
     protected _selectablePlaceholder: Fn<boolean> = true;
     protected _optionsLimit = 50;
     protected _searchDebounce = 1000;
-    protected _relationship: { name: string; titleAttribute: string | null; modifyQuery?: (q: Builder<any>, search: string | null) => void; ignoreRecord: boolean } | null = null;
+    protected _relationship: { name: string; titleAttribute: string | null; modifyQuery?: (q: Builder<any>, search: string | null, ctx: any) => void; ignoreRecord: boolean } | null = null;
     protected _getSearchResultsUsing?: (ctx: any) => Promise<OptionsInput> | OptionsInput;
     protected _getOptionLabelUsing?: (ctx: any) => Promise<string | null> | string | null;
     protected _getOptionLabelsUsing?: (ctx: any) => Promise<OptionsInput> | OptionsInput;
@@ -88,12 +88,17 @@ export class Select extends Field {
     createOptionUsing(fn: (ctx: any) => Promise<any> | any) { this._createOption = { form: this._createOption?.form ?? [], using: fn }; return this; }
 
     /** `->relationship('user', 'name', fn (Builder $query) => ..., ignoreRecord: true)` */
-    relationship(name?: string | null, titleAttribute?: string | null, modifyQuery?: (q: Builder<any>, search: string | null) => void, ignoreRecord = false) {
+    relationship(name?: string | null, titleAttribute?: string | null, modifyQuery?: (q: Builder<any>, search: string | null, ctx: any) => void, ignoreRecord = false) {
         this._relationship = { name: name ?? this.getName() ?? '', titleAttribute: titleAttribute ?? null, modifyQuery, ignoreRecord };
-        // `Str::kebab($relationshipName)` with the dashes turned into spaces
-        const words = this._relationship.name.replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/[-_]+/g, ' ').toLowerCase();
-        this._label = words.charAt(0).toUpperCase() + words.slice(1);
         return this;
+    }
+
+    /** `Select::getLabel()`: without a label of its own the field is named after its relationship */
+    protected override defaultLabel(): string | null {
+        if (!this._relationship) return super.defaultLabel();
+        // `Str::kebab($relationshipName)` with the dashes turned into spaces
+        const words = this._relationship.name.split('.')[0].replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/[-_]+/g, ' ').toLowerCase();
+        return words.charAt(0).toUpperCase() + words.slice(1);
     }
 
     /* ---- option providers ---- */
@@ -124,7 +129,7 @@ export class Select extends Field {
         const q: Builder<any> = related.query();
         const key = related.primaryKey ?? 'id';
         if (this._relationship!.ignoreRecord && rc.record) q.where(key, '!=', rc.record.getKey());
-        if (this._relationship!.modifyQuery) this._relationship!.modifyQuery(q, search);
+        if (this._relationship!.modifyQuery) await this._relationship!.modifyQuery(q, search, this.evalCtx(rc));
         if (search) {
             const columns = this._searchColumns ?? (this._relationship!.titleAttribute ? [this._relationship!.titleAttribute] : []);
             const term = search.toLowerCase();
@@ -202,9 +207,22 @@ export class Select extends Field {
         return def instanceof BelongsToMany || def.kind === 'hasMany';
     }
 
+    /** a to-one relationship selected through the key of the related record (`configValue.id`) */
+    private isNestedBelongsTo(rc: RenderContext): boolean {
+        if (!this._relationship || !(this.getName() ?? '').includes('.')) return false;
+        return this.relatedModel(rc).def.kind === 'belongsTo';
+    }
+
     /** loads the ids of a to-many relationship into the form state */
     override async loadRelationshipState(rc: RenderContext, record: any, state: Record<string, any>) {
         if (!this._relationship || !record) return;
+        if (this.isNestedBelongsTo(rc)) {
+            const { setPath } = await import('../Component');
+            const related = await record.rel(this._relationship.name);
+            const key = this.relatedModel(rc).related.primaryKey ?? 'id';
+            setPath(state, this.getStatePath(rc), related ? String(related[key]) : null);
+            return;
+        }
         if (!this.isManyRelationship(rc)) return;
         const { related } = this.relatedModel(rc);
         const key = related.primaryKey ?? 'id';
@@ -215,6 +233,12 @@ export class Select extends Field {
 
     /** `saveRelationships()` */
     override async saveRelationships(rc: RenderContext, record: any, data: Record<string, any>) {
+        if (this._relationship && this.isNestedBelongsTo(rc)) {
+            // `$relationship->associate($state)`
+            const value = getPath(data, this.getStatePath(rc));
+            await record.update({ [(this.relatedModel(rc).def as any).foreignKey]: value === '' ? null : value });
+            return;
+        }
         if (!this._relationship || !this.isManyRelationship(rc)) return;
         const ids = (getPath(data, this.getStatePath(rc)) as Array<string | number> | undefined) ?? [];
         const { def } = this.relatedModel(rc);
@@ -222,6 +246,8 @@ export class Select extends Field {
     }
 
     override async dehydrate(rc: RenderContext, out: Record<string, any>): Promise<void> {
+        // relationships selected through the related key are saved with the record, not as a column
+        if (this._relationship && this.isNestedBelongsTo(rc)) return;
         // multiple selects (relationships) are saved through `saveRelationship`, not as a column
         if (this._relationship && this.isManyRelationship(rc)) {
             const { setPath } = await import('../Component');
