@@ -12,12 +12,12 @@ type Maybe<T> = T | null | undefined;
 /** PHP's string conversion of a value (`true` -> `1`, `false` / `null` -> ``) */
 export const phpString = (v: unknown): string => (v === null || v === undefined || v === false ? '' : v === true ? '1' : v instanceof Carbon ? v.toDateTimeString() : v instanceof Date ? new Carbon(v).toDateTimeString() : typeof v === 'object' ? JSON.stringify(v) : String(v));
 
-const isBlank = (v: unknown) => v === null || v === undefined || (typeof v === 'string' && v.trim() === '') || (Array.isArray(v) && v.length === 0);
+export const isBlank = (v: unknown) => v === null || v === undefined || (typeof v === 'string' && v.trim() === '') || (Array.isArray(v) && v.length === 0);
 
 /** `Str::limit()` */
-const limit = (value: string, n: number, end = '...') => (value.length <= n ? value : `${value.slice(0, n).trimEnd()}${end}`);
+export const limit = (value: string, n: number, end = '...') => (value.length <= n ? value : `${value.slice(0, n).trimEnd()}${end}`);
 /** `Str::words()` */
-const words = (value: string, n: number, end = '...') => {
+export const words = (value: string, n: number, end = '...') => {
     const m = value.match(new RegExp(`^\\s*(?:\\S+\\s*){1,${n}}`));
     return !m || m[0].length === value.length ? value : `${m[0].trimEnd()}${end}`;
 };

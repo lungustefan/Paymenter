@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
+import { useRouter } from 'next/navigation';
 import { useTable } from './client';
 import { FormProvider } from '../forms/runtime';
 import { Dropdown } from '../layout/client';
@@ -238,4 +239,18 @@ export function ColumnManager({
             </div>
         </Dropdown>
     );
+}
+
+/** `wire:poll.10s`: re-renders the table with fresh data every interval */
+export function TablePoll({ interval }: { interval: string }) {
+    const router = useRouter();
+    useEffect(() => {
+        const m = /^(\d+(?:\.\d+)?)(ms|s|m)?$/.exec(interval.trim());
+        const ms = m ? Number(m[1]) * (m[2] === 'ms' ? 1 : m[2] === 'm' ? 60000 : 1000) : 10000;
+        const id = setInterval(() => {
+            if (!document.hidden) router.refresh();
+        }, ms);
+        return () => clearInterval(id);
+    }, [interval, router]);
+    return null;
 }

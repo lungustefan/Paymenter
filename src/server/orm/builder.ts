@@ -100,6 +100,14 @@ export class Builder<M extends Model<any>, Ctor extends ModelCtor<M> = ModelCtor
         return column;
     }
 
+    /** `col`, or `json_unquote(json_extract(col, '$."a"."b"'))` for a JSON path (`context->a->b`) */
+    colSql(name: string): SQL {
+        if (!name.includes('->')) return sql`${this.col(name)}`;
+        const [column, ...path] = name.split('->');
+        const jsonPath = '$' + path.map((p) => `."${p.replace(/"/g, '\\"')}"`).join('');
+        return sql`json_unquote(json_extract(${this.col(column)}, ${jsonPath}))`;
+    }
+
     clone(): this {
         const c = Object.create(Object.getPrototypeOf(this)) as this;
         Object.assign(c, this);
@@ -148,10 +156,10 @@ export class Builder<M extends Model<any>, Ctor extends ModelCtor<M> = ModelCtor
             operator = '=';
         }
         if (value === null) {
-            return this.push(boolean, operator === '=' || operator === undefined ? sql`${this.col(column)} is null` : sql`${this.col(column)} is not null`);
+            return this.push(boolean, operator === '=' || operator === undefined ? sql`${this.colSql(column)} is null` : sql`${this.colSql(column)} is not null`);
         }
         const op = sql.raw(String(operator ?? '='));
-        return this.push(boolean, sql`${this.col(column)} ${op} ${bind(value)}`);
+        return this.push(boolean, sql`${this.colSql(column)} ${op} ${bind(value)}`);
     }
 
     newNested(): Builder<M, Ctor> {

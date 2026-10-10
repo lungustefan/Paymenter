@@ -61,12 +61,20 @@ export abstract class Resource {
     static modelLabel: string | null = null;
     static pluralModelLabel: string | null = null;
     static recordTitleAttribute: string | null = null;
-    static shouldRegisterNavigation = true;
+    /** `shouldRegisterNavigation()` */
+    static shouldRegisterNavigation(): boolean | Promise<boolean> {
+        return true;
+    }
     /** `$label` (singular label shortcut used by some resources) */
     static label: string | null = null;
 
     static form(schema: Schema): Schema {
         return schema;
+    }
+
+    /** `infolist(Schema $schema)`: what the view page / view modal shows (defaults to the form, disabled) */
+    static infolist(schema: Schema): Schema {
+        return this.form(schema);
     }
 
     static table(table: Table): Table {

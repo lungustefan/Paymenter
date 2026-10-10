@@ -18,7 +18,9 @@ export abstract class AdminPage extends Host {
     static activeNavigationIcon: string | null = null;
     static navigationSort: number | null = null;
     static cluster: typeof Cluster | null = null;
-    static shouldRegisterNavigation = true;
+    static shouldRegisterNavigation(): boolean | Promise<boolean> {
+        return true;
+    }
     /** `$maxContentWidth` of the page */
     static maxContentWidth: string | null = null;
 

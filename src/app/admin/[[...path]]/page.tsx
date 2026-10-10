@@ -4,6 +4,8 @@ import { config } from '@/server/config';
 import { currentPath } from '@/server/request';
 import { AdminLayout } from '@/admin/layout/AdminLayout';
 import { adminRequest, resolveHost, runAdmin } from '@/admin/router';
+import { collectNotifications } from '@/admin/Notification';
+import { PageNotifications } from '@/admin/layout/client';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,7 +18,8 @@ export async function generateMetadata({ params, searchParams }: { params: Promi
     const segments = (await params).path ?? [];
     const pathname = await currentPath();
     const sp = await searchParams;
-    const title = await runAdmin(await adminRequest(user, pathname, sp), async () => (await resolveHost(segments, user, pathname, sp))?.title);
+    // `mount()` runs again for the page itself: whatever it notifies is shown there
+    const title = await runAdmin(await adminRequest(user, pathname, sp), async () => (await collectNotifications(async () => (await resolveHost(segments, user, pathname, sp))?.title)).result);
     return { title: title ? `${title} - ${appName}` : appName };
 }
 
@@ -30,10 +33,17 @@ export default async function AdminRoute({ params, searchParams }: { params: Pro
     const pathname = await currentPath();
     const sp = await searchParams;
 
-    const content = await runAdmin(await adminRequest(user, pathname, sp), async () => {
-        const resolved = await resolveHost(segments, user, pathname, sp);
-        if (!resolved) notFound();
-        return resolved.render();
-    });
-    return <AdminLayout user={user} path={pathname}>{content}</AdminLayout>;
+    const { result: content, notifications } = await runAdmin(await adminRequest(user, pathname, sp), () =>
+        collectNotifications(async () => {
+            const resolved = await resolveHost(segments, user, pathname, sp);
+            if (!resolved) notFound();
+            return resolved.render();
+        }),
+    );
+    return (
+        <AdminLayout user={user} path={pathname}>
+            {content}
+            {notifications.length > 0 && <PageNotifications items={notifications} />}
+        </AdminLayout>
+    );
 }

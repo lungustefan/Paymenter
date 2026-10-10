@@ -66,14 +66,21 @@ export interface NavigationGroup {
     items: NavigationItemInfo[];
 }
 
+/** the pages / resources whose `shouldRegisterNavigation()` is true */
+async function navigable<T extends { shouldRegisterNavigation(): boolean | Promise<boolean> }>(list: T[]): Promise<T[]> {
+    const out: T[] = [];
+    for (const item of list) if (await item.shouldRegisterNavigation()) out.push(item);
+    return out;
+}
+
 /** Items of a cluster's sub navigation (the resources and pages inside it). */
 export async function clusterNavigation(cluster: typeof Cluster, user: User | null, currentPath: string): Promise<NavigationItemInfo[]> {
     const items: NavigationItemInfo[] = [];
-    for (const page of panelPages().filter((p) => p.cluster === cluster && p.shouldRegisterNavigation)) {
+    for (const page of await navigable(panelPages().filter((p) => p.cluster === cluster))) {
         if (!(await page.canAccess(user))) continue;
         items.push({ label: page.getNavigationLabel(), url: page.getUrl(), icon: page.navigationIcon, activeIcon: page.activeNavigationIcon ?? page.navigationIcon, group: null, sort: page.navigationSort, isActive: currentPath === page.getUrl() || currentPath.startsWith(page.getUrl() + '/'), cluster: cluster.slug });
     }
-    for (const resource of panelResources().filter((r) => r.cluster === cluster && r.shouldRegisterNavigation)) {
+    for (const resource of await navigable(panelResources().filter((r) => r.cluster === cluster))) {
         if (!(await resource.canAccess(user))) continue;
         const base = resource.basePath();
         items.push({
@@ -99,7 +106,7 @@ export async function buildNavigation(user: User | null, currentPath: string): P
     const entries: NavigationItemInfo[] = [];
 
     // pages, then clusters, then resources (the order Filament registers them in)
-    for (const page of panelPages().filter((p) => !p.cluster && p.shouldRegisterNavigation)) {
+    for (const page of await navigable(panelPages().filter((p) => !p.cluster))) {
         if (!(await page.canAccess(user))) continue;
         entries.push({
             label: page.getNavigationLabel(),
@@ -126,7 +133,7 @@ export async function buildNavigation(user: User | null, currentPath: string): P
             isActive: currentPath === `/admin/${cluster.slug}` || currentPath.startsWith(`/admin/${cluster.slug}/`),
         });
     }
-    for (const resource of panelResources().filter((r) => !r.cluster && r.shouldRegisterNavigation)) {
+    for (const resource of await navigable(panelResources().filter((r) => !r.cluster))) {
         if (!(await resource.canAccess(user))) continue;
         const base = resource.basePath();
         entries.push({

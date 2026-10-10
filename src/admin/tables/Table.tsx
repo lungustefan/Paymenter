@@ -14,7 +14,7 @@ import { cn } from '@themes/default/components/cn';
 import { GroupCheckbox, PageButton, PageCheckbox, PerPageSelect, RecordCheckbox, SearchInput, SelectionIndicator, SortButton, TableRoot, TableRow } from './client';
 import { ActionDropdown, ActionTrigger, ModalHost } from '../actions/client';
 import { renderFiltersForm, FiltersPanel, type BaseFilter } from './filters';
-import { TableHeaderCtn, ToolbarWrapper, ReorderTrigger, FilterIndicators, ColumnManager } from './client-extra';
+import { TableHeaderCtn, ToolbarWrapper, ReorderTrigger, FilterIndicators, ColumnManager, TablePoll } from './client-extra';
 
 export interface TableHost {
     pathname: string;
@@ -156,7 +156,7 @@ export class Table {
     emptyStateDescription(v: string | null) { this._emptyDescription = v; return this; }
     emptyStateIcon(v: string) { this._emptyIcon = v; return this; }
     reorderable(column: string | null, direction: 'asc' | 'desc' = 'asc') { this._reorder = column ? { column, direction } : null; return this; }
-    poll(interval: string) { this._poll = interval; return this; }
+    poll(interval = '10s') { this._poll = interval; return this; }
     striped(v = true) { this._striped = v; return this; }
     recordClasses(fn: (record: any) => string | string[] | Record<string, boolean>) { this._recordClasses = fn; return this; }
     selectable(v = true) { this._selectable = v; return this; }
@@ -667,6 +667,7 @@ export class Table {
                         ) : null}
                         {indicators.length > 0 && <FilterIndicators indicators={indicators} prefix={this.prefix} labels={{ heading: trans('filament-tables::table.filters.indicator'), remove: trans('filament-tables::table.filters.actions.remove.label'), removeAll: trans('filament-tables::table.filters.actions.remove_all.label') }} />}
                         <div className="fi-ta-content-ctn fi-fixed-positioning-context">
+                            {this._poll && <TablePoll interval={this._poll} />}
                             <div role="status" aria-live="polite" aria-atomic="true" className="fi-sr-only">
                                 {transChoice('filament-tables::table.result_count', result.total, { count: result.total })}
                             </div>

@@ -331,3 +331,18 @@ function Toast({ n, closeLabel, onClose }: { n: NotificationData; closeLabel: st
         </div>
     );
 }
+
+
+/** notifications sent while the page was rendered (`mount()` hooks): shown once the page is on screen */
+export function PageNotifications({ items }: { items: NotificationData[] }) {
+    const notify = useAdminNotify();
+    const shown = useRef<Set<string>>(new Set());
+    useEffect(() => {
+        for (const n of items) {
+            if (shown.current.has(n.id)) continue;
+            shown.current.add(n.id);
+            notify(n);
+        }
+    }, [items, notify]);
+    return null;
+}

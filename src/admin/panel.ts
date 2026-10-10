@@ -3,6 +3,7 @@ import { Dashboard } from './pages/Dashboard';
 import { CurrencyResource } from './resources/CurrencyResource';
 import { ApiResource } from './resources/ApiResource';
 import { CustomPropertyResource } from './resources/CustomPropertyResource';
+import { EmailLogResource, ErrorLogResource, FailedJobResource, HttpLogResource } from './resources/LogResources';
 import { RoleResource } from './resources/RoleResource';
 import { TaxRateResource } from './resources/TaxRateResource';
 
@@ -11,6 +12,6 @@ let registered = false;
 export function registerPanel() {
     if (registered) return;
     registered = true;
-    registerCore({ pages: [Dashboard], resources: [ApiResource, CurrencyResource, CustomPropertyResource, RoleResource, TaxRateResource] });
+    registerCore({ pages: [Dashboard], resources: [ApiResource, CurrencyResource, CustomPropertyResource, EmailLogResource, ErrorLogResource, FailedJobResource, HttpLogResource, RoleResource, TaxRateResource] });
 }
 registerPanel();
