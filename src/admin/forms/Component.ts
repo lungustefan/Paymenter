@@ -138,6 +138,7 @@ export abstract class Component {
     }
 
     async isDisabled(rc: RenderContext): Promise<boolean> {
+        if (rc.extra.disabledSchema) return true;
         if (this._disabledOn && (Array.isArray(this._disabledOn) ? this._disabledOn : [this._disabledOn]).includes(rc.operation)) return true;
         if ((await this.ev(this._disabled, rc)) === true) return true;
         return this.parent ? this.parent.isDisabled(rc) : false;

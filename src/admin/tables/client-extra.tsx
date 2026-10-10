@@ -166,3 +166,76 @@ function FiltersBody({ labels, apply, deferred, applyClass }: { labels: { headin
         </>
     );
 }
+
+/** `filamentTableColumnManager`: the dropdown that shows / hides the toggleable columns (deferred, with an Apply button) */
+export function ColumnManager({
+    columns,
+    prefix,
+    labels,
+    triggerIcon,
+    resetIcon,
+    applyClass,
+}: {
+    columns: Array<{ name: string; label: string; toggled: boolean }>;
+    prefix: string;
+    labels: { heading: string; reset: string; apply: string; trigger: string };
+    triggerIcon: ReactNode;
+    resetIcon: ReactNode;
+    applyClass: string;
+}) {
+    const t = useTable();
+    const key = prefix ? `${prefix}.columns` : 'columns';
+    const [checked, setChecked] = useState<Record<string, boolean>>(() => Object.fromEntries(columns.map((c) => [c.name, c.toggled])));
+    const apply = () => {
+        t.go({ [key]: Object.fromEntries(columns.map((c) => [c.name, checked[c.name] ? '1' : '0'])) });
+        t.clear();
+    };
+    return (
+        <Dropdown
+            className="fi-ta-col-manager-dropdown"
+            placement="bottom-end"
+            width="xs"
+            trigger={
+                <button title={labels.trigger} aria-label={labels.trigger} type="button" className="fi-force-enabled fi-ac-icon-btn-action fi-icon-btn fi-size-md">
+                    {triggerIcon}
+                </button>
+            }
+        >
+            <div className="fi-ta-col-manager">
+                <div className="fi-ta-col-manager-header">
+                    <h2 className="fi-ta-col-manager-heading">{labels.heading}</h2>
+                    <div>
+                        <button
+                            type="button"
+                            className="fi-color fi-color-danger fi-text-color-600 dark:fi-text-color-300 fi-link fi-size-md"
+                            onClick={() => {
+                                t.go({ [key]: null });
+                                t.clear();
+                            }}
+                        >
+                            {resetIcon}
+                            <span className="fi-link-label">{labels.reset}</span>
+                        </button>
+                    </div>
+                </div>
+                <div className="fi-grid fi-grid-direction-col lg:fi-grid-cols fi-ta-col-manager-items" style={{ '--cols-lg': 1, '--cols-default': 1 } as any}>
+                    {columns.map((c) => (
+                        <div key={c.name}>
+                            <div className="fi-ta-col-manager-item">
+                                <label className="fi-ta-col-manager-label">
+                                    <input type="checkbox" className="fi-checkbox-input fi-valid" checked={!!checked[c.name]} onChange={(e) => setChecked((s) => ({ ...s, [c.name]: e.target.checked }))} />
+                                    <span dangerouslySetInnerHTML={{ __html: c.label }} />
+                                </label>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+                <div className="fi-ta-col-manager-actions-ctn">
+                    <button type="button" className={applyClass} onClick={apply}>
+                        {labels.apply}
+                    </button>
+                </div>
+            </div>
+        </Dropdown>
+    );
+}
