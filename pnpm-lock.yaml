@@ -117,6 +117,9 @@ importers:
       drizzle-kit:
         specifier: ^0.31.0
         version: 0.31.11
+      heroicons:
+        specifier: 2.2.0
+        version: 2.2.0
       postcss:
         specifier: ^8.5.0
         version: 8.5.29
@@ -1532,6 +1535,9 @@ packages:
   he@1.2.0:
     resolution: {integrity: sha512-F/1DnUGPopORZi0ni+CvrCgHQ5FyEAHRLSApuYWMmrbSwoN2Mn/7k+Gl38gJnR7yyDZk6WLXwiGod1JOWNDKGw==}
     hasBin: true
+
+  heroicons@2.2.0:
+    resolution: {integrity: sha512-yOwvztmNiBWqR946t+JdgZmyzEmnRMC2nxvHFC90bF1SUttwB6yJKYeme1JeEcBfobdOs827nCyiWBS2z/brog==}
 
   html-to-text@10.0.1:
     resolution: {integrity: sha512-GiVhRI1BatGARSCmlXWNCjDT0cWrwBWoeduLoV0WSKAgaV/wa+hUWy5LiQLUs4UwiUrE52ZCMfBGiKD87TDPrg==}
@@ -3186,6 +3192,8 @@ snapshots:
   graceful-fs@4.2.11: {}
 
   he@1.2.0: {}
+
+  heroicons@2.2.0: {}
 
   html-to-text@10.0.1:
     dependencies:

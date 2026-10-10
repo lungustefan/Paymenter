@@ -11,6 +11,9 @@ import { activeTheme, activeThemeName } from '@/server/theme-module';
 import { readFlash } from '@/server/action';
 import { Hook } from '@/components/Hook';
 import { Providers, themeInitScript } from '@themes/default/components/Providers';
+import { currentPath } from '@/server/request';
+import { AdminDocument } from '@/admin/layout/AdminDocument';
+import { consumeFlashedNotifications } from '@/admin/flash';
 
 export async function generateMetadata(): Promise<Metadata> {
     await initRequest();
@@ -21,6 +24,13 @@ export const viewport: Viewport = { width: 'device-width', initialScale: 1 };
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
     const { locale } = await initRequest();
+
+    // the admin panel has its own document (Filament's layout), the client area theme does not apply
+    const path = await currentPath();
+    if (path === '/admin' || path.startsWith('/admin/')) {
+        return <AdminDocument locale={locale} flashed={await consumeFlashedNotifications()}>{children}</AdminDocument>;
+    }
+
     const theme = await activeTheme();
     const flash = await readFlash();
     const favicon = setting<string | null>('favicon');
