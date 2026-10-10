@@ -32,8 +32,9 @@ export function TextInputControl({ path, live, className, ...attrs }: { path: st
 /** `<select class="fi-select-input">` (the native select) */
 export function SelectControl({ path, live, className, options, placeholder, ...attrs }: { path: string; live?: Live; className?: string; options: Array<{ value: string; label: string; disabled?: boolean } | { group: string; options: Array<{ value: string; label: string; disabled?: boolean }> }>; placeholder?: string | null } & Omit<React.ComponentProps<'select'>, 'value' | 'onChange'>) {
     const [value, setValue] = useFieldValue(path);
+    const { blur } = useFormContext();
     return (
-        <select {...attrs} className={className} value={value === null || value === undefined ? '' : String(value)} onChange={(e) => setValue(e.target.value === '' ? null : e.target.value, live ? { ...live, debounce: 0 } : undefined)}>
+        <select {...attrs} className={className} value={value === null || value === undefined ? '' : String(value)} onChange={(e) => setValue(e.target.value === '' ? null : e.target.value, live && !live.onBlur ? { ...live, debounce: 0 } : undefined)} onBlur={() => blur(path, live)}>
             {placeholder !== undefined && placeholder !== null && <option value="">{attrs.disabled ? '' : placeholder}</option>}
             {options.map((o) =>
                 'group' in o ? (

@@ -20,6 +20,7 @@ export class Tab extends Layout {
         return t;
     }
 
+    override canConcealComponents() { return true; }
     override label(v: Fn<string | null | false>) { this._label2 = v as any; return this; }
     icon(v: string) { this._icon = v; return this; }
     iconPosition(v: 'before' | 'after') { this._iconPosition = v; return this; }

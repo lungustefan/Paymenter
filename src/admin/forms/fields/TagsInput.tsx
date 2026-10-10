@@ -24,7 +24,15 @@ export class TagsInput extends Field {
     tagSuffix(v: string) { this._tagSuffix = v; return this; }
     trim(v = true) { this._trim = v; return this; }
     separator(v: string) { this._separator = v; this._splitKeys = [v]; return this; }
-    nestedRecursiveRules(v: Rule[]) { void v; return this; }
+    protected _nestedRules: Rule[] = [];
+    nestedRecursiveRules(v: Rule[]) { this._nestedRules = v; return this; }
+
+    protected override async collectChildRules(rc: RenderContext, rules: Record<string, any[]>, attributes: Record<string, string>) {
+        if (this._nestedRules.length === 0) return;
+        const path = this.getStatePath(rc);
+        rules[`${path}.*`] = [...(rules[`${path}.*`] ?? []), ...this._nestedRules];
+        attributes[`${path}.*`] = attributes[path] ?? path;
+    }
 
     protected override emptyState(_rc: RenderContext) {
         return [];

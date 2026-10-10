@@ -317,7 +317,7 @@ export abstract class Field extends Component {
         const actions = await this.renderInlineActions(rc, 'hint');
         if (!hint && actions.length === 0) return null;
         return (
-            <SchemaText align="end" color={await this.ev(this._hintColor, rc)} icon={await this.ev(this._hintIcon, rc)} html actions={actions.length ? <>{actions}</> : undefined}>
+            <SchemaText align="end" color={await this.ev(this._hintColor, rc)} icon={await this.ev(this._hintIcon, rc)} actions={actions.length ? <>{actions}</> : undefined}>
                 {hint as any}
             </SchemaText>
         );

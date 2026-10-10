@@ -25,7 +25,7 @@ export class ColorPicker extends Field {
                 id={id}
                 format={this._format}
                 disabled={(await this.isDisabled(rc)) || undefined}
-                required={(await this.isRequired(rc)) || undefined}
+                required={((await this.isRequired(rc)) && !this.isConcealed()) || undefined}
                 placeholder={(await this.ev(this._placeholder, rc)) || undefined}
                 className={['fi-input', hasInlinePrefix ? 'fi-input-has-inline-prefix' : '', hasInlineSuffix ? 'fi-input-has-inline-suffix' : ''].filter(Boolean).join(' ')}
                 panelLabel={trans('filament-forms::components.color_picker.panel_label')}

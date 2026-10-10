@@ -122,7 +122,7 @@ export class DateTimePicker extends Field {
                     min={this._hasTime ? (minDate ?? undefined) : minDate ? Carbon.parse(minDate).format('Y-m-d') : undefined}
                     placeholder={(await this.ev(this._placeholder, rc)) || undefined}
                     readOnly={(await this.isReadOnly(rc)) || undefined}
-                    required={(await this.isRequired(rc)) || undefined}
+                    required={((await this.isRequired(rc)) && !this.isConcealed()) || undefined}
                     disabled={(await this.isDisabled(rc)) || undefined}
                     step={step ?? (this._hasTime && (await this.hasSeconds(rc)) ? 1 : undefined)}
                     autoFocus={this._autofocus || undefined}

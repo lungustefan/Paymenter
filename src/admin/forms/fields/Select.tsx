@@ -254,7 +254,7 @@ export class Select extends Field {
         const multiple = await this.isMultiple(rc);
         const searchable = await this.isSearchable(rc);
         const native = !(searchable || multiple) && (await this.ev(this._native, rc)) !== false;
-        const required = (await this.ev(this._required, rc)) === true;
+        const required = (await this.ev(this._required, rc)) === true && !this.isConcealed();
         const canSelectPlaceholder = (await this.ev(this._selectablePlaceholder, rc)) !== false;
         const placeholder = this._placeholder !== undefined ? await this.ev(this._placeholder, rc) : disabled ? null : trans('filament-forms::components.select.placeholder');
         const entries = await this.resolveOptions(rc);
