@@ -12,9 +12,9 @@ import { Icon } from '../ui/Icon';
 import { badgeClass, buttonClass, iconButtonClass } from '../ui/classes';
 import { cn } from '@themes/default/components/cn';
 import { GroupCheckbox, PageButton, PageCheckbox, PerPageSelect, RecordCheckbox, SearchInput, SelectionIndicator, SortButton, TableRoot, TableRow } from './client';
-import { ActionDropdown, ModalHost } from '../actions/client';
+import { ActionDropdown, ActionTrigger, ModalHost } from '../actions/client';
 import { renderFiltersForm, FiltersPanel, type BaseFilter } from './filters';
-import { TableHeaderCtn, ToolbarWrapper, ReorderTrigger, FilterIndicators } from './client-extra';
+import { TableHeaderCtn, ToolbarWrapper, ReorderTrigger, FilterIndicators, ColumnManager } from './client-extra';
 
 export interface TableHost {
     pathname: string;
@@ -99,7 +99,7 @@ export class Table {
     protected _searchPlaceholder?: string;
     protected _recordUrl?: ((record: any) => string | null | Promise<string | null>) | null;
     protected _recordUrlNewTab = false;
-    protected _recordAction?: string | null;
+    protected _recordAction?: string | null | ((record: any) => string | null | Promise<string | null>);
     protected _query?: (q: Builder<any>) => void;
     protected _modifyQuery?: (q: Builder<any>) => Builder<any> | void;
     protected _heading?: string;
@@ -146,7 +146,7 @@ export class Table {
     searchDebounce(ms: number) { this._searchDebounce = ms; return this; }
     searchPlaceholder(v: string) { this._searchPlaceholder = v; return this; }
     recordUrl(v: ((record: any) => string | null | Promise<string | null>) | null, shouldOpenInNewTab = false) { this._recordUrl = v; this._recordUrlNewTab = shouldOpenInNewTab; return this; }
-    recordAction(v: string | null) { this._recordAction = v; return this; }
+    recordAction(v: string | null | ((record: any) => string | null | Promise<string | null>)) { this._recordAction = v; return this; }
     /** `->query(fn)`: replaces the base query */
     query(fn: (q: Builder<any>) => void) { this._query = fn; return this; }
     modifyQueryUsing(fn: (q: Builder<any>) => Builder<any> | void) { this._modifyQuery = fn; return this; }
@@ -382,8 +382,10 @@ export class Table {
         const nonBulkToolbar = toolbarActions.some((a) => (a instanceof BulkActionGroup ? false : a instanceof ActionGroup ? a.actions.some((x) => x instanceof Action && !x.isBulk()) : !a.isBulk()));
         const hasGlobalSearch = this.isSearchable();
         const hasFiltersTrigger = hasFilters && this._filtersLayout !== 'above';
-        const hasHeaderToolbar = this.isReorderable() || hasGlobalSearch || hasFiltersTrigger || this._groups.length > 0;
-        const hasHeader = !!(this._heading || this._description || (headerActions.length && !reordering) || this.isReorderable() || hasGlobalSearch || hasFilters || indicators.length);
+        const toggleableColumns = this._columns.filter((c) => c.isToggleable());
+        const hasColumnManager = toggleableColumns.length > 0;
+        const hasHeaderToolbar = this.isReorderable() || hasGlobalSearch || hasFiltersTrigger || this._groups.length > 0 || hasColumnManager;
+        const hasHeader = !!(this._heading || this._description || (headerActions.length && !reordering) || this.isReorderable() || hasGlobalSearch || hasFilters || indicators.length || hasColumnManager);
         const headerMode = hasHeader || nonBulkToolbar ? 'visible' : toolbarActions.length ? 'selection' : 'hidden';
         const toolbarMode = hasHeaderToolbar || nonBulkToolbar ? 'visible' : toolbarActions.length ? 'selection' : 'hidden';
 
@@ -480,7 +482,8 @@ export class Table {
                 previousGroupTitle = title;
             }
             const url = await urlOf(record);
-            const clickable = !!url || !!this._recordAction;
+            const recordActionName = typeof this._recordAction === 'function' ? await this._recordAction(record) : (this._recordAction ?? null);
+            const clickable = !!url || !!recordActionName;
             const classes = this._recordClasses ? this._recordClasses(record) : null;
             const extra = Array.isArray(classes) ? classes : typeof classes === 'string' ? [classes] : classes ? Object.entries(classes).filter(([, v]) => v).map(([k]) => k) : [];
             const selectable = isSelectionEnabled && (this._isRecordSelectable ? this._isRecordSelectable(record) : true);
@@ -504,7 +507,7 @@ export class Table {
                 const loop = { index, iteration: index + 1, first: index === 0, last: index === records.length - 1, count: records.length };
                 const classesCell = (await column.cellClasses(record)).join(' ');
                 const columnUrl = column.hasUrl() ? await column.getUrl(record) : null;
-                const wrapperTag: 'a' | 'button' | 'div' = (columnUrl || (url && !column.hasAction())) && !column.isClickDisabled() && !reordering ? 'a' : 'div';
+                const wrapperTag: 'a' | 'button' | 'div' = (columnUrl || (url && !column.hasAction())) && !column.isClickDisabled() && !reordering ? 'a' : recordActionName && !url && !column.hasAction() && !column.isClickDisabled() && !reordering ? 'button' : 'div';
                 const content = await column.render(record, { recordKey: key, rowLoop: loop });
                 const colClass = cn('fi-ta-col', wrapperTag === 'a' && !!columnUrl && 'fi-ta-col-has-column-url');
                 cells.push(
@@ -513,6 +516,10 @@ export class Table {
                             <a href={columnUrl || url || '#'} {...(columnUrl ? (column.shouldOpenUrlInNewTab() ? { target: '_blank', rel: 'noopener noreferrer' } : {}) : this._recordUrlNewTab ? { target: '_blank', rel: 'noopener noreferrer' } : {})} className={colClass}>
                                 {content}
                             </a>
+                        ) : wrapperTag === 'button' ? (
+                            <ActionTrigger tag="button" className={colClass} actionId={`table.${this.id}.record.${key}.${recordActionName}`} mode="mount">
+                                {content}
+                            </ActionTrigger>
                         ) : (
                             <div className={colClass}>{content}</div>
                         )}
@@ -561,7 +568,7 @@ export class Table {
                             }),
                         ))}
                 </div>
-                {(hasGlobalSearch || hasFiltersTrigger) && (
+                {(hasGlobalSearch || hasFiltersTrigger || hasColumnManager) && (
                     <div>
                         {hasGlobalSearch && (
                             <div className="fi-ta-search-field">
@@ -587,6 +594,22 @@ export class Table {
                                 prefix={this.prefix}
                                 labels={{ heading: trans('filament-tables::table.filters.heading'), reset: trans('filament-tables::table.filters.actions.reset.label'), apply: trans('filament-tables::table.filters.actions.apply.label'), filter: trans('filament-tables::table.actions.filter.label') }}
                                 triggerIcon={<Icon icon="heroicon:funnel" />}
+                                applyClass={buttonClass({ color: 'primary', size: 'md', extra: 'fi-ac-btn-action' })}
+                            />
+                        )}
+                        {hasColumnManager && (
+                            <ColumnManager
+                                prefix={this.prefix}
+                                columns={await Promise.all(
+                                    toggleableColumns.map(async (c) => ({
+                                        name: c.getName(),
+                                        label: await c.getLabelFor(),
+                                        toggled: visible.includes(c),
+                                    })),
+                                )}
+                                labels={{ heading: trans('filament-tables::table.column_manager.heading'), reset: trans('filament-tables::table.column_manager.actions.reset.label'), apply: trans('filament-tables::table.column_manager.actions.apply.label'), trigger: trans('filament-tables::table.actions.column_manager.label') }}
+                                triggerIcon={<Icon icon="heroicon:view-columns" />}
+                                resetIcon={<Icon icon="heroicon:arrow-path" size="sm" />}
                                 applyClass={buttonClass({ color: 'primary', size: 'md', extra: 'fi-ac-btn-action' })}
                             />
                         )}

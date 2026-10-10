@@ -34,6 +34,10 @@ export class CreateAction extends Action {
             const record = new Model();
             record.fill(ctx.data ?? {});
             await record.save();
+            if (ctx.formSchema) {
+                ctx.formRc.record = record;
+                await ctx.formSchema.saveRelationships(ctx.formRc, record, ctx.data ?? {});
+            }
             return record;
         });
     }
@@ -57,6 +61,7 @@ export class EditAction extends Action {
         this.fillForm((ctx) => attributesForForm(ctx.record));
         this.action(async (ctx) => {
             await (ctx.record as any).update(ctx.data ?? {});
+            if (ctx.formSchema) await ctx.formSchema.saveRelationships(ctx.formRc, ctx.record, ctx.data ?? {});
         });
     }
 }

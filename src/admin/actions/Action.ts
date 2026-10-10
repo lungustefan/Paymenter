@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import type { Schema } from '../forms/Schema';
 import type { Model } from '@/server/orm';
 import { can } from '@/server/policies';
 import { evaluate, type EvalContext, type Fn } from '../core/evaluate';
@@ -31,6 +32,9 @@ export interface ActionContext extends EvalContext {
     model?: any;
     /** the resource the action belongs to */
     resource?: any;
+    /** the schema + render context of the modal form the action was submitted with */
+    formSchema?: any;
+    formRc?: any;
 }
 
 /** closures of an action receive the action context */
@@ -67,7 +71,7 @@ export class Action {
     protected _modalCancelAction: boolean = true;
     protected _modalFooterActionsAlignment: string | null = null;
     protected _slideOver = false;
-    protected _form?: AFn<any[]>;
+    protected _form?: AFn<any[] | Schema>;
     protected _fillForm?: AFn<Record<string, any>>;
     protected _handler?: (ctx: ActionContext) => any;
     protected _before: Array<(ctx: ActionContext) => any> = [];
@@ -145,12 +149,13 @@ export class Action {
     slideOver(v = true) { this._slideOver = v; return this; }
     extraModalFooterActions(v: AFn<Action[]>) { this._extraModalFooterActions = v; return this; }
     /** `->form([...components])` or `->schema(...)`: the fields of the modal */
-    form(v: AFn<any[]>) { this._form = v; return this; }
-    schema(v: AFn<any[]>) { return this.form(v); }
+    form(v: AFn<any[] | Schema>) { this._form = v; return this; }
+    schema(v: AFn<any[] | Schema>) { return this.form(v); }
     fillForm(v: AFn<Record<string, any>>) { this._fillForm = v; return this; }
     action(handler: (ctx: ActionContext) => any) { this._handler = handler; return this; }
     before(handler: (ctx: ActionContext) => any) { this._before.push(handler); return this; }
     after(handler: (ctx: ActionContext) => any) { this._after.push(handler); return this; }
+    mutateDataUsing(fn: (data: Record<string, any>, ctx: ActionContext) => Record<string, any> | Promise<Record<string, any>>) { return this.mutateFormDataUsing(fn); }
     mutateFormDataUsing(fn: (data: Record<string, any>, ctx: ActionContext) => Record<string, any> | Promise<Record<string, any>>) { this._mutateFormDataUsing = fn; return this; }
     successNotificationTitle(v: AFn<string | null>) { this._successNotificationTitle = v; return this; }
     failureNotificationTitle(v: AFn<string | null>) { this._failureNotificationTitle = v; return this; }
@@ -238,7 +243,8 @@ export class Action {
 
     hasForm(): boolean { return this._form !== undefined; }
     getFormDefinition() { return this._form; }
-    async getFormComponents(ctx: ActionContext): Promise<any[]> { return (await this.ev(this._form, ctx)) ?? []; }
+    /** the `form()` definition: component list, or a ready made `Schema` */
+    async getFormComponents(ctx: ActionContext): Promise<any> { return (await this.ev(this._form, ctx)) ?? []; }
     async getFilledFormState(ctx: ActionContext): Promise<Record<string, any>> { return (await this.ev(this._fillForm, ctx)) ?? {}; }
     shouldOpenModal(): boolean {
         return this._requiresConfirmation || this._form !== undefined || this._modalContent !== undefined || this._modalHeading !== undefined || this._modalDescription !== undefined;

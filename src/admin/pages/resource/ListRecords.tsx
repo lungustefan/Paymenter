@@ -57,6 +57,19 @@ export class ListRecords extends ResourcePage {
                 }
                 return null;
             });
+            // rows without a URL open the view / edit action of the table
+            table.recordAction(async (record: any) => {
+                const t = this.tableCache!;
+                for (const name of ['view', 'edit']) {
+                    const action = findByName(t.getRecordActions(), name);
+                    if (!action) continue;
+                    const ctx = t.recordActionContext(action, record);
+                    if (!(await action.isVisible(ctx))) continue;
+                    if (await action.getUrl(ctx)) continue;
+                    return action.getName();
+                }
+                return null;
+            });
             this.tableCache = this.configureTable(this.resource.table(table));
             for (const list of [this.tableCache.getRecordActions(), this.tableCache.getToolbarActions(), this.tableCache.getHeaderActions()]) this.configureTableActions(list);
         }
@@ -64,18 +77,23 @@ export class ListRecords extends ResourcePage {
     }
 
     /** `ListRecords::configureAction()`: edit / view / create actions of the table go to the resource's pages */
-    private configureTableActions(list: Array<Action | ActionGroup>) {
+    protected configureTableActions(list: Array<Action | ActionGroup>) {
         for (const a of list) {
             if (a instanceof ActionGroup) {
                 this.configureTableActions(a.actions);
                 continue;
             }
-            if (a.hasUrl() || a.hasForm()) continue;
-            const resource = this.resource;
-            if (a instanceof EditAction && resource.hasPage('edit')) a.url(({ record }) => resource.getUrl('edit', { record }));
-            else if (a instanceof ViewAction && resource.hasPage('view')) a.url(({ record }) => resource.getUrl('view', { record }));
-            else if (a instanceof CreateAction && resource.hasPage('create')) a.url(() => resource.getUrl('create'));
+            this.configureTableAction(a);
         }
+    }
+
+    /** `configureAction()` of the table's actions: link to the resource's pages */
+    protected configureTableAction(a: Action) {
+        if (a.hasUrl() || a.hasForm()) return;
+        const resource = this.resource;
+        if (a instanceof EditAction && resource.hasPage('edit')) a.url(({ record }) => resource.getUrl('edit', { record }));
+        else if (a instanceof ViewAction && resource.hasPage('view')) a.url(({ record }) => resource.getUrl('view', { record }));
+        else if (a instanceof CreateAction && resource.hasPage('create')) a.url(() => resource.getUrl('create'));
     }
 
     override getTables() {

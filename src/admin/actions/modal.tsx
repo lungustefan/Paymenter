@@ -20,11 +20,15 @@ const hash = (s: string) => {
 /** the schema (form) of an action's modal and its filled state */
 export async function buildActionForm(host: Host, ref: ActionRef, state?: Record<string, any>) {
     const { action, ctx } = ref;
-    const components = await action.getFormComponents(ctx);
-    const schema = Schema.make().components(components).operation('create').model(ctx.record ?? ctx.model);
+    const definition = await action.getFormComponents(ctx);
+    const schema: Schema = definition instanceof Schema ? definition : Schema.make().components(definition);
+    // the operation of an action form is the name of the action (`create`, `edit`, `view`, ...)
+    const operation = action.getName();
+    schema.operation(operation).model(ctx.record ?? ctx.model);
     const columns = (action as any).formColumns;
     if (columns) schema.columns(columns);
-    const rc = makeRenderContext({ state: state ?? {}, operation: 'create', record: ctx.record ?? null, model: ctx.model, user: host.user, livewire: host, formId: 'mountedActionSchema0', extra: { arguments: ctx.arguments ?? {}, ownerRecord: (ctx as any).ownerRecord } });
+    const components = schema.getComponents();
+    const rc = makeRenderContext({ state: state ?? {}, operation, record: ctx.record ?? null, model: ctx.model, user: host.user, livewire: host, formId: 'mountedActionSchema0', extra: { arguments: ctx.arguments ?? {}, ownerRecord: (ctx as any).ownerRecord, disabledSchema: action.isSchemaDisabled() } });
     return { schema, rc, components };
 }
 

@@ -136,7 +136,7 @@ async function submitAction(host: Host, target: Extract<FormTarget, { kind: 'act
         data = await dehydrateForm(schema, rc);
         data = await ref.action.mutateFormData(data, ref.ctx);
     }
-    const result = await execute(host, ref, data, target.args ?? {});
+    const result = await execute(host, ref, data, target.args ?? {}, schema.getFlatComponents().length ? { formSchema: schema, formRc: rc } : {});
     if (target.args?.another && result.ok && !result.halted) {
         const fresh = buildActionForm(host, ref, {});
         const { schema: s, rc: r } = await fresh;
@@ -146,9 +146,9 @@ async function submitAction(host: Host, target: Extract<FormTarget, { kind: 'act
     return result;
 }
 
-async function execute(host: Host, ref: ActionRef, data: Record<string, any>, args: Record<string, any>): Promise<AdminActionResult> {
+async function execute(host: Host, ref: ActionRef, data: Record<string, any>, args: Record<string, any>, form: { formSchema?: any; formRc?: any } = {}): Promise<AdminActionResult> {
     void host;
-    const ctx: ActionContext = { ...ref.ctx, data, arguments: { ...(ref.ctx.arguments ?? {}), ...args } };
+    const ctx: ActionContext = { ...ref.ctx, data, arguments: { ...(ref.ctx.arguments ?? {}), ...args }, ...form };
     const outcome = await ref.action.execute(ctx);
     if (outcome.halted) return { ok: true, halted: true };
     if (outcome.cancelled) return { ok: true, close: true };

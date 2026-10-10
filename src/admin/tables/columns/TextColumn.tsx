@@ -258,7 +258,7 @@ export class TextColumn extends Column {
             const className = cn(
                 'fi-ta-text-item',
                 family && (['sans', 'serif', 'mono'].includes(family) ? `fi-font-${family}` : family),
-                !isBadge && size && `fi-size-${size}`,
+                !isBadge && `fi-size-${size || 'sm'}`,
                 !isBadge && weight && `fi-font-${weight}`,
                 !isBadge && color && colorClass('textColumnItem', color),
             );
