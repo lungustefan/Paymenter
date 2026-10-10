@@ -9,6 +9,7 @@ const nextConfig: NextConfig = {
     transpilePackages: [],
     serverExternalPackages: ['mysql2', 'bcryptjs', 'nodemailer', 'tsx'],
     experimental: {
+        authInterrupts: true,
         serverActions: { bodySizeLimit: '16mb' },
     },
 };
