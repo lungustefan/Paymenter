@@ -243,11 +243,11 @@ register('app:theme:create', 'Create a new theme from the default theme', async 
     console.log('Select it in the admin panel under Settings > Theme, then run `pnpm build` to include it.');
 });
 
-register('app:upgrade', 'Upgrade the website to the latest version.', async (_a, flags) => {
+register('app:upgrade', 'Upgrade the website to the latest version (or --version=<tag> / --url=<archive url>).', async (_a, flags) => {
     console.log('Starting upgrade process...');
-    const url = flags.url ? `--url=${flags.url}` : '';
-    const child = spawn('bash', ['update.sh', '--install', url].filter(Boolean), { stdio: 'inherit' });
-    await new Promise<void>((resolve) => child.on('close', () => resolve()));
+    const options = (['url', 'version'] as const).filter((k) => typeof flags[k] === 'string').map((k) => `--${k}=${flags[k]}`);
+    const child = spawn('bash', ['update.sh', '--install', ...options], { stdio: 'inherit' });
+    process.exitCode = await new Promise<number>((resolve) => child.on('close', (code) => resolve(code ?? 1)));
 });
 
 /* ------------------------------ queue / schedule ------------------------------ */
