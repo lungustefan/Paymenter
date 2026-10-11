@@ -27,7 +27,7 @@ else
   if [ -z $APP_KEY ]; then
      echo -e "Generating key."
      APP_KEY=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)
-     echo -e "Generated app key: $APP_KEY"
+     echo -e "Generated an app key, saved in $VAR_DIR/.env (the .env next to docker-compose.yml)."
      echo -e "APP_KEY=$APP_KEY" > $VAR_DIR/.env
   else
     echo -e "APP_KEY exists in environment, using that."
@@ -45,7 +45,7 @@ fi
 
 ## check for DB up before starting the panel
 echo "Checking database status."
-until nc -z -v -w30 $DB_HOST $DB_PORT
+until nc -z -w30 $DB_HOST $DB_PORT 2>/dev/null
 do
   echo "Waiting for database connection..."
   # wait for 1 seconds before check again
