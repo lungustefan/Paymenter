@@ -3,29 +3,38 @@ cd /app
 
 mkdir -p /var/log/supervisord/
 
+## the directory of docker-compose.yml is mounted at /var/lib/paymenter, its .env keeps the APP_KEY.
+## It is mounted outside /app so that the rebuild below never reads the database files next to it;
+## /app/var is where older compose files mount it, keep using that when it is there.
+VAR_DIR=/var/lib/paymenter
+if [ -d /app/var ]; then
+  VAR_DIR=/app/var
+  echo "Using the .env of /app/var, mount the directory at /var/lib/paymenter instead (see docker-compose.example.yml)."
+fi
+
 ## check for .env file and generate app keys if missing
-if [ -f /app/var/.env ]; then
+if [ -f $VAR_DIR/.env ]; then
   echo "external vars exist."
   rm -rf /app/.env
-  ln -s /app/var/.env /app/.env
+  ln -s $VAR_DIR/.env /app/.env
 else
   echo "external vars don't exist."
   rm -rf /app/.env
-  mkdir -p /app/var
-  touch /app/var/.env
+  mkdir -p $VAR_DIR
+  touch $VAR_DIR/.env
 
   ## manually generate a key because key generate --force fails
   if [ -z $APP_KEY ]; then
      echo -e "Generating key."
      APP_KEY=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)
      echo -e "Generated app key: $APP_KEY"
-     echo -e "APP_KEY=$APP_KEY" > /app/var/.env
+     echo -e "APP_KEY=$APP_KEY" > $VAR_DIR/.env
   else
     echo -e "APP_KEY exists in environment, using that."
-    echo -e "APP_KEY=$APP_KEY" > /app/var/.env
+    echo -e "APP_KEY=$APP_KEY" > $VAR_DIR/.env
   fi
 
-  ln -s /app/var/.env /app/.env
+  ln -s $VAR_DIR/.env /app/.env
 fi
 
 if [[ -z $DB_PORT ]]; then
@@ -149,7 +158,7 @@ fi
 echo -e "Setting storage permissions."
 chmod -R 777 /app/storage/*
 chown -R node:node /app/storage /app/.next /app/src/generated
-chown node:node /app/var/.env 2>/dev/null || true
+chown node:node $VAR_DIR/.env 2>/dev/null || true
 
 ## make sure the db is set up
 echo -e "Migrating and Seeding D.B"
