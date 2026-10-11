@@ -244,7 +244,7 @@ RUN pm_run paymenter migrate --seed || fail "The database migrations failed. Fix
 RUN pm_run paymenter app:settings:change theme default
 
 # Rebuild when custom themes/extensions are installed (they are registered at build time) or the release shipped without a build.
-CURRENT_HASH=$(find themes extensions -type f 2>/dev/null | sort | xargs sha256sum | sha256sum | cut -d' ' -f1)
+CURRENT_HASH=$(find themes extensions -type f 2>/dev/null | LC_ALL=C sort | xargs sha256sum | sha256sum | cut -d' ' -f1)
 if [ ! -d .next ] || [ "$CURRENT_HASH" != "$(cat .registry-hash 2>/dev/null)" ]; then
     RUN pm_run build
 else
