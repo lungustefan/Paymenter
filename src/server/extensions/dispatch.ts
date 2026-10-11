@@ -4,6 +4,7 @@ import { boot } from '@/server/bootstrap';
 import { ensureSettings } from '@/server/settings/store';
 import { getCurrentUser } from '@/server/auth/session';
 import { clientIp } from '@/server/api/admin';
+import { baseUrl } from '@/server/routes';
 
 /** `/path/{param}` -> matcher; returns the params or null */
 export function matchPath(pattern: string, path: string, where: Record<string, string> = {}): Record<string, string> | null {
@@ -34,7 +35,7 @@ export async function dispatchExtensionRoute(request: Request): Promise<Response
     const user = await getCurrentUser();
     // VerifyCsrfToken: cookie authenticated, state changing requests must come from this site
     if (found.route.auth && request.method !== 'GET' && request.method !== 'HEAD' && !isSameSite(request)) return new Response('CSRF token mismatch.', { status: 419 });
-    if (found.route.auth && !user) return Response.redirect(new URL(`/auth/guest?to=${encodeURIComponent(url.pathname + url.search)}`, url.origin), 302);
+    if (found.route.auth && !user) return Response.redirect(`${baseUrl()}/auth/guest?to=${encodeURIComponent(url.pathname + url.search)}`, 302);
 
     const ctx: ExtensionRouteContext = {
         request,

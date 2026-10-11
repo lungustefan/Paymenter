@@ -10,7 +10,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     await initRequest();
     const user = await getAuthUser();
     const { id, hash } = await params;
-    if (!user) return NextResponse.redirect(new URL(`/auth/guest?to=${encodeURIComponent(request.nextUrl.pathname + request.nextUrl.search)}`, request.nextUrl.origin));
+    if (!user) return NextResponse.redirect(`${baseUrl()}/auth/guest?to=${encodeURIComponent(request.nextUrl.pathname + request.nextUrl.search)}`);
 
     const url = baseUrl() + request.nextUrl.pathname;
     if (!hasValidSignature(url, request.nextUrl.searchParams)) return new NextResponse('Invalid signature.', { status: 403 });
@@ -20,5 +20,5 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         await user.markEmailAsVerified();
         await dispatch('Illuminate\\Auth\\Events\\Verified', { user });
     }
-    return NextResponse.redirect(new URL('/dashboard', request.nextUrl.origin));
+    return NextResponse.redirect(`${baseUrl()}/dashboard`);
 }
