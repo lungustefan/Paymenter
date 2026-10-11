@@ -38,21 +38,13 @@ jobs:
 
       - name: Create beta archive
         run: | 
-            rm -rf node_modules tests CODE_OF_CONDUCT.md CONTRIBUTING.md flake.lock flake.nix .next/cache .next/standalone
+            rm -rf node_modules tests vitest.config.ts CODE_OF_CONDUCT.md CONTRIBUTING.md flake.lock flake.nix .next/cache .next/standalone
             tar -czf paymenter.tar.gz * .next .registry-hash .env.example .gitignore
-    
-      - name: Move file to seperate directory for r2 upload
-        run: |
-          mkdir -p r2_upload
-          cp paymenter.tar.gz r2_upload/
 
-      # Upload artifact
+      # The R2 bucket behind api.paymenter.org belongs to the PHP project, keep the archive as a workflow artifact instead
       - name: Upload archive
-        uses: ryand56/r2-upload-action@latest
+        uses: actions/upload-artifact@v4
         with:
-          r2-account-id: ${{ secrets.CF_R2_ACCOUNT_ID }}
-          r2-access-key-id: ${{ secrets.CF_R2_KEY_ID }}
-          r2-secret-access-key: ${{ secrets.CF_R2_KEY_ACCESS }}
-          r2-bucket: paymenter-api
-          source-dir: r2_upload
-          destination-dir: ./
+          name: paymenter-beta
+          path: paymenter.tar.gz
+          retention-days: 14
