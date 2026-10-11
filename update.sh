@@ -7,6 +7,12 @@ VERSION=''
 
 echo "Starting upgrade process..."
 
+# update.sh works on the current directory: refuse to touch anything that is not a Paymenter installation.
+if [[ ! -f config/app.php ]] && ! grep -qsE '"name": *"paymenter"' package.json; then
+    echo -e "\x1b[31;1mCannot execute self-upgrade process. Run update.sh in the folder Paymenter is installed in, e.g. cd /var/www/paymenter && bash update.sh\x1b[0m"
+    exit 1
+fi
+
 # Read config/app.php to check if someone is trying to ugprade to a major version.
 if [ -f "config/app.php" ]; then
     if grep -q "marketplace" "config/app.php"; then
@@ -178,6 +184,12 @@ RUN() {
     "${@}"
 }
 
+# Stop at a failed step instead of carrying on and reporting a successful upgrade.
+fail() {
+    echo -e "\x1b[31;1m$*\x1b[0m"
+    exit 1
+}
+
 # Fall back to the owner of the folder when running non-interactively
 [ -z "$PERMUSER" ] && PERMUSER=$(stat -c '%U' "$file")
 [ -z "$PERMGROUP" ] && PERMGROUP=$(stat -c '%G' "$file")
@@ -188,6 +200,12 @@ RUN cp -p .env .env.update-backup 2>/dev/null || true
 # Download the release.
 RUN curl -L -f -o paymenter.tar.gz "$URL" || { echo -e "\x1b[31;1mDownload failed. Pick a release with --version=<tag> (see https://github.com/$REPO/releases) or --url=<archive url>.\x1b[0m"; exit 1; }
 
+# Check the archive before deleting anything: a truncated download or the archive of another edition must not replace the installation.
+if ! ARCHIVE_FILES="$(tar -tzf paymenter.tar.gz 2>/dev/null)" || ! grep -qE '^(\./)?src/cli/index\.ts$' <<< "$ARCHIVE_FILES"; then
+    RUN rm -f paymenter.tar.gz
+    fail "The downloaded file is not a release archive of this edition. Nothing was changed."
+fi
+
 # Delete the previous build and sources (storage, .env, extensions and themes are kept)
 RUN rm -rf src .next
 
@@ -197,7 +215,7 @@ if [[ "$FROM_PHP" == 1 ]]; then
 fi
 
 # Extract the tarball (the release contains the pre-built application).
-RUN tar -xzf paymenter.tar.gz --exclude='./.env' --exclude='.env'
+RUN tar -xzf paymenter.tar.gz --exclude='./.env' --exclude='.env' || fail "Extracting the release failed (disk full?). Fix the cause and run update.sh again."
 
 # Remove the tarball.
 RUN rm -f paymenter.tar.gz
@@ -214,10 +232,10 @@ case "$PM" in
     pnpm) RUN pnpm install --frozen-lockfile || RUN pnpm install ;;
     yarn) RUN yarn install ;;
     npm) RUN npm install ;;
-esac
+esac || fail "Installing the dependencies failed. Fix the cause and run update.sh again."
 
 # Run the database migrations.
-RUN pm_run paymenter migrate --seed
+RUN pm_run paymenter migrate --seed || fail "The database migrations failed. Fix the cause and run update.sh again."
 
 # Change to default theme.
 RUN pm_run paymenter app:settings:change theme default
