@@ -165,12 +165,17 @@ async function renderInvoice(invoice: Invoice): Promise<Buffer> {
         doc.fillColor('#000').fontSize(10.5);
         doc.y = bottom + 8;
     };
-    const drawRow = (values: string[], widths: number[]) => {
+    /** `subLabel` goes under the first value (`<br><small style="color: #666; font-size: 0.9em;">`) */
+    const drawRow = (values: string[], widths: number[], subLabel: string | null = null) => {
         const y = doc.y;
         let x = left;
         let maxY = y;
         values.forEach((v, i) => {
             doc.text(v, x, y, { width: widths[i] - 4, align: i === values.length - 1 ? 'right' : 'left' });
+            if (i === 0 && subLabel) {
+                doc.fontSize(10.5 * 0.9).fillColor('#666').text(subLabel, x, doc.y, { width: widths[i] - 4 });
+                doc.fontSize(10.5).fillColor('#000');
+            }
             maxY = Math.max(maxY, doc.y);
             x += widths[i];
         });
@@ -179,7 +184,10 @@ async function renderInvoice(invoice: Invoice): Promise<Buffer> {
 
     drawHeader([t('invoices.item'), t('invoices.quantity'), t('invoices.unit_price'), t('invoices.total')], cols);
     for (const item of items) {
-        drawRow([String(item.description), String(item.quantity), String(await item.formattedPrice()), String(await item.formattedTotal())], cols);
+        // `$item->reference->label`: the label of the service the item is for
+        const reference = await item.rel('reference');
+        const label = reference ? await reference.getAttribute('label') : null;
+        drawRow([String(item.description), String(item.quantity), String(await item.formattedPrice()), String(await item.formattedTotal())], cols, label ? String(label) : null);
     }
 
     // Totals
