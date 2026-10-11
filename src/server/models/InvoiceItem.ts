@@ -2,6 +2,7 @@ import { Model, belongsTo, morphTo } from '@/server/orm';
 import type { RelationDef } from '@/server/orm';
 import { invoiceItems } from '@/server/db/schema';
 import { Price } from '@/server/classes/Price';
+import { round } from '@/server/lib/php';
 import type { Row } from './_types';
 import { Invoice } from './Invoice';
 import { Gateway } from './Gateway';
@@ -25,7 +26,7 @@ export class InvoiceItem extends Model<{ invoice: Invoice; reference: Model<any>
     };
 
     total(): number {
-        return Number(this.price) * Number(this.quantity);
+        return round(Number(this.price) * Number(this.quantity), 2);
     }
 
     async formattedTotal(): Promise<Price> {

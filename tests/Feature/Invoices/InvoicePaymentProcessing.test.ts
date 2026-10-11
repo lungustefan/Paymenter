@@ -37,6 +37,29 @@ describe('InvoicePaymentProcessing', () => {
         expect(await (await fresh(invoice)).remaining()).toBe(70.0);
     });
 
+    it('calculates the invoice totals without floating point errors', async () => {
+        const invoice = await createInvoiceWithItem(0.1);
+        await invoice.relation('items').create({ description: 'Second Test Item', quantity: 2, price: 0.1 });
+
+        const refreshed = await fresh(invoice);
+        expect(await refreshed.total()).toBe(0.3);
+
+        await refreshed.relation('transactions').create({ amount: 0.1, status: InvoiceTransactionStatus.Succeeded });
+
+        expect(await (await fresh(invoice)).remaining()).toBe(0.2);
+    });
+
+    it('marks a decimal invoice as paid when the full amount is paid', async () => {
+        const invoice = await createInvoiceWithItem(179.99);
+        await invoice.relation('items').create({ description: 'Second Test Item', quantity: 1, price: 69.99 });
+
+        await ExtensionHelper.addPayment(invoice.id, 'TestGateway', 249.98);
+
+        const paid = await fresh(invoice);
+        expect(paid.status).toBe('paid');
+        expect(await paid.remaining()).toBe(0);
+    });
+
     it('marks the invoice as paid after a successful payment', async () => {
         const invoice = await createInvoiceWithItem(100.0);
 
