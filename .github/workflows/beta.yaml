@@ -39,7 +39,7 @@ jobs:
       - name: Create beta archive
         run: | 
             rm -rf node_modules tests vitest.config.ts CODE_OF_CONDUCT.md CONTRIBUTING.md flake.lock flake.nix .next/cache .next/standalone
-            tar -czf paymenter.tar.gz * .next .registry-hash .env.example .gitignore
+            tar -czf paymenter.tar.gz --owner=0 --group=0 --numeric-owner * .next .registry-hash .env.example .gitignore
 
       # The R2 bucket behind api.paymenter.org belongs to the PHP project, keep the archive as a workflow artifact instead
       - name: Upload archive
