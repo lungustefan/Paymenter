@@ -30,14 +30,16 @@ ENV NODE_ENV=production \
     HOSTNAME=0.0.0.0 \
     PORT=80
 
-# node_modules is kept complete (not pruned) so the entrypoint can rebuild when custom themes/extensions are added
-COPY --from=build /app /app
+# node_modules is kept complete (not pruned) so the entrypoint can rebuild when custom themes/extensions are added.
+# --chown here instead of a `chown -R` afterwards, which would store all of /app a second time in its own layer.
+COPY --from=build --chown=node:node /app /app
 
 # Copy themes and extensions to default locations for renewal on startup
 RUN cp -r /app/themes /app/themes_default \
     && cp -r /app/extensions /app/extensions_default \
     && mkdir -p storage/app/public storage/app/invoices storage/app/tickets storage/framework/cache storage/logs /var/log/supervisord \
-    && chown -R node:node /app
+    && chown node:node /app \
+    && chown -R node:node /app/themes_default /app/extensions_default /app/storage
 
 # Environment variable to skip default themes/extensions renewal
 # Set PAYMENTER_SKIP_DEFAULT=true to keep any custom modifications to defaults
