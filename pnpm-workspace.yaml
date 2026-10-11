@@ -1,0 +1,6 @@
+# pnpm 11 and later read their settings only from this file (pnpm 10 also reads "pnpm" in package.json).
+# Without this list `pnpm install` stops with ERR_PNPM_IGNORED_BUILDS.
+allowBuilds:
+  esbuild: true
+  sharp: true
+  unrs-resolver: true
