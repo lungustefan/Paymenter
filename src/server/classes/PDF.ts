@@ -5,7 +5,7 @@ import PDFDocument from 'pdfkit';
 import { dispatch } from '@/server/events';
 import { Events } from '@/server/event-defs';
 import { setting } from '@/server/config';
-import { t } from '@/server/i18n';
+import { defaultLocale, t } from '@/server/i18n';
 import { InvoiceTransactionStatus } from '@/server/enums';
 import { GeneratePdfEvent } from './GeneratePdfEvent';
 import type { Invoice } from '@/server/models/Invoice';
@@ -88,8 +88,9 @@ async function logoBuffer(): Promise<Buffer | null> {
     }
 }
 
-function fmtDate(d: { format(f: string): string } | null | undefined) {
-    return d ? d.format('d/m/Y') : '';
+/** `translatedFormat('d M Y')`, in the language of the texts of the PDF */
+function fmtDate(d: { translatedFormat(f: string, locale?: string): string } | null | undefined) {
+    return d ? d.translatedFormat('d M Y', defaultLocale()) : '';
 }
 
 /** Port of resources/views/pdf/invoice.blade.php */

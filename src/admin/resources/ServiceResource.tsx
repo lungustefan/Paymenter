@@ -19,6 +19,7 @@ import { AuditAction } from '../actions/AuditAction';
 import { Notification } from '../Notification';
 import { Icon } from '../ui/Icon';
 import { Widget } from '../widgets/Widget';
+import { adminContext } from '../context';
 import { CreateRecord } from '../pages/resource/CreateRecord';
 import { EditRecord } from '../pages/resource/EditRecord';
 import { ListRecords } from '../pages/resource/ListRecords';
@@ -286,7 +287,7 @@ class CancellationOverview extends Widget {
     override async render() {
         const record = this.record as Service;
         const cancellation = (await record.rel('cancellation')) as ServiceCancellation;
-        const expires = record.expires_at ? Carbon.parse(record.expires_at as any).format('d-m-Y') : null;
+        const expires = record.expires_at ? Carbon.parse(record.expires_at as any).translatedFormat('M j, Y', adminContext().locale) : null;
         return (
             <div className="fi-widget-wrapper rounded-lg shadow col-span-full p-4 flex justify-between items-center">
                 <div className="flex  gap-2 items-center">
