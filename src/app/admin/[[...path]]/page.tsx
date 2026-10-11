@@ -33,16 +33,16 @@ export default async function AdminRoute({ params, searchParams }: { params: Pro
     const pathname = await currentPath();
     const sp = await searchParams;
 
-    const { result: content, notifications } = await runAdmin(await adminRequest(user, pathname, sp), () =>
+    const { result, notifications } = await runAdmin(await adminRequest(user, pathname, sp), () =>
         collectNotifications(async () => {
             const resolved = await resolveHost(segments, user, pathname, sp);
             if (!resolved) notFound();
-            return resolved.render();
+            return { content: await resolved.render(), maxContentWidth: resolved.maxContentWidth };
         }),
     );
     return (
-        <AdminLayout user={user} path={pathname}>
-            {content}
+        <AdminLayout user={user} path={pathname} maxContentWidth={result.maxContentWidth}>
+            {result.content}
             {notifications.length > 0 && <PageNotifications items={notifications} />}
         </AdminLayout>
     );
