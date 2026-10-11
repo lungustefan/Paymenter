@@ -135,7 +135,11 @@ chmod -R 755 /app/themes /app/extensions
 CURRENT_HASH=$(find themes extensions -type f | sort | xargs sha256sum | sha256sum | cut -d' ' -f1)
 if [ "$CURRENT_HASH" != "$(cat /app/.registry-hash 2>/dev/null)" ]; then
   echo -e "Themes/extensions changed, rebuilding (this can take a few minutes)..."
-  su node -s /bin/ash -c "cd /app && pnpm build"
+  # a failed build leaves no usable app behind: stop here (and retry on the next start) instead of starting it
+  if ! su node -s /bin/ash -c "cd /app && pnpm build"; then
+    echo -e "Rebuilding failed, see the errors above. Fix or remove the custom theme/extension and restart the container."
+    exit 1
+  fi
   echo "$CURRENT_HASH" > /app/.registry-hash
 else
   echo -e "Themes/extensions unchanged, using the prebuilt app."
@@ -149,7 +153,10 @@ chown node:node /app/var/.env 2>/dev/null || true
 
 ## make sure the db is set up
 echo -e "Migrating and Seeding D.B"
-su node -s /bin/ash -c "cd /app && pnpm paymenter migrate --seed"
+if ! su node -s /bin/ash -c "cd /app && pnpm paymenter migrate --seed"; then
+  echo -e "Migrating the database failed, see the errors above."
+  exit 1
+fi
 
 echo -e "Starting supervisord."
 exec "$@"
