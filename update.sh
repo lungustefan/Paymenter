@@ -210,7 +210,7 @@ fi
 # e.g. the vitest.config.ts 2.0.0-alpha.3 shipped). The bundled themes/extensions are replaced as a whole; storage, .env,
 # node_modules and the themes/extensions you added are kept.
 mapfile -t BUNDLED < <(sed -E 's#^\./##' <<< "$ARCHIVE_FILES" | grep -oE '^(themes/[^/]+|extensions/[^/]+/[^/]+)/' | sort -u)
-RUN rm -rf src .next scripts migrations vitest.config.ts "${BUNDLED[@]}"
+RUN rm -rf src .next .next.prebuilt scripts migrations vitest.config.ts "${BUNDLED[@]}"
 
 # Remove the PHP files of the Laravel release
 if [[ "$FROM_PHP" == 1 ]]; then
@@ -245,8 +245,21 @@ RUN pm_run paymenter app:settings:change theme default
 
 # Rebuild when custom themes/extensions are installed (they are registered at build time) or the release shipped without a build.
 CURRENT_HASH=$(find themes extensions -type f 2>/dev/null | LC_ALL=C sort | xargs sha256sum | sha256sum | cut -d' ' -f1)
-if [ ! -d .next ] || [ "$CURRENT_HASH" != "$(cat .registry-hash 2>/dev/null)" ]; then
-    RUN pm_run build
+if [ ! -d .next ]; then
+    RUN pm_run build || fail "Building the application failed. Fix the cause and run update.sh again."
+elif [ "$CURRENT_HASH" != "$(cat .registry-hash 2>/dev/null)" ]; then
+    # Keep the pre-built release: a theme or extension that does not build must not leave the panel without a build.
+    RUN rm -rf .next.prebuilt
+    RUN mv .next .next.prebuilt
+    RUN cp -p src/generated/registry.ts src/generated/registry.ts.prebuilt
+    if RUN pm_run build; then
+        RUN rm -rf .next.prebuilt src/generated/registry.ts.prebuilt
+    else
+        BUILD_FAILED=1
+        RUN rm -rf .next
+        RUN mv .next.prebuilt .next
+        RUN mv -f src/generated/registry.ts.prebuilt src/generated/registry.ts
+    fi
 else
     echo "Pre-built release found, skipping build."
 fi
@@ -271,3 +284,7 @@ fi
 echo "Restart the web process and the worker now so they use the new version, e.g.:"
 echo "  systemctl restart paymenter paymenter-worker   (or: pm2 restart paymenter paymenter-worker)"
 echo "  Start manually: $PM start  and  $PM run worker"
+if [[ "$BUILD_FAILED" == 1 ]]; then
+    echo -e "\x1b[31;1mYour themes/extensions could not be built (see the errors above), the release is running without them. Fix or remove them, then run \"$PM run build\" and restart.\x1b[0m"
+    exit 1
+fi
