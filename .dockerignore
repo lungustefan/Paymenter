@@ -26,6 +26,7 @@ npm-debug.log
 yarn-error.log
 pnpm-debug.log
 tests
+vitest.config.ts
 coverage
 *.md
 !README.md
