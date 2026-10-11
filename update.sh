@@ -206,8 +206,11 @@ if ! ARCHIVE_FILES="$(tar -tzf paymenter.tar.gz 2>/dev/null)" || ! grep -qE '^(\
     fail "The downloaded file is not a release archive of this edition. Nothing was changed."
 fi
 
-# Delete the previous build and sources (storage, .env, extensions and themes are kept)
-RUN rm -rf src .next
+# Delete the previous release so files the new one no longer ships cannot linger (next build type checks every .ts file,
+# e.g. the vitest.config.ts 2.0.0-alpha.3 shipped). The bundled themes/extensions are replaced as a whole; storage, .env,
+# node_modules and the themes/extensions you added are kept.
+mapfile -t BUNDLED < <(sed -E 's#^\./##' <<< "$ARCHIVE_FILES" | grep -oE '^(themes/[^/]+|extensions/[^/]+/[^/]+)/' | sort -u)
+RUN rm -rf src .next scripts migrations vitest.config.ts "${BUNDLED[@]}"
 
 # Remove the PHP files of the Laravel release
 if [[ "$FROM_PHP" == 1 ]]; then
