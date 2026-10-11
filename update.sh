@@ -1,6 +1,9 @@
 #!/bin/bash
 
-URL='https://github.com/lungustefan/Paymenter/releases/latest/download/paymenter.tar.gz'
+# Releases of this edition are published on GitHub. Without --url or --version the newest release is installed.
+REPO='lungustefan/Paymenter'
+URL=''
+VERSION=''
 
 echo "Starting upgrade process..."
 
@@ -22,9 +25,6 @@ if [ "$NODE_MAJOR" -lt 22 ]; then
     echo -e "\x1b[31;1mCannot execute self-upgrade process. The minimum required Node.js version is 22, you have [$(node -v)].\x1b[0m"
     exit 1
 fi
-
-# Exit if release URL is empty or underfined
-if [[ $URL == "" ]]; then echo -e "\x1b[31;1mRelease URL not defined.\x1b[0m"; exit 1; fi
 
 # Remember if this is an upgrade from the Laravel (PHP) release
 FROM_PHP=0
@@ -73,12 +73,17 @@ case $i in
     URL="${i#*=}"
     shift # past argument=value
     ;;
+    --version=*)
+    VERSION="${i#*=}"
+    shift # past argument=value
+    ;;
     -p=*|--package-manager=*)
     PM="${i#*=}"
     shift # past argument=value
     ;;
     *)
-            # unknown option
+    echo -e "\x1b[31;1mUnknown option [$i]. Options: --url=<archive url>, --version=<release tag>, --package-manager=<pnpm|npm|yarn>, --user=<user>, --group=<group>, --install\x1b[0m"
+    exit 1
     ;;
 esac
 done
@@ -109,6 +114,29 @@ pm_run() {
         *) "$PM" run "$script" "$@" ;;
     esac
 }
+
+# Pick the release archive: --url, --version, or the newest release on GitHub. GitHub's /releases/latest skips
+# pre-releases, so the API is asked instead: pre-releases count while you run one or no stable release exists yet.
+if [[ -z "$URL" && -n "$VERSION" ]]; then
+    URL="https://github.com/$REPO/releases/download/v${VERSION#v}/paymenter.tar.gz"
+elif [[ -z "$URL" ]]; then
+    PRERELEASE=0
+    [[ "$PREV_VER" == *-* ]] && PRERELEASE=1
+    URL="$(curl -fsSL "https://api.github.com/repos/$REPO/releases" 2>/dev/null | node -e '
+        let json = "";
+        process.stdin.on("data", (d) => (json += d)).on("end", () => {
+            try {
+                const releases = JSON.parse(json).filter((r) => !r.draft && r.assets.some((a) => a.name === "paymenter.tar.gz"));
+                const release = releases.find((r) => process.argv[1] === "1" || !r.prerelease) ?? releases[0];
+                if (release) console.log(release.assets.find((a) => a.name === "paymenter.tar.gz").browser_download_url);
+            } catch {}
+        });' "$PRERELEASE")"
+    if [[ -z "$URL" ]]; then
+        echo "Could not look up the newest release on GitHub, using the latest stable release."
+        URL="https://github.com/$REPO/releases/latest/download/paymenter.tar.gz"
+    fi
+fi
+echo "Release archive: $URL"
 
 # Detect the folder permissions.
 file=$(pwd)
@@ -157,8 +185,8 @@ RUN() {
 # Keep the configuration, the uploaded files and the themes/extensions you added.
 RUN cp -p .env .env.update-backup 2>/dev/null || true
 
-# Download the latest release from GitHub.
-RUN curl -L -f -o paymenter.tar.gz "$URL" || { echo -e "\x1b[31;1mDownload failed.\x1b[0m"; exit 1; }
+# Download the release.
+RUN curl -L -f -o paymenter.tar.gz "$URL" || { echo -e "\x1b[31;1mDownload failed. Pick a release with --version=<tag> (see https://github.com/$REPO/releases) or --url=<archive url>.\x1b[0m"; exit 1; }
 
 # Delete the previous build and sources (storage, .env, extensions and themes are kept)
 RUN rm -rf src .next
