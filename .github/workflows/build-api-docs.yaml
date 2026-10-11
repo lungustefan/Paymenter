@@ -13,24 +13,32 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:11
+        env:
+          MYSQL_ROOT_PASSWORD: password
+          MYSQL_DATABASE: paymenter
+        ports:
+          - 3306:3306
+        options: --health-cmd="healthcheck.sh --connect --innodb_initialized" --health-interval=10s --health-timeout=5s --health-retries=3
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
         with:
-          php-version: '8.3'
-          extensions: bcmath, curl, gd, mbstring, mysql, openssl, pdo, tokenizer, xml, zip
+          version: 10
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
 
       - name: Install dependencies
-        run: composer install
-
-      - name: Install Scramble PRO
-        run: |
-          composer config repositories.scramble-pro '{"type": "composer", "url": "https://satis.dedoc.co"}'
-          composer config http-basic.satis.dedoc.co ${{ secrets.SCRAMBLE_USERNAME }} ${{ secrets.SCRAMBLE_KEY }}
-          composer require dedoc/scramble-pro:^0.7.4 --dev
+        run: pnpm install --frozen-lockfile
 
       - name: Checkout documentation repository
         uses: actions/checkout@v4
@@ -41,14 +49,31 @@ jobs:
           path: 'docs-repository'
 
       - name: Migrate database
-        run: php artisan migrate --force --seed
+        env: &db
+          APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+          DB_CONNECTION: mariadb
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_DATABASE: paymenter
+          DB_USERNAME: root
+          DB_PASSWORD: password
+        run: pnpm paymenter migrate --seed
 
       - name: Enable extensions with API routes (affiliates)
+        env: *db
         run: |
-          php artisan tinker --execute="DB::table('extensions')->insert(['name' => 'Affiliates', 'extension' => 'Affiliates', 'type' => 'other', 'enabled' => true])"
+          mysql -h127.0.0.1 -uroot -ppassword paymenter -e "INSERT INTO extensions (name, extension, type, enabled) VALUES ('Affiliates', 'Affiliates', 'other', 1)"
 
+      # NOTE: the Laravel version generated the spec with Scramble PRO (php artisan scramble:export).
+      # The Next.js rewrite has no OpenAPI exporter yet; this step calls the script when it exists.
       - name: Build API docs
-        run: php artisan scramble:export --path=docs-repository/public/openapi.json
+        env: *db
+        run: |
+          if [ -f scripts/export-openapi.ts ]; then
+            pnpm exec tsx scripts/export-openapi.ts docs-repository/public/openapi.json
+          else
+            echo "scripts/export-openapi.ts not found - skipping spec generation"
+          fi
 
       - name: Commit and push generated specification
         uses: stefanzweifel/git-auto-commit-action@v5

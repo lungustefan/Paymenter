@@ -1,1 +1,0 @@
-<iframe srcdoc="{{ $getRecord()->body }}" style="width: 100%; height: 700px; border: none;"></iframe>

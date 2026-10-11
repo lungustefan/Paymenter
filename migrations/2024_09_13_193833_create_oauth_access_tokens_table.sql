@@ -1,0 +1,2 @@
+create table `oauth_access_tokens` (`id` varchar(100) not null, `user_id` bigint unsigned null, `client_id` uuid not null, `name` varchar(255) null, `scopes` text null, `revoked` tinyint(1) not null, `created_at` timestamp null, `updated_at` timestamp null, `expires_at` datetime null, primary key (`id`)) default character set {{charset}} collate {{collation}};
+alter table `oauth_access_tokens` add index `oauth_access_tokens_user_id_index`(`user_id`);

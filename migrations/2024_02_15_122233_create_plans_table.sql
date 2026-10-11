@@ -1,0 +1,2 @@
+create table `plans` (`id` bigint unsigned not null auto_increment primary key, `name` varchar(255) null, `priceable_type` varchar(255) not null, `priceable_id` bigint unsigned not null, `type` enum('free', 'one-time', 'recurring') not null, `billing_period` int null, `billing_unit` enum('hour', 'day', 'week', 'month', 'year') null, `sort` tinyint unsigned null) default character set {{charset}} collate {{collation}};
+alter table `plans` add index `plans_priceable_type_priceable_id_index`(`priceable_type`, `priceable_id`);

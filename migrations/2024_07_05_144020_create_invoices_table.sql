@@ -1,0 +1,2 @@
+create table `invoices` (`id` bigint unsigned not null auto_increment primary key, `status` varchar(255) not null default 'pending', `due_at` date null, `currency_code` varchar(3) not null, `user_id` bigint unsigned not null, `created_at` timestamp null, `updated_at` timestamp null) default character set {{charset}} collate {{collation}};
+alter table `invoices` add constraint `invoices_user_id_foreign` foreign key (`user_id`) references `users` (`id`) on delete cascade;

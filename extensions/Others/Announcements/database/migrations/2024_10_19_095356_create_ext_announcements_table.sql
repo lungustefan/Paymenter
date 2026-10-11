@@ -1,0 +1,2 @@
+create table `ext_announcements` (`id` bigint unsigned not null auto_increment primary key, `title` varchar(255) not null, `description` varchar(255) not null, `content` text not null, `is_active` tinyint(1) not null default '1', `published_at` datetime null, `slug` varchar(255) not null, `created_at` timestamp null, `updated_at` timestamp null) default character set {{charset}} collate {{collation}};
+alter table `ext_announcements` add unique `ext_announcements_slug_unique`(`slug`);

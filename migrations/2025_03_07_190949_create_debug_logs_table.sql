@@ -1,0 +1,1 @@
+create table `debug_logs` (`id` bigint unsigned not null auto_increment primary key, `type` varchar(255) not null, `context` json not null, `created_at` timestamp null, `updated_at` timestamp null) default character set {{charset}} collate {{collation}};

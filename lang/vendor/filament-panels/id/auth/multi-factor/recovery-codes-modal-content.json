@@ -1,0 +1,16 @@
+{
+    "actions": {
+        "0": "Klik untuk",
+        "copy": {
+            "label": "menyalin"
+        },
+        "1": "atau",
+        "download": {
+            "label": "unduh"
+        },
+        "2": "semua kode sekaligus."
+    },
+    "messages": {
+        "copied": "Berhasil disalin"
+    }
+}

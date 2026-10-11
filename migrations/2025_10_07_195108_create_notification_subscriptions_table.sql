@@ -1,0 +1,3 @@
+create table `notification_subscriptions` (`id` bigint unsigned not null auto_increment primary key, `user_id` bigint unsigned not null, `endpoint` varchar(255) not null, `p256dh_key` text not null, `auth_key` text not null, `created_at` timestamp null, `updated_at` timestamp null) default character set {{charset}} collate {{collation}};
+alter table `notification_subscriptions` add constraint `notification_subscriptions_user_id_foreign` foreign key (`user_id`) references `users` (`id`) on delete cascade;
+alter table `notification_subscriptions` add unique `notification_subscriptions_endpoint_unique`(`endpoint`);

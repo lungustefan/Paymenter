@@ -1,5 +1,5 @@
 files:
-  - source: /lang/en/*.php
+  - source: /lang/en/*.json
     translation: /lang/%two_letters_code%/%original_file_name%
-  - source: /extensions/Others/Affiliates/resources/lang/en/*.php
+  - source: /extensions/Others/Affiliates/resources/lang/en/*.json
     translation: /extensions/Others/Affiliates/resources/lang/%two_letters_code%/%original_file_name%

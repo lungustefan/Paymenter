@@ -1,0 +1,4 @@
+create table `service_configs` (`id` bigint unsigned not null auto_increment primary key, `configurable_type` varchar(255) not null, `configurable_id` bigint unsigned not null, `config_option_id` bigint unsigned not null, `config_value_id` bigint unsigned not null, `created_at` timestamp null, `updated_at` timestamp null) default character set {{charset}} collate {{collation}};
+alter table `service_configs` add index `service_configs_configurable_type_configurable_id_index`(`configurable_type`, `configurable_id`);
+alter table `service_configs` add constraint `service_configs_config_option_id_foreign` foreign key (`config_option_id`) references `config_options` (`id`) on delete cascade;
+alter table `service_configs` add constraint `service_configs_config_value_id_foreign` foreign key (`config_value_id`) references `config_options` (`id`);

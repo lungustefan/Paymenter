@@ -1,0 +1,3 @@
+create table `ext_affiliates` (`id` bigint unsigned not null auto_increment primary key, `user_id` bigint unsigned not null, `code` varchar(255) not null, `enabled` tinyint(1) not null default '1', `reward` int unsigned null, `discount` int unsigned null, `visitors` int unsigned not null default '0', `signups` int unsigned not null default '0', `created_at` timestamp null, `updated_at` timestamp null) default character set {{charset}} collate {{collation}};
+alter table `ext_affiliates` add constraint `ext_affiliates_user_id_foreign` foreign key (`user_id`) references `users` (`id`) on delete cascade;
+alter table `ext_affiliates` add unique `ext_affiliates_code_unique`(`code`);

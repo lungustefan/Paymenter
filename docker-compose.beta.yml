@@ -31,7 +31,7 @@ services:
     networks:
       - paymenter_nw
   paymenter:
-    image: ghcr.io/paymenter/paymenter:master
+    image: ghcr.io/lungustefan/paymenter:master
     restart: always
     ports:
       - "80:80"
@@ -41,7 +41,6 @@ services:
       - "./storage/public:/app/storage/app/public"
       - "./themes:/app/themes"
       - "./extensions:/app/extensions"
-      - "app:/app"
     environment:
       DB_PASSWORD: *db-password
       APP_ENV: "production"
@@ -50,31 +49,12 @@ services:
       DB_CONNECTION: "mariadb"
       DB_HOST: "database"
       DB_PORT: "3306"
+      QUEUE_CONNECTION: "database"
       # Set to "true" to skip renewal of default themes and extensions
       # By default, default themes and extensions are always renewed on startup
       PAYMENTER_SKIP_DEFAULT: "false"
     networks:
       - paymenter_nw
-  # Asset Builder Service - used to build frontend assets (themes/extensions)
-  asset-builder:
-    image: node:22-alpine
-    profiles: ["build"]
-    working_dir: /app
-    volumes:
-      - "./themes:/app/themes"
-      - "./extensions:/app/extensions"
-      - "./:/app/var"
-      - "app:/app"
-    command: >
-      sh -c "echo 'Asset Builder ready for npm commands' &&
-      echo 'Working directory: /app' &&
-      echo 'Usage: docker compose run --rm asset-builder npm install && npm run build' &&
-      tail -f /dev/null"
-    networks:
-      - paymenter_nw
 networks:
   paymenter_nw:
     driver: bridge
-
-volumes:
-  app:

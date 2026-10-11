@@ -1,0 +1,16 @@
+{
+    "actions": {
+        "0": "Klikkaa",
+        "copy": {
+            "label": "kopioidaksesi"
+        },
+        "1": "tai",
+        "download": {
+            "label": "lataa"
+        },
+        "2": "kaikki koodit kerralla."
+    },
+    "messages": {
+        "copied": "Kopioitu"
+    }
+}

@@ -1,0 +1,8 @@
+{
+    "actions": {
+        "logout": {
+            "label": "Déconnexion"
+        }
+    },
+    "welcome": "Bonjour"
+}
