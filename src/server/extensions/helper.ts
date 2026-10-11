@@ -383,9 +383,10 @@ export class ExtensionHelper {
 
     /** Run extension SQL migrations (`<extension>/database/migrations/*.sql`) through the shared `migrations` table. */
     static async runMigrations(relativePath: string): Promise<string[]> {
-        const dir = path.join(process.cwd(), relativePath);
+        // turbopackIgnore: the path is only known at runtime; without it the build traces (reads) the whole project directory
+        const dir = path.join(/* turbopackIgnore: true */ process.cwd(), relativePath);
         if (!fs.existsSync(dir)) return [];
-        const files = fs.readdirSync(dir).filter((f) => f.endsWith('.sql') && !f.endsWith('.down.sql')).sort();
+        const files = fs.readdirSync(/* turbopackIgnore: true */ dir).filter((f) => f.endsWith('.sql') && !f.endsWith('.down.sql')).sort();
         const { charset, collation } = dbConfig();
         const pool = getPool();
         const [rows] = (await pool.query('select migration from migrations')) as any;
@@ -395,7 +396,7 @@ export class ExtensionHelper {
         for (const f of files) {
             const name = f.replace(/\.sql$/, '');
             if (done.has(name)) continue;
-            const text = fs.readFileSync(path.join(dir, f), 'utf8').replaceAll('{{charset}}', charset).replaceAll('{{collation}}', `'${collation}'`);
+            const text = fs.readFileSync(path.join(/* turbopackIgnore: true */ dir, f), 'utf8').replaceAll('{{charset}}', charset).replaceAll('{{collation}}', `'${collation}'`);
             for (const stmt of text.split(/;\s*\n/).map((s) => s.trim().replace(/;$/, '')).filter(Boolean)) await pool.query(stmt);
             await pool.query('insert into migrations (migration, batch) values (?, ?)', [name, Number(b.b ?? b) + 1]);
             ran.push(name);
@@ -405,13 +406,13 @@ export class ExtensionHelper {
 
     /** Roll back extension migrations: each `<name>.down.sql` is applied in reverse order. */
     static async rollbackMigrations(relativePath: string): Promise<void> {
-        const dir = path.join(process.cwd(), relativePath);
+        const dir = path.join(/* turbopackIgnore: true */ process.cwd(), relativePath);
         if (!fs.existsSync(dir)) return;
-        const files = fs.readdirSync(dir).filter((f) => f.endsWith('.sql') && !f.endsWith('.down.sql')).sort().reverse();
+        const files = fs.readdirSync(/* turbopackIgnore: true */ dir).filter((f) => f.endsWith('.sql') && !f.endsWith('.down.sql')).sort().reverse();
         const pool = getPool();
         for (const f of files) {
             const name = f.replace(/\.sql$/, '');
-            const down = path.join(dir, `${name}.down.sql`);
+            const down = path.join(/* turbopackIgnore: true */ dir, `${name}.down.sql`);
             const [rows] = (await pool.query('select 1 from migrations where migration = ?', [name])) as any;
             if (!rows.length) continue;
             if (fs.existsSync(down)) {
