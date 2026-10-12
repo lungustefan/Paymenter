@@ -5,6 +5,7 @@ import { Cart } from '@/server/cart';
 import { Currency } from '@/server/models/Currency';
 import { DisplayException } from '@/server/exceptions';
 import { safeIntended } from '@/server/auth/intended';
+import { url } from '@/server/routes';
 
 /**
  * `CheckoutParameterMiddleware`: `?currency=EUR` switches the currency and `?coupon=CODE` applies a
@@ -31,5 +32,5 @@ export async function GET(request: NextRequest) {
         }
     }
 
-    return NextResponse.redirect(new URL(to, request.nextUrl.origin));
+    return NextResponse.redirect(url(to));
 }

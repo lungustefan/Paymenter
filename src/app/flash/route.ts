@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { FLASH_COOKIE } from '@/server/action';
 import { safeIntended } from '@/server/auth/intended';
+import { url } from '@/server/routes';
 
 /**
  * `$this->notify($message, $type, redirect: true)` from a page: pages cannot set cookies, so they redirect
@@ -14,7 +15,7 @@ const MESSAGES: Record<string, [string, 'success' | 'error']> = {
 export function GET(request: NextRequest) {
     const p = request.nextUrl.searchParams;
     const to = safeIntended(p.get('to')) ?? '/';
-    const res = NextResponse.redirect(new URL(to, request.nextUrl.origin));
+    const res = NextResponse.redirect(url(to));
     const known = MESSAGES[p.get('m') ?? ''];
     if (known) res.cookies.set(FLASH_COOKIE, encodeURIComponent(JSON.stringify({ id: Date.now(), message: known[0], type: known[1] })), { path: '/', httpOnly: false, sameSite: 'lax', maxAge: 60 });
     return res;

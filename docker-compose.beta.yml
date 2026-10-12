@@ -36,8 +36,10 @@ services:
     ports:
       - "80:80"
     volumes:
-      - "./:/app/var/"
-      - "./storage/logs:/app/storage/logs"
+      # this directory: the generated APP_KEY is kept in ./.env (mounted outside /app, see the entrypoint)
+      - "./:/var/lib/paymenter/"
+      # ticket attachments, OAuth keys, logs...; uploaded files (storage/app/public) are kept in ./storage/public
+      - "./storage:/app/storage"
       - "./storage/public:/app/storage/app/public"
       - "./themes:/app/themes"
       - "./extensions:/app/extensions"

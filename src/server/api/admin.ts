@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server';
 import { boot } from '@/server/bootstrap';
 import { ensureSettings } from '@/server/settings/store';
 import { setting } from '@/server/config';
+import { baseUrl } from '@/server/routes';
 import { Carbon } from '@/server/lib/carbon';
 import { ApiKey } from '@/server/models/ApiKey';
 import { Category } from '@/server/models/Category';
@@ -473,7 +474,7 @@ export async function handleAdminApi(request: Request, slug: string, id: string 
             const data = result.data.map((m: Model<any>) => toResource(m, endpoint.def, ctx));
             const included = uniqueResources(result.data.flatMap((m: Model<any>) => includedOf(m, endpoint.def, ctx)));
 
-            const base = `${u.origin}${u.pathname}`;
+            const base = `${baseUrl()}${u.pathname}`;
             const links: Record<string, string> = { first: pageUrl(base, 1) };
             if (page > 1) links.prev = pageUrl(base, page - 1);
             if (result.has_more_pages) links.next = pageUrl(base, page + 1);

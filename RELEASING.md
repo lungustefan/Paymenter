@@ -20,3 +20,10 @@ curl -L https://github.com/lungustefan/Paymenter/releases/latest/download/paymen
 ```
 then follow "Installation" in the README (the archive already contains the build, skip `pnpm build`).
 (`latest` ignores pre-releases: for an alpha use the download link on the release page.)
+
+## Docker image
+The workflow **Docker** (`.github/workflows/docker.yaml`) builds `ghcr.io/lungustefan/paymenter` for linux/amd64 and linux/arm64 (one native runner per platform, merged into one tag):
+- when you **publish** a release: the image gets the tag of the release (e.g. `v2.0.0-alpha.1`), and `latest` only if the release is not a pre-release;
+- by hand (Actions > Docker > Run workflow, branch `master`): the image gets the tag `master` (used by `docker-compose.beta.yml`). It does not run on every push to master.
+
+**One time, after the first image was pushed:** a new GitHub package is private, nobody can `docker pull` it until you make it public. Open your profile > **Packages** > **paymenter** > **Package settings** > **Change visibility** > **Public**. (If the package is not linked to this repository, use "Connect repository" on the same page.)

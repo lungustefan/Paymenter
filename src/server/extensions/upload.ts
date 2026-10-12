@@ -4,7 +4,8 @@ import { randomBytes } from 'node:crypto';
 import { unzipSync } from 'fflate';
 
 const ucfirst = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
-const entryOf = (dir: string) => ['index.ts', 'index.tsx', 'index.js'].map((f) => path.join(dir, f)).find((f) => fs.existsSync(f));
+// turbopackIgnore: `dir` is only known at runtime; without it the build traces (reads) the whole project directory
+const entryOf = (dir: string) => ['index.ts', 'index.tsx', 'index.js'].map((f) => path.join(/* turbopackIgnore: true */ dir, f)).find((f) => fs.existsSync(f));
 
 /** the dir that holds the extension's entry file (the zip may wrap it in one folder) */
 function validateExtensionPath(dir: string, depth = 0): string {

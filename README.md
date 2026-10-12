@@ -147,11 +147,13 @@ cp docker-compose.example.yml docker-compose.yml   # set the passwords, then:
 docker compose up -d
 ```
 
-The image (`ghcr.io/lungustefan/paymenter`) is built from the `Dockerfile` (Node 22, multi-stage). It serves the panel on port **80** and runs the worker next to it (both supervised by supervisord). On start the entrypoint generates an `APP_KEY` (stored in `./.env` on the host when none exists), waits for the database, renews the bundled themes and extensions (set `PAYMENTER_SKIP_DEFAULT=true` to keep your changes) and runs `migrate --seed`. MariaDB and Redis are part of the compose file; `./themes`, `./extensions`, `./storage/logs` and `./storage/public` are mounted volumes.
+The image (`ghcr.io/lungustefan/paymenter`) is built from the `Dockerfile` (Node 22, multi-stage). It serves the panel on port **80** and runs the worker next to it (both supervised by supervisord). On start the entrypoint generates an `APP_KEY` (stored in `./.env` on the host when none exists), waits for the database, renews the bundled themes and extensions (set `PAYMENTER_SKIP_DEFAULT=true` to keep your changes) and runs `migrate --seed`. MariaDB and Redis are part of the compose file; `./themes`, `./extensions`, `./storage` and `./storage/public` are mounted volumes.
 
 Themes and extensions are compiled into the app. If the mounted `themes/` or `extensions/` differ from what the image was built with, the container rebuilds the app on start (this takes a few minutes the first time). Run commands inside the container with `docker compose exec paymenter pnpm paymenter app:user:create`.
 
-Note: this image definition was written without access to a Docker daemon, so it has not been built end to end yet; the build steps it runs (`pnpm install`, `pnpm build`, `pnpm start`, `pnpm worker`, `migrate --seed`) were verified outside Docker. Test your first deployment.
+Once the containers are up, set the URL the panel is served at (the `app_url` setting in the database overrides `APP_URL`, its default is `http://localhost`, so without this every redirect, e.g. to the login page, points to port 80 of localhost): `docker compose exec -u node paymenter pnpm paymenter app:init "My Company" https://billing.example.com`. Then create your first admin user: `docker compose exec -u node paymenter pnpm paymenter app:user:create` (it asks for the name, email, password and role; role `1` is the admin role), then open `/admin`. Your `.env` (with the `APP_KEY`), `./storage` (ticket attachments, logs, uploads in `./storage/public`) and the database in `./database` live next to `docker-compose.yml`: back them up together, the `APP_KEY` is needed to read encrypted settings.
+
+The image is published when a release is published (`:latest` only for stable releases, pre-releases like `v2.0.0-alpha.N` get just their tag; use `image: ghcr.io/lungustefan/paymenter:v2.0.0-alpha.N` until the first stable release) and by hand as `:master` (see `docker-compose.beta.yml`). It was built and run end to end with this compose file: restarts and re-creating the container keep the key, the data and the uploads, and the migrations are idempotent.
 
 #### Updating
 
