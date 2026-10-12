@@ -1,0 +1,9 @@
+# pnpm 10 reads onlyBuiltDependencies, pnpm 11+ reads allowBuilds (the "pnpm" field in package.json is ignored by pnpm 11+)
+onlyBuiltDependencies:
+  - esbuild
+  - sharp
+  - unrs-resolver
+allowBuilds:
+  esbuild: true
+  sharp: true
+  unrs-resolver: true
