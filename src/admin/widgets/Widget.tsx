@@ -1,7 +1,7 @@
 import { Fragment, type CSSProperties, type ReactNode } from 'react';
 import type { User } from '@/server/models/User';
 import { SchemaGrid } from '../forms/Schema';
-import { WidgetPoll } from './client';
+import { WidgetListener, WidgetPoll } from './client';
 import { cn } from '@themes/default/components/cn';
 
 /**
@@ -17,6 +17,8 @@ export abstract class Widget {
     static columnSpan: number | 'full' = 1;
     /** `$pollingInterval` of the widget: `'20s'`, `'10m'` or `null` */
     static pollingInterval: string | null = null;
+    /** `#[On('event')]`: browser event -> method of the widget, called with the parameters of the event */
+    static listeners: Record<string, string> = {};
     /** `canView()` */
     static canView(user: User): boolean | Promise<boolean> {
         void user;
@@ -30,9 +32,28 @@ export abstract class Widget {
 
     abstract render(): Promise<ReactNode> | ReactNode;
 
-    /** a method the browser calls through a `widget` op (chart filters) */
-    async callMethod(_method: string, _args: any[]): Promise<any> {
+    private events: Array<{ name: string; params: Record<string, unknown> }> = [];
+
+    /** a method the browser calls through a `widget` op (chart filters, `event`) */
+    async callMethod(method: string, args: any[]): Promise<any> {
+        // a browser event the widget listens to: handle it, then render the widget again
+        if (method === 'event') {
+            const listener = this.ctor.listeners[args[0]];
+            if (!listener || typeof (this as any)[listener] !== 'function') return null;
+            await (this as any)[listener](args[1] ?? {});
+            return this.render();
+        }
         return null;
+    }
+
+    /** `$this->dispatch()`: a browser event the other widgets of the page can listen to */
+    protected dispatch(name: string, params: Record<string, unknown> = {}) {
+        this.events.push({ name, params });
+    }
+
+    /** the events dispatched while handling a call */
+    dispatchedEvents() {
+        return this.events;
     }
 
     get ctor() {
@@ -66,7 +87,19 @@ export async function renderWidgets(widgets: WidgetClass[], page: { record?: any
         widget.record = page.record ?? null;
         widget.user = page.user;
         widget.livewire = page.livewire ?? null;
-        nodes.push(<Fragment key={index}>{await widget.render()}</Fragment>);
+        const events = Object.keys(Class.listeners);
+        const node = await widget.render();
+        nodes.push(
+            <Fragment key={index}>
+                {events.length ? (
+                    <WidgetListener widget={Class.widgetId} events={events}>
+                        {node}
+                    </WidgetListener>
+                ) : (
+                    node
+                )}
+            </Fragment>,
+        );
     }
     if (nodes.length === 0) return null;
     return (

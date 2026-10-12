@@ -46,5 +46,7 @@ export interface AdminActionResult {
     options?: Array<{ value: string | number; label: string; group?: string }>;
     /** a file for the browser to save (`response()->streamDownload()`) */
     download?: { name: string; mime: string; base64: string };
+    /** browser events the server dispatched (`$this->dispatch('event', ...)` of Livewire) */
+    events?: Array<{ name: string; params: Record<string, unknown> }>;
     data?: any;
 }

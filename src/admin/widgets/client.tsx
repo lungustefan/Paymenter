@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAdminActions } from '../actions/client';
 import { LoadingIndicator } from '../ui/Icon';
@@ -182,7 +182,7 @@ export function ChartWithFilter({
     filterLabel: string;
     heading: string | null;
 }) {
-    const { dispatch } = useAdminActions();
+    const { dispatch, apply } = useAdminActions();
     const [data, setData] = useState(initial);
     const [current, setCurrent] = useState(filter);
     const [loading, setLoading] = useState(false);
@@ -191,7 +191,7 @@ export function ChartWithFilter({
         setCurrent(value);
         setLoading(true);
         try {
-            const result = await dispatch({ type: 'widget', widget, method: 'getData', args: [value] });
+            const result = apply(await dispatch({ type: 'widget', widget, method: 'getData', args: [value] }));
             if (result.data) setData(result.data as ChartData);
         } finally {
             setLoading(false);
@@ -234,6 +234,44 @@ export function ChartWithFilter({
             </div>
         </section>
     );
+}
+
+/**
+ * A widget with `#[On('event')]` listeners: when one of `events` is dispatched in the browser (`$this->dispatch()` of
+ * another widget), the widget handles it on the server and is rendered again. A refresh of the page (polling) renders
+ * the widget in its initial state, so the last event is handled again to keep its state, like a Livewire component.
+ */
+export function WidgetListener({ widget, events, children }: { widget: string; events: string[]; children: ReactNode }) {
+    const { dispatch, apply } = useAdminActions();
+    const [node, setNode] = useState<ReactNode>(null);
+    const last = useRef<{ event: string; params: unknown } | null>(null);
+    const sequence = useRef(0);
+
+    const handle = useCallback(
+        async (event: string, params: unknown) => {
+            last.current = { event, params };
+            const current = ++sequence.current;
+            const result = apply(await dispatch({ type: 'widget', widget, method: 'event', args: [event, params] }));
+            if (current === sequence.current && result.ok && result.data) setNode(result.data as ReactNode);
+        },
+        [apply, dispatch, widget],
+    );
+
+    const key = events.join(' ');
+    useEffect(() => {
+        const handlers = key.split(' ').map((event) => [event, (e: Event) => void handle(event, (e as CustomEvent).detail ?? {})] as const);
+        for (const [event, handler] of handlers) window.addEventListener(event, handler);
+        return () => {
+            for (const [event, handler] of handlers) window.removeEventListener(event, handler);
+        };
+    }, [key, handle]);
+
+    useEffect(() => {
+        if (last.current) void handle(last.current.event, last.current.params);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [children]);
+
+    return <>{node ?? children}</>;
 }
 
 /** a text that is copied to the clipboard on click and says so for two seconds (`x-data="{ copied: false }"`) */

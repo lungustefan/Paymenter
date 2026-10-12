@@ -10,6 +10,9 @@ export abstract class ChartWidget extends Widget {
     static defaultFilter: string | null = null;
     static maxHeight: string | null = null;
 
+    /** `$filter`: the filter the user selected */
+    filter: string | null = null;
+
     abstract getType(): string;
     abstract getData(filter: string | null): Promise<ChartData> | ChartData;
     getFilters(): Record<string, string> | null {
@@ -19,9 +22,16 @@ export abstract class ChartWidget extends Widget {
         return null;
     }
 
+    /** `updatedFilter()`: runs when the user selects another filter */
+    updatedFilter(): void | Promise<void> {}
+
     override async callMethod(method: string, args: any[]) {
-        if (method === 'getData') return this.getData(args[0] ?? null);
-        return null;
+        if (method === 'getData') {
+            this.filter = args[0] ?? null;
+            await this.updatedFilter();
+            return this.getData(this.filter);
+        }
+        return super.callMethod(method, args);
     }
 
     override async render() {

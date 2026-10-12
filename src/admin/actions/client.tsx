@@ -76,6 +76,8 @@ export function ActionsProvider({ children }: { children: ReactNode }) {
                 a.remove();
                 setTimeout(() => URL.revokeObjectURL(url), 10_000);
             }
+            // `$this->dispatch()`: the other components of the page listen for it (`#[On('event')]`)
+            for (const event of result.events ?? []) window.dispatchEvent(new CustomEvent(event.name, { detail: event.params }));
             if (result.redirect) router.push(result.redirect);
             else if (result.refresh) router.refresh();
             if (result.close) setModals((m) => m.slice(0, -1));

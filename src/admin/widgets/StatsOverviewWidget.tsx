@@ -52,7 +52,7 @@ export class Stat {
                         </div>
                     )}
                 </div>
-                {this._chart && <StatChart color={this._color ?? 'gray'} values={this._chart} />}
+                {this._chart && <StatChart key={this._color ?? 'gray'} color={this._color ?? 'gray'} values={this._chart} />}
             </div>
         );
     }

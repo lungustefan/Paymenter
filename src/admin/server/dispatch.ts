@@ -59,7 +59,8 @@ async function run(host: Host, op: AdminOp): Promise<AdminActionResult> {
                 widget.user = host.user;
                 widget.livewire = host;
                 widget.record = (host as any).record ?? null;
-                return { ok: true, data: await widget.callMethod(op.method, op.args ?? []) };
+                const data = await widget.callMethod(op.method, op.args ?? []);
+                return { ok: true, data, events: widget.dispatchedEvents() };
             }
         }
     } catch (e) {
