@@ -57,7 +57,7 @@ Needs Node.js 22+, pnpm and an empty MariaDB/MySQL database.
 ```bash
 git clone https://github.com/lungustefan/Paymenter.git paymenter && cd paymenter
 pnpm install
-cp .env.example .env                 # edit DB_HOST, DB_DATABASE, DB_USERNAME, DB_PASSWORD and APP_URL
+cp .env.example .env                 # edit DB_HOST, DB_DATABASE, DB_USERNAME, DB_PASSWORD, APP_URL (and CACHE_STORE=file if you have no Redis)
 pnpm paymenter key:generate
 pnpm paymenter migrate --seed
 pnpm paymenter app:init              # basic setup
@@ -95,7 +95,7 @@ curl -L https://github.com/lungustefan/Paymenter/releases/download/<tag, e.g. v2
 pnpm install            # npm install / yarn install work as well
 
 # 3. Configure the environment
-cp .env.example .env    # then set DB_*, APP_URL, CACHE_STORE and REDIS_* in .env
+cp .env.example .env    # then set DB_*, APP_URL in .env; without Redis set CACHE_STORE=file (the example defaults to redis)
 pnpm paymenter key:generate
 
 # 4. Create the database tables and the default data
