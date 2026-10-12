@@ -4,6 +4,18 @@ import { mysqlTable, bigint, boolean, char, decimal, int, longtext, mediumtext, 
 import { sql } from 'drizzle-orm';
 import { dbJson, dbTimestamp, dbDatetime, dbDate } from './types';
 
+export const adjustmentNotes = mysqlTable("adjustment_notes", {
+    id: bigint("id", { mode: 'number', unsigned: true }).primaryKey().autoincrement(),
+    invoice_id: bigint("invoice_id", { mode: 'number', unsigned: true }).notNull(),
+    type: varchar("type", { length: 255 }).notNull(),
+    number: varchar("number", { length: 255 }),
+    amount: decimal("amount", { precision: 17, scale: 2, mode: 'number' }).notNull(),
+    description: text("description"),
+    status: varchar("status", { length: 255 }).notNull().default("active"),
+    created_at: dbTimestamp("created_at"),
+    updated_at: dbTimestamp("updated_at"),
+});
+
 export const apiKeys = mysqlTable("api_keys", {
     id: bigint("id", { mode: 'number', unsigned: true }).primaryKey().autoincrement(),
     name: varchar("name", { length: 255 }).notNull(),
@@ -255,18 +267,6 @@ export const invoiceSnapshots = mysqlTable("invoice_snapshots", {
     tax_country: varchar("tax_country", { length: 255 }),
     bill_to: text("bill_to"),
     invoice_id: bigint("invoice_id", { mode: 'number', unsigned: true }).notNull(),
-    created_at: dbTimestamp("created_at"),
-    updated_at: dbTimestamp("updated_at"),
-});
-
-export const adjustmentNotes = mysqlTable("adjustment_notes", {
-    id: bigint("id", { mode: 'number', unsigned: true }).primaryKey().autoincrement(),
-    invoice_id: bigint("invoice_id", { mode: 'number', unsigned: true }).notNull(),
-    type: varchar("type", { length: 255 }).notNull(),
-    number: varchar("number", { length: 255 }),
-    amount: decimal("amount", { precision: 17, scale: 2, mode: 'number' }).notNull(),
-    description: text("description"),
-    status: varchar("status", { length: 255 }).notNull().default("active"),
     created_at: dbTimestamp("created_at"),
     updated_at: dbTimestamp("updated_at"),
 });
