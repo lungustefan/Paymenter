@@ -66,7 +66,7 @@ export async function getUserSession(): Promise<UserSession | null> {
     return (await resolve()).token;
 }
 
-async function isAdminPath(): Promise<boolean> {
+export async function isAdminPath(): Promise<boolean> {
     try {
         const { headers } = await import('next/headers');
         const path = (await headers()).get('x-paymenter-path') ?? '';
