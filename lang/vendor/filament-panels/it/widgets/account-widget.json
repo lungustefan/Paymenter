@@ -1,0 +1,8 @@
+{
+    "actions": {
+        "logout": {
+            "label": "Disconnetti"
+        }
+    },
+    "welcome": "Benvenuto"
+}

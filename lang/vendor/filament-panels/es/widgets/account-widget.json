@@ -1,0 +1,8 @@
+{
+    "actions": {
+        "logout": {
+            "label": "Salir"
+        }
+    },
+    "welcome": "Bienvenida/o"
+}

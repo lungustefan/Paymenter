@@ -8,8 +8,9 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
-@source "../views";
-@source "../../../extensions/**/*.blade.php";
+@source "../";
+@source "../../../src/components";
+@source "../../../extensions/**/*.tsx";
 @source "../../../extensions/Servers/Proxmox";
 @source "../../../extensions/Others/Pages";
 

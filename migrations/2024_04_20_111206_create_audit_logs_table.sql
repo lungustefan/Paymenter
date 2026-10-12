@@ -1,0 +1,2 @@
+create table `audit_logs` (`id` bigint unsigned not null auto_increment primary key, `action` varchar(255) not null, `description` varchar(255) null, `model_type` varchar(255) not null, `model_id` bigint unsigned not null, `user_id` bigint unsigned null, `changes` json null, `ip_address` varchar(255) null, `user_agent` varchar(255) null, `created_at` timestamp null, `updated_at` timestamp null) default character set {{charset}} collate {{collation}};
+alter table `audit_logs` add index `audit_logs_model_type_model_id_index`(`model_type`, `model_id`);

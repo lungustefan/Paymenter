@@ -1,0 +1,2 @@
+create table `custom_properties` (`id` bigint unsigned not null auto_increment primary key, `name` varchar(255) not null, `description` varchar(255) null, `key` varchar(255) not null, `type` varchar(255) not null, `model` varchar(255) not null, `validation` varchar(255) null, `allowed_values` json null, `non_editable` tinyint(1) not null, `required` tinyint(1) not null, `show_on_invoice` tinyint(1) not null) default character set {{charset}} collate {{collation}};
+alter table `custom_properties` add unique `custom_properties_key_unique`(`key`);

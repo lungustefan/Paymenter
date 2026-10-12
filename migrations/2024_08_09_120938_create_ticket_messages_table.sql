@@ -1,0 +1,3 @@
+create table `ticket_messages` (`id` bigint unsigned not null auto_increment primary key, `ticket_id` bigint unsigned not null, `user_id` bigint unsigned not null, `message` text not null, `created_at` timestamp null, `updated_at` timestamp null) default character set {{charset}} collate {{collation}};
+alter table `ticket_messages` add constraint `ticket_messages_ticket_id_foreign` foreign key (`ticket_id`) references `tickets` (`id`) on delete cascade;
+alter table `ticket_messages` add constraint `ticket_messages_user_id_foreign` foreign key (`user_id`) references `users` (`id`) on delete cascade;

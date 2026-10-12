@@ -1,0 +1,1 @@
+create table `extensions` (`id` bigint unsigned not null auto_increment primary key, `name` varchar(255) not null, `extension` varchar(255) not null, `type` varchar(255) not null, `enabled` tinyint(1) not null default '0', `created_at` timestamp null, `updated_at` timestamp null) default character set {{charset}} collate {{collation}};

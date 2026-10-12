@@ -1,8 +1,17 @@
 #!/bin/bash
 
-URL='https://github.com/paymenter/paymenter/releases/latest/download/paymenter.tar.gz'
+# Releases of this edition are published on GitHub. Without --url or --version the newest release is installed.
+REPO='lungustefan/Paymenter'
+URL=''
+VERSION=''
 
 echo "Starting upgrade process..."
+
+# update.sh works on the current directory: refuse to touch anything that is not a Paymenter installation.
+if [[ ! -f config/app.php ]] && ! grep -qsE '"name": *"paymenter"' package.json; then
+    echo -e "\x1b[31;1mCannot execute self-upgrade process. Run update.sh in the folder Paymenter is installed in, e.g. cd /var/www/paymenter && bash update.sh\x1b[0m"
+    exit 1
+fi
 
 # Read config/app.php to check if someone is trying to ugprade to a major version.
 if [ -f "config/app.php" ]; then
@@ -12,23 +21,31 @@ if [ -f "config/app.php" ]; then
     fi
 fi
 
-if [ "$(php -r 'echo version_compare(PHP_VERSION, "8.2.0");')" -lt 0 ]; then
-    echo -e "\x1b[31;1mCannot execute self-upgrade process. The minimum required PHP version required is 8.2, you have [$(php -r 'echo PHP_VERSION;')].\x1b[0m"
+# Node.js >= 22 is required.
+if ! command -v node >/dev/null 2>&1; then
+    echo -e "\x1b[31;1mCannot execute self-upgrade process. Node.js is not installed, the minimum required version is 22.\x1b[0m"
+    exit 1
+fi
+NODE_MAJOR="$(node -p 'process.versions.node.split(".")[0]')"
+if [ "$NODE_MAJOR" -lt 22 ]; then
+    echo -e "\x1b[31;1mCannot execute self-upgrade process. The minimum required Node.js version is 22, you have [$(node -v)].\x1b[0m"
     exit 1
 fi
 
-# Exit if release URL is empty or underfined
-if [[ $URL == "" ]]; then echo -e "\x1b[31;1mRelease URL not defined.\x1b[0m"; exit 1; fi
-
-
-# Check if the previous version is 1.2.11 or lower, if so, check if extensions directory contains filament resources (except announcements/affiliates)
-
+# Remember if this is an upgrade from the Laravel (PHP) release
+FROM_PHP=0
+PREV_VER=""
 if [[ -f "config/app.php" ]]; then
+  FROM_PHP=1
   # Read version from config/app.php
   PREV_VER="$(grep 'version' config/app.php | head -1 | sed -E "s/.*'version'\s*=>\s*'([^']+)'.*/\1/")"
+elif [[ -f "package.json" ]]; then
+  PREV_VER="$(node -p "require('./package.json').version" 2>/dev/null)"
+fi
 
-  # Only run checks if version < 1.2.12
-  if [[ "$PREV_VER" != *beta* ]] && [[ -n "${PREV_VER:-}" ]] && php -r "exit(version_compare('$PREV_VER','1.2.12','<')?0:1);"; then
+# Check if the previous version is 1.2.11 or lower, if so, check if extensions directory contains filament resources (except announcements/affiliates)
+# Only run checks if version < 1.2.12
+if [[ "$FROM_PHP" == 1 ]] && [[ "$PREV_VER" != *beta* ]] && [[ -n "${PREV_VER:-}" ]] && [[ "$(printf '%s\n%s\n' "$PREV_VER" "1.2.12" | sort -V | head -1)" != "1.2.12" ]]; then
     # Check extensions for admin folder
     if [[ -d extensions ]]; then
       found_admin=$(find extensions -type d -name Admin \
@@ -41,7 +58,6 @@ if [[ -f "config/app.php" ]]; then
         exit 1
       fi
     fi
-  fi
 fi
 
 for i in "$@"
@@ -63,11 +79,72 @@ case $i in
     URL="${i#*=}"
     shift # past argument=value
     ;;
+    --version=*)
+    VERSION="${i#*=}"
+    shift # past argument=value
+    ;;
+    -p=*|--package-manager=*)
+    PM="${i#*=}"
+    shift # past argument=value
+    ;;
     *)
-            # unknown option
+    echo -e "\x1b[31;1mUnknown option [$i]. Options: --url=<archive url>, --version=<release tag>, --package-manager=<pnpm|npm|yarn>, --user=<user>, --group=<group>, --install\x1b[0m"
+    exit 1
     ;;
 esac
 done
+
+# Detect the package manager (pnpm, npm or yarn): explicit option, then the lockfile of the current install, then what is installed.
+if [ -z "$PM" ]; then
+    # The package-lock.json of the PHP release only describes its Vite assets: not a hint for this app.
+    if [ "$FROM_PHP" == 1 ] && command -v pnpm >/dev/null 2>&1; then PM=pnpm
+    elif [ -f yarn.lock ] && command -v yarn >/dev/null 2>&1; then PM=yarn
+    elif [ "$FROM_PHP" != 1 ] && [ -f package-lock.json ] && command -v npm >/dev/null 2>&1; then PM=npm
+    elif command -v pnpm >/dev/null 2>&1; then PM=pnpm
+    elif command -v npm >/dev/null 2>&1; then PM=npm
+    elif command -v yarn >/dev/null 2>&1; then PM=yarn
+    fi
+fi
+case "$PM" in
+    pnpm|npm|yarn) ;;
+    *) echo -e "\x1b[31;1mCannot execute self-upgrade process. No supported package manager (pnpm, npm or yarn) found.\x1b[0m"; exit 1 ;;
+esac
+if ! command -v "$PM" >/dev/null 2>&1; then
+    echo -e "\x1b[31;1mCannot execute self-upgrade process. Package manager [$PM] is not installed.\x1b[0m"
+    exit 1
+fi
+
+# Run a package.json script of the app: pm_run <script> [args...]
+pm_run() {
+    local script="$1"; shift
+    case "$PM" in
+        npm) npm run "$script" --silent -- "$@" ;;
+        *) "$PM" run "$script" "$@" ;;
+    esac
+}
+
+# Pick the release archive: --url, --version, or the newest release on GitHub. GitHub's /releases/latest skips
+# pre-releases, so the API is asked instead: pre-releases count while you run one or no stable release exists yet.
+if [[ -z "$URL" && -n "$VERSION" ]]; then
+    URL="https://github.com/$REPO/releases/download/v${VERSION#v}/paymenter.tar.gz"
+elif [[ -z "$URL" ]]; then
+    PRERELEASE=0
+    [[ "$PREV_VER" == *-* ]] && PRERELEASE=1
+    URL="$(curl -fsSL "https://api.github.com/repos/$REPO/releases" 2>/dev/null | node -e '
+        let json = "";
+        process.stdin.on("data", (d) => (json += d)).on("end", () => {
+            try {
+                const releases = JSON.parse(json).filter((r) => !r.draft && r.assets.some((a) => a.name === "paymenter.tar.gz"));
+                const release = releases.find((r) => process.argv[1] === "1" || !r.prerelease) ?? releases[0];
+                if (release) console.log(release.assets.find((a) => a.name === "paymenter.tar.gz").browser_download_url);
+            } catch {}
+        });' "$PRERELEASE")"
+    if [[ -z "$URL" ]]; then
+        echo "Could not look up the newest release on GitHub, using the latest stable release."
+        URL="https://github.com/$REPO/releases/latest/download/paymenter.tar.gz"
+    fi
+fi
+echo "Release archive: $URL"
 
 # Detect the folder permissions.
 file=$(pwd)
@@ -109,37 +186,91 @@ RUN() {
     "${@}"
 }
 
-# Set application down for maintenance.
-RUN php artisan down
+# Stop at a failed step instead of carrying on and reporting a successful upgrade.
+fail() {
+    echo -e "\x1b[31;1m$*\x1b[0m"
+    exit 1
+}
 
-# Download the latest release from GitHub.
-RUN curl -L -o paymenter.tar.gz "$URL"
+# Fall back to the owner of the folder when running non-interactively
+[ -z "$PERMUSER" ] && PERMUSER=$(stat -c '%U' "$file")
+[ -z "$PERMGROUP" ] && PERMGROUP=$(stat -c '%G' "$file")
 
-# Delete app folder
-RUN rm -rf app bootstrap/cache/*.php
+# Keep the configuration, the uploaded files and the themes/extensions you added.
+RUN cp -p .env .env.update-backup 2>/dev/null || true
 
-# Extract the tarball.
-RUN tar -xzf paymenter.tar.gz
+# Download the release.
+RUN curl -L -f -o paymenter.tar.gz "$URL" || { echo -e "\x1b[31;1mDownload failed. Pick a release with --version=<tag> (see https://github.com/$REPO/releases) or --url=<archive url>.\x1b[0m"; exit 1; }
+
+# Check the archive before deleting anything: a truncated download or the archive of another edition must not replace the installation.
+if ! ARCHIVE_FILES="$(tar -tzf paymenter.tar.gz 2>/dev/null)" || ! grep -qE '^(\./)?src/cli/index\.ts$' <<< "$ARCHIVE_FILES"; then
+    RUN rm -f paymenter.tar.gz
+    fail "The downloaded file is not a release archive of this edition. Nothing was changed."
+fi
+
+# Delete the previous release so files the new one no longer ships cannot linger (next build type checks every .ts file,
+# e.g. the vitest.config.ts 2.0.0-alpha.3 shipped). The bundled themes/extensions are replaced as a whole; storage, .env,
+# node_modules and the themes/extensions you added are kept.
+mapfile -t BUNDLED < <(sed -E 's#^\./##' <<< "$ARCHIVE_FILES" | grep -oE '^(themes/[^/]+|extensions/[^/]+/[^/]+)/' | sort -u)
+RUN rm -rf src .next .next.prebuilt scripts migrations vitest.config.ts "${BUNDLED[@]}"
+
+# Remove the PHP files of the Laravel release
+if [[ "$FROM_PHP" == 1 ]]; then
+    RUN rm -rf app bootstrap config routes resources vendor database/migrations database/seeders database/factories public/index.php public/build artisan composer.json composer.lock phpunit.xml phpstan.neon pint.json vite.js package-lock.json
+fi
+
+# Extract the tarball (the release contains the pre-built application).
+RUN tar -xzf paymenter.tar.gz --exclude='./.env' --exclude='.env' || fail "Extracting the release failed (disk full?). Fix the cause and run update.sh again."
 
 # Remove the tarball.
 RUN rm -f paymenter.tar.gz
 
+# Make sure .env is untouched
+if [ -f .env.update-backup ]; then RUN mv -f .env.update-backup .env; fi
+
 # Setup correct permissions on the new files.
-RUN chmod -R 755 storage bootstrap/cache extensions
+RUN mkdir -p storage/app/public storage/app/invoices storage/app/tickets storage/framework/cache storage/logs
+RUN chmod -R 755 storage extensions
+
+# Install the dependencies.
+case "$PM" in
+    pnpm) RUN pnpm install --frozen-lockfile || RUN pnpm install ;;
+    yarn) RUN yarn install ;;
+    npm) RUN npm install ;;
+esac || fail "Installing the dependencies failed. Fix the cause and run update.sh again."
 
 # Run the database migrations.
-RUN php artisan migrate --force --seed
-
-RUN php artisan passport:hash --force
+RUN pm_run paymenter migrate --seed || fail "The database migrations failed. Fix the cause and run update.sh again."
 
 # Change to default theme.
-RUN php artisan app:settings:change theme default
+RUN pm_run paymenter app:settings:change theme default
 
-# Clear config and view caches.
-RUN php artisan optimize:clear
+# Rebuild when custom themes/extensions are installed (they are registered at build time) or the release shipped without a build.
+CURRENT_HASH=$(find themes extensions -type f 2>/dev/null | LC_ALL=C sort | xargs sha256sum | sha256sum | cut -d' ' -f1)
+# The pre-built release links its externals into node_modules/.pnpm; with npm/yarn those links dangle, so rebuild then too.
+DANGLING=0
+for l in .next/node_modules/*; do [ -L "$l" ] && [ ! -e "$l" ] && DANGLING=1; done
+if [ ! -d .next ]; then
+    RUN pm_run build || fail "Building the application failed. Fix the cause and run update.sh again."
+elif [ "$DANGLING" == 1 ] || [ "$CURRENT_HASH" != "$(cat .registry-hash 2>/dev/null)" ]; then
+    # Keep the pre-built release: a theme or extension that does not build must not leave the panel without a build.
+    RUN rm -rf .next.prebuilt
+    RUN mv .next .next.prebuilt
+    RUN cp -p src/generated/registry.ts src/generated/registry.ts.prebuilt
+    if RUN pm_run build; then
+        RUN rm -rf .next.prebuilt src/generated/registry.ts.prebuilt
+    else
+        BUILD_FAILED=1
+        RUN rm -rf .next
+        RUN mv .next.prebuilt .next
+        RUN mv -f src/generated/registry.ts.prebuilt src/generated/registry.ts
+    fi
+else
+    echo "Pre-built release found, skipping build."
+fi
 
-# Optimize icons
-RUN php artisan icons:cache
+# Clear the cache.
+RUN pm_run paymenter optimize:clear
 
 # Remove the old log files.
 RUN rm -rf storage/logs/*.log
@@ -147,11 +278,18 @@ RUN rm -rf storage/logs/*.log
 # Setup correct permissions on the new files.
 RUN chown -R "$PERMUSER":"$PERMGROUP" .
 
-RUN php artisan app:check-for-updates
+RUN pm_run paymenter app:check-for-updates
 
-RUN php artisan queue:restart
-
-# Set application up for maintenance.
-RUN php artisan up
+RUN pm_run paymenter queue:restart
 
 echo "Upgrade completed."
+if [[ "$FROM_PHP" == 1 ]]; then
+    echo -e "\x1b[33;1mNote: you upgraded from the PHP release. Everyone has to log in again, drain/clear old queued jobs, and PHP based extensions/themes must be ported to TypeScript (see README).\x1b[0m"
+fi
+echo "Restart the web process and the worker now so they use the new version, e.g.:"
+echo "  systemctl restart paymenter paymenter-worker   (or: pm2 restart paymenter paymenter-worker)"
+echo "  Start manually: $PM start  and  $PM run worker"
+if [[ "$BUILD_FAILED" == 1 ]]; then
+    echo -e "\x1b[31;1mYour themes/extensions could not be built (see the errors above), the release is running without them. Fix or remove them, then run \"$PM run build\" and restart.\x1b[0m"
+    exit 1
+fi

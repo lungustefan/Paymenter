@@ -1,0 +1,2 @@
+create table `email_templates` (`id` bigint unsigned not null auto_increment primary key, `key` varchar(255) not null, `subject` varchar(255) not null, `enabled` tinyint(1) not null default '1', `body` text not null, `cc` json null, `bcc` json null, `created_at` timestamp null, `updated_at` timestamp null) default character set {{charset}} collate {{collation}};
+alter table `email_templates` add unique `email_templates_key_unique`(`key`);

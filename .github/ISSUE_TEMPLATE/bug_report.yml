@@ -65,7 +65,7 @@ body:
     id: paymenterlogs
     attributes:
       label: Relevant Paymenter log output
-      description: Please copy and paste any relevant Paymenter log output. Include logs before and after your exact error when possible. This will be automatically formatted into code, so no need for backticks. (this is visisble in storage/logs/laravel-(date).log)
+      description: Please copy and paste any relevant Paymenter log output. Include logs before and after your exact error when possible. This will be automatically formatted into code, so no need for backticks. (this is visible in storage/logs/paymenter-(date).log)
       render: shell
     validations:
       required: true

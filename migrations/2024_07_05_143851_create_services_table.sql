@@ -1,0 +1,6 @@
+create table `services` (`id` bigint unsigned not null auto_increment primary key, `status` varchar(255) not null default 'pending', `order_id` bigint unsigned null, `product_id` bigint unsigned null, `user_id` bigint unsigned not null, `currency_code` varchar(3) not null, `quantity` int not null default '1', `price` decimal(17, 2) not null, `plan_id` bigint unsigned null, `coupon_id` bigint unsigned null, `expires_at` datetime null, `subscription_id` varchar(255) null, `created_at` timestamp null, `updated_at` timestamp null) default character set {{charset}} collate {{collation}};
+alter table `services` add constraint `services_order_id_foreign` foreign key (`order_id`) references `orders` (`id`) on delete cascade;
+alter table `services` add constraint `services_product_id_foreign` foreign key (`product_id`) references `products` (`id`) on delete set null;
+alter table `services` add constraint `services_user_id_foreign` foreign key (`user_id`) references `users` (`id`) on delete cascade;
+alter table `services` add constraint `services_plan_id_foreign` foreign key (`plan_id`) references `plans` (`id`) on delete set null;
+alter table `services` add constraint `services_coupon_id_foreign` foreign key (`coupon_id`) references `coupons` (`id`) on delete set null;

@@ -1,0 +1,16 @@
+{
+    "actions": {
+        "0": "Kattints a kódok",
+        "copy": {
+            "label": "másolásához"
+        },
+        "1": "vagy",
+        "download": {
+            "label": "letöltéséhez"
+        },
+        "2": "."
+    },
+    "messages": {
+        "copied": "Kimásolva"
+    }
+}

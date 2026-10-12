@@ -1,60 +1,64 @@
 #!/bin/ash -e
 cd /app
 
-mkdir -p /var/log/supervisord/ /var/log/nginx/ 
+mkdir -p /var/log/supervisord/
+
+## the directory of docker-compose.yml is mounted at /var/lib/paymenter, its .env keeps the APP_KEY.
+## It is mounted outside /app so that the rebuild below never reads the database files next to it;
+## /app/var is where older compose files mount it, keep using that when it is there.
+VAR_DIR=/var/lib/paymenter
+if [ -d /app/var ]; then
+  VAR_DIR=/app/var
+  echo "Using the .env of /app/var, mount the directory at /var/lib/paymenter instead (see docker-compose.example.yml)."
+fi
 
 ## check for .env file and generate app keys if missing
-if [ -f /app/var/.env ]; then
+if [ -f $VAR_DIR/.env ]; then
   echo "external vars exist."
   rm -rf /app/.env
-  ln -s /app/var/.env /app/.env
+  ln -s $VAR_DIR/.env /app/.env
 else
   echo "external vars don't exist."
   rm -rf /app/.env
-  touch /app/var/.env
+  mkdir -p $VAR_DIR
+  touch $VAR_DIR/.env
 
   ## manually generate a key because key generate --force fails
   if [ -z $APP_KEY ]; then
      echo -e "Generating key."
      APP_KEY=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)
-     echo -e "Generated app key: $APP_KEY"
-     echo -e "APP_KEY=$APP_KEY" > /app/var/.env
+     echo -e "Generated an app key, saved in $VAR_DIR/.env (the .env next to docker-compose.yml)."
+     echo -e "APP_KEY=$APP_KEY" > $VAR_DIR/.env
   else
     echo -e "APP_KEY exists in environment, using that."
-    echo -e "APP_KEY=$APP_KEY" > /app/var/.env
+    echo -e "APP_KEY=$APP_KEY" > $VAR_DIR/.env
   fi
 
-  ln -s /app/var/.env /app/.env
+  ln -s $VAR_DIR/.env /app/.env
 fi
 
 if [[ -z $DB_PORT ]]; then
   echo -e "DB_PORT not specified, defaulting to 3306"
   DB_PORT=3306
+  export DB_PORT
 fi
 
 ## check for DB up before starting the panel
 echo "Checking database status."
-until nc -z -v -w30 $DB_HOST $DB_PORT
+until nc -z -w30 $DB_HOST $DB_PORT 2>/dev/null
 do
   echo "Waiting for database connection..."
   # wait for 1 seconds before check again
   sleep 1
 done
 
-## check if storage symlink exists, if not create it
-if [ ! -L /app/public/storage ]; then
-  echo -e "Creating storage symlink."
-  rm -rf /app/public/storage
-  ln -s /app/storage/app/public /app/public/storage
-  echo -e "Storage symlink created."
-else
-  echo -e "Storage symlink already exists."
-fi
+## the public disk (storage/app/public) is served by the app itself at /storage, no symlink needed
+mkdir -p /app/storage/app/public /app/storage/app/invoices /app/storage/app/tickets /app/storage/framework/cache /app/storage/logs
 
 ## renew default themes and extensions unless PAYMENTER_SKIP_DEFAULT is set
 if [ -z "$PAYMENTER_SKIP_DEFAULT" ] || [ "$PAYMENTER_SKIP_DEFAULT" != "true" ]; then
   echo -e "Renewing default themes and extensions..."
-  
+
   # Renew default themes
   if [ -d /app/themes_default ] && [ -d /app/themes ]; then
     echo -e "Renewing themes from defaults..."
@@ -67,7 +71,7 @@ if [ -z "$PAYMENTER_SKIP_DEFAULT" ] || [ "$PAYMENTER_SKIP_DEFAULT" != "true" ]; 
       fi
     done
   fi
-  
+
   # Renew default extensions - only those that already exist
   if [ -d /app/extensions_default ] && [ -d /app/extensions ]; then
     echo -e "Renewing extensions from defaults..."
@@ -100,9 +104,7 @@ if [ -z "$PAYMENTER_SKIP_DEFAULT" ] || [ "$PAYMENTER_SKIP_DEFAULT" != "true" ]; 
       echo -e "  No extensions to renew."
     fi
   fi
-  
-  chown -R nginx:nginx /app/themes /app/extensions
-  chmod -R 755 /app/themes /app/extensions
+
   echo -e "Default themes and extensions renewed."
 else
   echo -e "PAYMENTER_SKIP_DEFAULT is set, skipping renewal of default themes and extensions."
@@ -114,8 +116,6 @@ if [ ! -d /app/themes ] || [ -z "$(ls -A /app/themes 2>/dev/null)" ]; then
   mkdir -p /app/themes
   if [ -d /app/themes_default ]; then
     cp -rp /app/themes_default/. /app/themes/
-    chown -R nginx:nginx /app/themes
-    chmod -R 755 /app/themes
     echo -e "Default themes copied."
   fi
 else
@@ -128,8 +128,6 @@ if [ ! -d /app/extensions ] || [ -z "$(ls -A /app/extensions 2>/dev/null)" ]; th
   mkdir -p /app/extensions
   if [ -d /app/extensions_default ]; then
     cp -rp /app/extensions_default/. /app/extensions/
-    chown -R nginx:nginx /app/extensions
-    chmod -R 755 /app/extensions
     echo -e "Default extensions copied."
   fi
 else
@@ -138,21 +136,36 @@ fi
 
 ## set permissions for themes and extensions
 echo -e "Setting themes and extensions permissions."
-chown -R nginx:nginx /app/themes /app/extensions
+chown -R node:node /app/themes /app/extensions
 chmod -R 755 /app/themes /app/extensions
 
-## set storage permissions to 777 and user nginx:nginx
+## Themes and extensions are registered at build time. If they differ from what the image was
+## built with (custom themes/extensions mounted into the container), rebuild the app.
+CURRENT_HASH=$(find themes extensions -type f | sort | xargs sha256sum | sha256sum | cut -d' ' -f1)
+if [ "$CURRENT_HASH" != "$(cat /app/.registry-hash 2>/dev/null)" ]; then
+  echo -e "Themes/extensions changed, rebuilding (this can take a few minutes)..."
+  # a failed build leaves no usable app behind: stop here (and retry on the next start) instead of starting it
+  if ! su node -s /bin/ash -c "cd /app && pnpm build"; then
+    echo -e "Rebuilding failed, see the errors above. Fix or remove the custom theme/extension and restart the container."
+    exit 1
+  fi
+  echo "$CURRENT_HASH" > /app/.registry-hash
+else
+  echo -e "Themes/extensions unchanged, using the prebuilt app."
+fi
+
+## set storage permissions to 777 and user node:node
 echo -e "Setting storage permissions."
 chmod -R 777 /app/storage/*
-chown -R nginx:nginx /app/storage
+chown -R node:node /app/storage /app/.next /app/src/generated
+chown node:node $VAR_DIR/.env 2>/dev/null || true
 
 ## make sure the db is set up
 echo -e "Migrating and Seeding D.B"
-php artisan migrate --seed --force
-
-## start cronjobs for the queue
-echo -e "Starting cron jobs."
-crond -L /var/log/crond -l 5
+if ! su node -s /bin/ash -c "cd /app && pnpm paymenter migrate --seed"; then
+  echo -e "Migrating the database failed, see the errors above."
+  exit 1
+fi
 
 echo -e "Starting supervisord."
 exec "$@"

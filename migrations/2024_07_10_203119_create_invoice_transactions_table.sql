@@ -1,0 +1,3 @@
+create table `invoice_transactions` (`id` bigint unsigned not null auto_increment primary key, `invoice_id` bigint unsigned not null, `gateway_id` bigint unsigned null, `amount` decimal(17, 2) not null, `fee` decimal(17, 2) null, `transaction_id` varchar(255) null, `created_at` timestamp null, `updated_at` timestamp null) default character set {{charset}} collate {{collation}};
+alter table `invoice_transactions` add constraint `invoice_transactions_invoice_id_foreign` foreign key (`invoice_id`) references `invoices` (`id`) on delete cascade;
+alter table `invoice_transactions` add constraint `invoice_transactions_gateway_id_foreign` foreign key (`gateway_id`) references `extensions` (`id`) on delete cascade;

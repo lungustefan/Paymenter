@@ -1,0 +1,34 @@
+.git
+.github/workflows
+.github/ISSUE_TEMPLATE
+node_modules
+.next
+out
+src/generated
+*.tsbuildinfo
+next-env.d.ts
+
+# local configuration / data must never end up in the image
+.env
+.env.*
+!.env.example
+storage/logs/*
+storage/framework/*
+storage/app/public/*
+public/storage
+database
+
+# editors, logs, tests
+.idea
+.vscode
+.fleet
+npm-debug.log
+yarn-error.log
+pnpm-debug.log
+tests
+vitest.config.ts
+coverage
+*.md
+!README.md
+paymenter.tar.gz
+docker-compose*.yml

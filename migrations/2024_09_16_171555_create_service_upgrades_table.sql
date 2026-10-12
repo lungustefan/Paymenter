@@ -1,0 +1,5 @@
+create table `service_upgrades` (`id` bigint unsigned not null auto_increment primary key, `service_id` bigint unsigned not null, `plan_id` bigint unsigned not null, `product_id` bigint unsigned not null, `invoice_id` bigint unsigned not null, `status` varchar(255) not null default 'pending', `type` varchar(255) not null default 'product', `created_at` timestamp null, `updated_at` timestamp null) default character set {{charset}} collate {{collation}};
+alter table `service_upgrades` add constraint `service_upgrades_service_id_foreign` foreign key (`service_id`) references `services` (`id`) on delete cascade;
+alter table `service_upgrades` add constraint `service_upgrades_plan_id_foreign` foreign key (`plan_id`) references `plans` (`id`) on delete cascade;
+alter table `service_upgrades` add constraint `service_upgrades_product_id_foreign` foreign key (`product_id`) references `products` (`id`) on delete cascade;
+alter table `service_upgrades` add constraint `service_upgrades_invoice_id_foreign` foreign key (`invoice_id`) references `invoices` (`id`) on delete cascade;

@@ -1,10 +1,8 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - "v*"
-  # Actions tab -> Release -> Run workflow: builds the archive and creates the tag + draft release itself
+  # Actions tab -> Release -> Run workflow: builds the archive and creates the tag + draft release itself.
+  # There is no tag push trigger: publishing the draft pushes the tag, which would start a second, failing run.
   workflow_dispatch:
     inputs:
       version:
@@ -37,7 +35,7 @@ jobs:
 
       - name: Create release branch and bump version
         env:
-          REF: refs/tags/${{ inputs.version || github.ref_name }}
+          REF: refs/tags/${{ inputs.version }}
         run: |
           BRANCH=release/${REF:10}
           git config --local user.email "ci@paymenter.org"
@@ -52,12 +50,12 @@ jobs:
       - name: Build
         run: |
           pnpm build
-          find themes extensions -type f | sort | xargs sha256sum | sha256sum | cut -d' ' -f1 > .registry-hash
+          find themes extensions -type f | LC_ALL=C sort | xargs sha256sum | sha256sum | cut -d' ' -f1 > .registry-hash
 
       - name: Create release archive
         run: |
-          rm -rf node_modules tests CODE_OF_CONDUCT.md CONTRIBUTING.md flake.lock flake.nix .next/cache .next/standalone
-          tar -czf paymenter.tar.gz * .next .registry-hash .env.example .gitignore
+          rm -rf node_modules tests vitest.config.ts CODE_OF_CONDUCT.md CONTRIBUTING.md flake.lock flake.nix .next/cache .next/standalone
+          tar -czf paymenter.tar.gz --owner=0 --group=0 --numeric-owner * .next .registry-hash .env.example .gitignore
 
       - name: Create checksum and add to changelog
         run: |
@@ -71,9 +69,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           draft: true
-          tag_name: ${{ inputs.version || github.ref_name }}
+          tag_name: ${{ inputs.version }}
           target_commitish: ${{ github.sha }}
-          prerelease: ${{ contains(inputs.version || github.ref_name, 'rc') || contains(inputs.version || github.ref_name, 'beta') || contains(inputs.version || github.ref_name, 'alpha') }}
+          prerelease: ${{ contains(inputs.version, 'rc') || contains(inputs.version, 'beta') || contains(inputs.version, 'alpha') }}
 
       - name: Upload release archive
         id: upload-release-archive

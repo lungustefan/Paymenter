@@ -1,0 +1,16 @@
+{
+    "actions": {
+        "0": "Tüm kodları",
+        "copy": {
+            "label": "kopyalamak"
+        },
+        "1": "or",
+        "download": {
+            "label": "indirmek"
+        },
+        "2": "için tıklayın."
+    },
+    "messages": {
+        "copied": "Kopyalandı"
+    }
+}

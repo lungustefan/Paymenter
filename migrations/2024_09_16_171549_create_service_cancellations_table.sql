@@ -1,0 +1,2 @@
+create table `service_cancellations` (`id` bigint unsigned not null auto_increment primary key, `service_id` bigint unsigned not null, `reason` varchar(255) null, `type` enum('immediate', 'end_of_period') not null default 'immediate', `created_at` timestamp null, `updated_at` timestamp null) default character set {{charset}} collate {{collation}};
+alter table `service_cancellations` add constraint `service_cancellations_service_id_foreign` foreign key (`service_id`) references `services` (`id`) on delete cascade;

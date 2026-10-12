@@ -1,0 +1,8 @@
+{
+    "actions": {
+        "logout": {
+            "label": "Kijelentkezés"
+        }
+    },
+    "welcome": "Üdvözlünk"
+}
