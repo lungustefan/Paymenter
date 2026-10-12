@@ -96,8 +96,10 @@ done
 
 # Detect the package manager (pnpm, npm or yarn): explicit option, then the lockfile of the current install, then what is installed.
 if [ -z "$PM" ]; then
-    if [ -f yarn.lock ] && command -v yarn >/dev/null 2>&1; then PM=yarn
-    elif [ -f package-lock.json ] && command -v npm >/dev/null 2>&1; then PM=npm
+    # The package-lock.json of the PHP release only describes its Vite assets: not a hint for this app.
+    if [ "$FROM_PHP" == 1 ] && command -v pnpm >/dev/null 2>&1; then PM=pnpm
+    elif [ -f yarn.lock ] && command -v yarn >/dev/null 2>&1; then PM=yarn
+    elif [ "$FROM_PHP" != 1 ] && [ -f package-lock.json ] && command -v npm >/dev/null 2>&1; then PM=npm
     elif command -v pnpm >/dev/null 2>&1; then PM=pnpm
     elif command -v npm >/dev/null 2>&1; then PM=npm
     elif command -v yarn >/dev/null 2>&1; then PM=yarn
@@ -245,9 +247,12 @@ RUN pm_run paymenter app:settings:change theme default
 
 # Rebuild when custom themes/extensions are installed (they are registered at build time) or the release shipped without a build.
 CURRENT_HASH=$(find themes extensions -type f 2>/dev/null | LC_ALL=C sort | xargs sha256sum | sha256sum | cut -d' ' -f1)
+# The pre-built release links its externals into node_modules/.pnpm; with npm/yarn those links dangle, so rebuild then too.
+DANGLING=0
+for l in .next/node_modules/*; do [ -L "$l" ] && [ ! -e "$l" ] && DANGLING=1; done
 if [ ! -d .next ]; then
     RUN pm_run build || fail "Building the application failed. Fix the cause and run update.sh again."
-elif [ "$CURRENT_HASH" != "$(cat .registry-hash 2>/dev/null)" ]; then
+elif [ "$DANGLING" == 1 ] || [ "$CURRENT_HASH" != "$(cat .registry-hash 2>/dev/null)" ]; then
     # Keep the pre-built release: a theme or extension that does not build must not leave the panel without a build.
     RUN rm -rf .next.prebuilt
     RUN mv .next .next.prebuilt
