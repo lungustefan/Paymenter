@@ -149,6 +149,9 @@ export function TwoFactor({ enabled }: { enabled: boolean }) {
                                         label={t('account.input.two_factor_code')}
                                         placeholder={t('account.input.two_factor_code_placeholder')}
                                         required
+                                        inputMode="numeric"
+                                        pattern="[0-9]*"
+                                        autoComplete="one-time-code"
                                         name="two_factor_code"
                                         value={form.data.code}
                                         onChange={(e) => form.set('code', e.target.value)}
