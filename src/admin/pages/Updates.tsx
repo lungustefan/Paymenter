@@ -5,7 +5,7 @@ import { Action } from '../actions/Action';
 import { Notification } from '../Notification';
 import { hasPermission } from '@/server/policies';
 import { setting } from '@/server/config';
-import { appCommit, appVersion } from '@/server/version';
+import { appCommit, appVersion, isNewerVersion } from '@/server/version';
 import { checkForUpdates } from '@/server/commands/check-for-updates';
 import { buttonClass } from '../ui/classes';
 import { UpdateRunner } from './updates-client';
@@ -96,7 +96,7 @@ export class Updates extends AdminPage {
                         </div>
                         {howTo}
                     </div>
-                ) : !beta && version !== latestVersion ? (
+                ) : !beta && isNewerVersion(latestVersion, version) ? (
                     <div className="flex flex-col gap-1">
                         <div>
                             <strong>Latest version:</strong> {latestVersion}

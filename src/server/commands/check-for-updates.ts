@@ -1,4 +1,4 @@
-import { appCommit, appVersion } from '@/server/version';
+import { appCommit, appVersion, isNewerVersion } from '@/server/version';
 import { Http } from '@/server/http';
 import { NotificationHelper } from '@/server/helpers/NotificationHelper';
 import { Setting } from '@/server/models/Setting';
@@ -23,7 +23,7 @@ export async function checkForUpdates(info: (m: string) => void = console.log): 
         }
     } else {
         data = (await Http.get('https://api.paymenter.org/version')).json();
-        if (version !== data.latest) {
+        if (isNewerVersion(data.latest, version)) {
             info(`A new version is available: ${data.latest}`);
             info('Latest version saved to database.');
         } else {
@@ -32,7 +32,7 @@ export async function checkForUpdates(info: (m: string) => void = console.log): 
     }
 
     const setting = await Setting.query().where('key', 'latest_version').first();
-    if (setting && setting.value !== data.latest && version !== data.latest) {
+    if (setting && setting.value !== data.latest && isNewerVersion(data.latest, version)) {
         info('New stable version detected, sending notification to system email address.');
         await NotificationHelper.sendSystemEmailNotification(
             'New stable version available',
