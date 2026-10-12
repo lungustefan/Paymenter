@@ -1,61 +1,130 @@
 name: Docker
 
+# Builds the image when a release is published (tag + "latest" for stable releases) or by hand
+# (Actions > Docker > Run workflow, branch master: pushes the "master" tag used by docker-compose.beta.yml).
+# Not run on every push to master: a full multi-arch build takes a while and would publish untested commits.
 on:
-  push:
-    branches:
-      - master
   release:
     types:
       - published
+  workflow_dispatch:
+
+env:
+  IMAGE: ghcr.io/lungustefan/paymenter
 
 jobs:
-  push:
-    name: Push
-    runs-on: ubuntu-22.04
+  # One build per platform on a native runner: `next build` under QEMU emulation is very slow and can run out of memory.
+  build:
+    name: Build ${{ matrix.platform }}
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+            runner: ubuntu-24.04
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm
     steps:
       - name: Code checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Fetch metadata
         id: metadata
-        uses: docker/metadata-action@v4
+        uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/lungustefan/paymenter
-          flavor: |
-            latest=false
-          tags: |
-            type=raw,value=latest,enable=${{ github.event_name == 'release' && github.event.action == 'published' && github.event.release.prerelease == false }}
-            type=ref,event=tag
-            type=ref,event=branch
-
-      - name: Setup QEMU
-        uses: docker/setup-qemu-action@v2
+          images: ${{ env.IMAGE }}
 
       - name: Setup Docker buildx
         uses: docker/setup-buildx-action@v3
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Update version
-        if: "github.event_name == 'release' && github.event.action == 'published'"
+        if: github.event_name == 'release'
         env:
           REF: ${{ github.event.release.tag_name }}
         run: |
           npm pkg set version="${REF:1}"
 
+      # Pushed by digest only, the tags are put on the combined manifest in the next job
       - name: Build and Push
-        uses: docker/build-push-action@v3
+        id: build
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: ./Dockerfile
-          push: ${{ github.event_name != 'pull_request' }}
-          platforms: linux/amd64,linux/arm64
+          platforms: ${{ matrix.platform }}
           labels: ${{ steps.metadata.outputs.labels }}
-          tags: ${{ steps.metadata.outputs.tags }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          outputs: type=image,name=${{ env.IMAGE }},push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=gha,scope=${{ matrix.platform }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.platform }}
+
+      - name: Export digest
+        run: |
+          mkdir -p /tmp/digests
+          digest="${{ steps.build.outputs.digest }}"
+          touch "/tmp/digests/${digest#sha256:}"
+
+      - name: Upload digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-${{ strategy.job-index }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  merge:
+    name: Publish multi-platform image
+    runs-on: ubuntu-24.04
+    needs: build
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/digests
+          pattern: digests-*
+          merge-multiple: true
+
+      - name: Fetch metadata
+        id: metadata
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE }}
+          flavor: |
+            latest=false
+          tags: |
+            type=raw,value=latest,enable=${{ github.event_name == 'release' && github.event.release.prerelease == false }}
+            type=ref,event=tag
+            type=ref,event=branch
+
+      - name: Setup Docker buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create manifest list and push
+        working-directory: /tmp/digests
+        run: |
+          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf '${{ env.IMAGE }}@sha256:%s ' *)
+
+      - name: Inspect image
+        run: |
+          docker buildx imagetools inspect ${{ env.IMAGE }}:${{ steps.metadata.outputs.version }}
