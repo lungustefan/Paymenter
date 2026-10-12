@@ -72,7 +72,7 @@ const order: ResourceDef = {
 
 const service: ResourceDef = {
     type: 'services',
-    attributes: ['id', 'quantity', 'price', 'status', 'currency_code', 'expires_at', 'updated_at', 'created_at'],
+    attributes: ['id', 'quantity', 'price', 'status', 'currency_code', 'expires_at', 'suspend_hold_until', 'updated_at', 'created_at'],
     relationships: {
         coupon: () => coupon,
         user: () => user,

@@ -143,6 +143,32 @@ describe('Cronjob', () => {
         expect((await reload(service)).status).toBe('suspended');
     });
 
+    it('does not suspend a service while suspend_hold_until is in the future', async () => {
+        const user = await createUser();
+        const product = await createProduct();
+        configSettings({ cronjob_order_suspend: 2 });
+
+        const mk = (hold: Carbon | null) =>
+            createService({
+                user_id: user.id,
+                plan_id: product.plan.id,
+                product_id: product.product.id,
+                status: 'active',
+                expires_at: Carbon.now().subDays(3),
+                suspend_hold_until: hold,
+                price: 10.0,
+            });
+        const held = await mk(Carbon.now().addDays(5));
+        const expiredHold = await mk(Carbon.now().subDays(1));
+
+        await runCron();
+
+        expect((await reload(held)).status).toBe('active');
+        expect((await reload(expiredHold)).status).toBe('suspended');
+        const pushed = await pushedJobs('server.suspend');
+        expect(pushed.some((j) => j.data.service.id === held.id)).toBe(false);
+    });
+
     it('terminates orders if the due date is overdue', async () => {
         const user = await createUser();
         configSettings({ cronjob_order_terminate: 14 });

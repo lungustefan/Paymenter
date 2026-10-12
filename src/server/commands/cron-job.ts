@@ -158,6 +158,7 @@ export async function cronJob(info: (msg: string) => void = console.log): Promis
                 const services = await Service.query()
                     .where('status', 'active')
                     .where('expires_at', '<', Carbon.now().subDays(Number(setting('cronjob_order_suspend', 2))))
+                    .where((q) => q.whereNull('suspend_hold_until').orWhere('suspend_hold_until', '<', Carbon.now()))
                     .get();
                 for (const service of services) {
                     await dispatchJob('server.suspend', { service });
