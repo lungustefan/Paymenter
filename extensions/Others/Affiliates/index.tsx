@@ -42,6 +42,14 @@ const affiliateResource: ResourceDef = {
 };
 
 export default class Affiliates extends Extension {
+    static meta = {
+        name: 'Affiliates',
+        description: 'Affiliates extension',
+        version: 'builtin',
+        author: 'Paymenter',
+        extensionId: 'unknown',
+    };
+
     /**
      * Get all the configuration for the extension
      */

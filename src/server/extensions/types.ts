@@ -7,6 +7,8 @@ export interface ExtensionMeta {
     author: string;
     url?: string;
     icon?: string;
+    /** id of the extension on the Paymenter marketplace; `unknown` when it is not listed */
+    extensionId?: string;
 }
 
 /**

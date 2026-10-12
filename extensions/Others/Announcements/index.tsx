@@ -18,6 +18,14 @@ const published = () => Announcement.query().where('is_active', true).where('pub
 const enabled = async () => !!(await ExtensionModel.query().where('extension', 'Announcements').where('enabled', true).first());
 
 export default class Announcements extends Extension {
+    static meta = {
+        name: 'Announcements',
+        description: 'Announcements extension',
+        version: 'builtin',
+        author: 'Paymenter',
+        extensionId: 'unknown',
+    };
+
     async getConfig(_values: Record<string, any> = {}): Promise<ConfigDefinition[]> {
         // If announcement resource is not installed, return placeholder
         if (await enabled()) {
