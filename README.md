@@ -85,8 +85,10 @@ Or, get additional help via [Community Discord](https://discord.gg/xB4UUT3XQg).
 #### Installation
 
 ```bash
-# 1. Get the code: a clone of this repository (or a release archive, which contains a pre-built app)
-curl -L https://github.com/paymenter/paymenter/releases/latest/download/paymenter.tar.gz | tar -xz
+# 1. Get the code: a release archive (contains a pre-built app; the files are not in a sub folder, so extract into an empty folder)
+#    Pick the newest release on https://github.com/lungustefan/Paymenter/releases (the "latest" link ignores pre-releases)
+mkdir paymenter && cd paymenter
+curl -L https://github.com/lungustefan/Paymenter/releases/download/<tag, e.g. v2.0.0-alpha.4>/paymenter.tar.gz | tar -xz
 # or: git clone https://github.com/lungustefan/Paymenter.git paymenter && cd paymenter
 
 # 2. Install the dependencies
@@ -160,7 +162,7 @@ cd /var/www/paymenter
 bash update.sh          # or: pnpm paymenter app:upgrade
 ```
 
-`update.sh` downloads the latest release archive, keeps your `.env`, `storage/`, `extensions/` and `themes/`, installs the dependencies with the package manager it detects (pnpm, npm or yarn; force one with `--package-manager=pnpm`), runs `paymenter migrate --seed`, rebuilds only when you have custom themes/extensions and finally clears the cache. Restart the web process and the worker afterwards. It refuses to upgrade Paymenter V0 installations (see the [V0 migration guide](https://paymenter.org/docs/guides/v0-migration)). With Docker, pull the new image: `docker compose pull && docker compose up -d`.
+`update.sh` downloads the newest release archive (pre-releases included, looked up through the GitHub API; pass `--version=v2.0.0-alpha.4` or `--url=<archive url>` to choose one), keeps your `.env`, `storage/`, `extensions/` and `themes/`, installs the dependencies with the package manager it detects (pnpm, npm or yarn; force one with `--package-manager=pnpm`), runs `paymenter migrate --seed`, rebuilds only when you have custom themes/extensions and finally clears the cache. Restart the web process and the worker afterwards. It refuses to upgrade Paymenter V0 installations (see the [V0 migration guide](https://paymenter.org/docs/guides/v0-migration)). With Docker, pull the new image: `docker compose pull && docker compose up -d`.
 
 #### Development
 
