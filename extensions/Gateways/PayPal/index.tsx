@@ -11,6 +11,8 @@ import { randomString } from '@/server/lib/ids';
 import { BillingAgreement } from '@/server/models/BillingAgreement';
 import { Invoice } from '@/server/models/Invoice';
 import type { InvoiceItem } from '@/server/models/InvoiceItem';
+import type { InvoiceTransaction } from '@/server/models/InvoiceTransaction';
+import { numberFormat } from '@/server/lib/php';
 import { Service } from '@/server/models/Service';
 import type { User } from '@/server/models/User';
 import PayPalButtons from './PayPalButtons';
@@ -438,6 +440,21 @@ export default class PayPal extends Gateway {
 
         await service.relation('properties').where('key', 'has_paypal_subscription').delete();
 
+        return true;
+    }
+
+
+    supportsRefunds(): boolean {
+        return true;
+    }
+
+    async refund(transaction: InvoiceTransaction, amount: number): Promise<boolean> {
+        const captureId = transaction.transaction_id;
+        if (!captureId) throw new Error('Transaction has no PayPal capture ID.');
+        const invoice = await transaction.rel('invoice');
+        await this.request('post', this.baseUrl + '/v2/payments/captures/' + captureId + '/refund', {
+            amount: { currency_code: invoice.currency_code, value: numberFormat(amount, 2, '.', '') },
+        });
         return true;
     }
 }

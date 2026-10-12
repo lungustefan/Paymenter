@@ -71,6 +71,8 @@ export interface Endpoint {
     updateRules?: (record: Model<any>, input: Record<string, any>) => Rules;
     /** extra permission checks (`authorize()` overrides) */
     authorize?: (input: Record<string, any>, has: (p: string) => boolean) => boolean;
+    /** extra checks on the record an update / delete is for (`authorize()` of the FormRequest that has the route model) */
+    authorizeRecord?: (record: Model<any>, action: 'update' | 'destroy') => boolean;
 }
 
 const planBelongsToProduct = (input: Record<string, any>) => async (value: any, fail: (m: string) => void) => {
@@ -217,17 +219,19 @@ const endpoints: Endpoint[] = [
         sorts: ['id', 'created_at', 'updated_at', 'currency_code'],
         actions: ['index', 'show', 'store', 'update', 'destroy'],
         defaults: { status: 'pending' },
+        // with immutable invoices only a draft can be changed or deleted
+        authorizeRecord: (record) => !setting('immutable_invoices_enabled', false) || (record as any).status === Invoice.STATUS_DRAFT,
         createRules: () => ({
             user_id: 'required|exists:users,id',
             currency_code: 'required|string|exists:currencies,code',
             due_at: 'nullable|date',
-            status: 'required|string|in:pending,paid,cancelled',
+            status: 'required|string|in:draft,pending,paid,cancelled',
         }),
         updateRules: () => ({
             user_id: 'sometimes|required|exists:users,id',
             currency_code: 'sometimes|required|string|exists:currencies,code',
             due_at: 'sometimes|nullable|date',
-            status: 'sometimes|required|string|in:pending,paid,cancelled',
+            status: 'sometimes|required|string|in:draft,pending,paid,cancelled',
         }),
     },
     {
@@ -498,6 +502,7 @@ export async function handleAdminApi(request: Request, slug: string, id: string 
 
         if (action === 'destroy') {
             const record = await find(endpoint, id!);
+            if (endpoint.authorizeRecord && !endpoint.authorizeRecord(record, 'destroy')) throw forbid();
             await record.delete();
             return new NextResponse(null, { status: 204 });
         }
@@ -511,6 +516,7 @@ export async function handleAdminApi(request: Request, slug: string, id: string 
         let rules: Rules;
         if (action === 'update') {
             record = await find(endpoint, id!);
+            if (endpoint.authorizeRecord && !endpoint.authorizeRecord(record, 'update')) throw forbid();
             rules = endpoint.updateRules!(record, input);
         } else rules = endpoint.createRules!(input);
 

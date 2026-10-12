@@ -6,7 +6,7 @@ import { Carbon } from '@/server/lib/carbon';
 import { config, setting } from '@/server/config';
 import { strPad } from '@/server/lib/php';
 import { InvoiceTransactionStatus } from '@/server/enums';
-import { Settings } from '@/server/classes/Settings';
+import { createInvoiceSnapshot } from '@/server/services/invoice/CreateInvoiceSnapshotService';
 import { NotificationHelper } from '@/server/helpers/NotificationHelper';
 import { getRequestInfo } from '@/server/request';
 import { Service } from '@/server/models/Service';
@@ -46,39 +46,29 @@ export function registerListeners() {
 
     /* CreateInvoiceSnapshotListener */
     listen(Events.Invoice.Paid, async ({ invoice }) => {
-        if (!setting('invoice_snapshot', true)) return;
-        // Only create snapshot if it doesn't already exist
-        if (await invoice.rel('snapshot')) return;
-        const user = await invoice.rel('user');
-        const data: Record<string, any> = {
-            name: user.displayName(),
-            properties: await invoice.userProperties(),
-            bill_to: setting('bill_to_text', setting('company_name')),
-        };
-        const tax = await Settings.tax(user);
-        if (tax) {
-            data.tax_name = tax.name;
-            data.tax_rate = tax.rate;
-            data.tax_country = tax.country;
-        }
-        await invoice.relation('snapshot').create(data);
+        await createInvoiceSnapshot(invoice);
     });
 
-    /* InvoiceNumberListener */
-    const setInvoiceNumber = async (invoice: any) => {
+    /* InvoiceNumberListener (invoices and credit/debit notes) */
+    const setNumber = async (model: any, prefix: 'invoice' | 'credit_note') => {
         const formatted = await transaction(async () => {
-            const row = await Setting.query().where('key', 'invoice_number').lockForUpdate().first();
+            const key = `${prefix}_number`;
+            const row = await Setting.query().where('key', key).lockForUpdate().first();
             const number = Number.parseInt(String(row?.value ?? 0), 10) + 1;
-            await Setting.updateOrCreate({ key: 'invoice_number' }, { value: number });
-            return formatInvoiceNumber(number);
+            await Setting.updateOrCreate({ key }, { value: number });
+            return formatInvoiceNumber(number, prefix);
         });
-        invoice.number = formatted;
+        model.number = formatted;
     };
     listen(Events.Invoice.Creating, async ({ invoice }) => {
-        if (!setting('invoice_proforma', false)) await setInvoiceNumber(invoice);
+        if (!setting('invoice_proforma', false)) await setNumber(invoice, 'invoice');
     });
     listen(Events.Invoice.Updating, async ({ invoice }) => {
-        if (invoice.isDirty('status') && invoice.status === 'paid' && !invoice.number) await setInvoiceNumber(invoice);
+        const toPendingOrPaid = invoice.isDirty('status') && ['pending', 'paid'].includes(invoice.status);
+        if (toPendingOrPaid && !invoice.number) await setNumber(invoice, 'invoice');
+    });
+    listen(Events.AdjustmentNote.Creating, async ({ adjustmentNote }) => {
+        await setNumber(adjustmentNote, 'credit_note');
     });
 
     /* InvoiceTransactionCreatedListener */
@@ -129,15 +119,18 @@ export function registerListeners() {
     /* SendMailListener */
     listen(Events.Invoice.Finalized, async ({ invoice, sendEmail }) => {
         if (sendEmail === false) return;
-        await NotificationHelper.invoiceCreatedNotification(await invoice.rel('user'), invoice);
+        const user = await invoice.rel('user');
+        if (user) await NotificationHelper.invoiceCreatedNotification(user, invoice);
     });
     listen(Events.Invoice.Paid, async ({ invoice }) => {
-        await NotificationHelper.invoicePaidNotification(await invoice.rel('user'), invoice);
+        const user = await invoice.rel('user');
+        if (user) await NotificationHelper.invoicePaidNotification(user, invoice);
     });
     const failed = async ({ invoiceTransaction }: { invoiceTransaction: any }) => {
         if (invoiceTransaction.status === InvoiceTransactionStatus.Failed) {
             const invoice = (await invoiceTransaction.rel('invoice'))!;
-            await NotificationHelper.invoicePaymentFailedNotification(await invoice.rel('user'), invoice);
+            const user = await invoice.rel('user');
+            if (user) await NotificationHelper.invoicePaymentFailedNotification(user, invoice);
         }
     };
     listen(Events.InvoiceTransaction.Created, failed);
@@ -190,11 +183,11 @@ export function registerListeners() {
     listen('Illuminate\\Auth\\Events\\Logout', onLogoutCart);
 }
 
-/** Laravel pads and templates the invoice number: `INV-{year}-{number}` */
-export function formatInvoiceNumber(number: number): string {
-    const padded = strPad(number, Number(setting('invoice_number_padding', 1)), '0', 'left');
+/** Laravel pads and templates the invoice / credit note number: `INV-{year}-{number}` */
+export function formatInvoiceNumber(number: number, prefix: 'invoice' | 'credit_note' = 'invoice'): string {
+    const padded = strPad(number, Number(setting(`${prefix}_number_padding`, 1)), '0', 'left');
     const now = Carbon.now();
-    return String(setting('invoice_number_format', '{number}'))
+    return String(setting(`${prefix}_number_format`, '{number}'))
         .replaceAll('{number}', padded)
         .replaceAll('{year}', now.format('Y'))
         .replaceAll('{month}', now.format('m'))

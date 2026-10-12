@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { useDatabase } from '../../helpers/db';
-import { createInvoice, createProduct, createService, createUser } from '../../helpers/factories';
+import { configSettings, createInvoice, createProduct, createService, createUser } from '../../helpers/factories';
 import { Carbon } from '@/server/lib/carbon';
 import { InvoiceTransactionStatus } from '@/server/enums';
 import { ExtensionHelper } from '@/server/extensions/helper';
@@ -12,17 +12,28 @@ describe('InvoicePaymentProcessing', () => {
 
     async function createInvoiceWithItem(total = 100.0) {
         const user = await createUser();
-        const invoice = await createInvoice({ user_id: user.id });
+        const invoice = await createInvoice({ user_id: user.id, status: 'pending' });
         await invoice.relation('items').create({ description: 'Test Item', quantity: 1, price: total });
         return (await Invoice.find<Invoice>(invoice.id))!;
     }
     const fresh = async (invoice: Invoice) => (await Invoice.find<Invoice>(invoice.id))!;
 
-    it('starts with pending status', async () => {
-        const invoice = await createInvoiceWithItem();
+    it('starts with draft status', async () => {
+        const user = await createUser();
+        const created = await createInvoice({ user_id: user.id });
+        await created.relation('items').create({ description: 'Test Item', quantity: 1, price: 100 });
+        const invoice = await fresh(created);
 
-        expect(invoice.status).toBe('pending');
+        expect(invoice.status).toBe('draft');
         expect(await invoice.total()).toBeGreaterThan(0);
+    });
+
+    it('snapshots a pending invoice when it is created', async () => {
+        configSettings({ invoice_snapshot: true });
+        const user = await createUser();
+        const invoice = await createInvoice({ user_id: user.id, status: Invoice.STATUS_PENDING });
+
+        expect((await (await fresh(invoice)).rel('snapshot'))?.name).toBe(user.displayName());
     });
 
     it('calculates the remaining amount correctly', async () => {

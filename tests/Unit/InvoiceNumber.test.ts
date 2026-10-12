@@ -15,12 +15,12 @@ describe('InvoiceNumber', () => {
         await Setting.updateOrCreate({ key: 'invoice_number' }, { value: 1000 });
         await Setting.updateOrCreate({ key: 'invoice_number_format' }, { value: '{number}' });
 
-        const invoice = await createInvoice({ user_id: user.id });
+        const invoice = await createInvoice({ user_id: user.id, status: Invoice.STATUS_DRAFT });
         expect(Number(invoice.number)).toBe(1001);
         expect(await settingValue('invoice_number')).toBe('1001');
 
         // Do it once more for good measure
-        const invoice2 = await createInvoice({ user_id: user.id });
+        const invoice2 = await createInvoice({ user_id: user.id, status: Invoice.STATUS_DRAFT });
         expect(Number(invoice2.number)).toBe(1002);
         expect(await settingValue('invoice_number')).toBe('1002');
     });
@@ -31,7 +31,7 @@ describe('InvoiceNumber', () => {
         await Setting.updateOrCreate({ key: 'invoice_number_format' }, { value: '{number}' });
         await Setting.updateOrCreate({ key: 'invoice_proforma' }, { value: true });
 
-        const invoice = await createInvoice({ user_id: user.id });
+        const invoice = await createInvoice({ user_id: user.id, status: Invoice.STATUS_DRAFT });
         await invoice.relation('items').create({ name: 'Test item', description: 'Test item', price: 10, quantity: 1 });
 
         // Number should not be set

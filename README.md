@@ -233,6 +233,7 @@ This is a rewrite, not a patch release. Be aware of the following before you upg
 - **Same database.** The tables and migration names are unchanged, so an existing database is adopted in place by `pnpm paymenter migrate`. Take a backup before running it.
 - **Same `.env` names** (`APP_KEY`, `DB_*`, `CACHE_STORE`, `REDIS_*`...). PHP-only variables (`REDIS_CLIENT`, `LOG_*`, `BROADCAST_CONNECTION`...) are ignored.
 - **No `artisan`, no Composer.** Use `pnpm paymenter <command>`; the command names (`app:cron-job`, `app:user:create`, ...) are the same. Maintenance-mode commands (`down`/`up`) are kept for compatibility but do not block requests.
+- **Invoices default to `draft`.** As in upstream Paymenter after 1.5.9, the `invoices.status` column now defaults to `draft` (existing invoices keep their status; the cart, credits, upgrades, renewals and the admin order page still create `pending` invoices). Optional "Immutable Invoices" (Settings > Invoices) makes published invoices read-only; changes then go through credit/debit notes (Adjustment Notes) and refunds. Invoices of deleted users stay (`user_id` becomes `NULL`), drafts are not shown to clients.
 - **Admin panel.** The Filament admin panel was re-implemented on top of the same stylesheets; a few pages behave differently (for example an authenticated non-admin gets a 404 instead of a 403 on `/admin`).
 
 ## What is Paymenter?

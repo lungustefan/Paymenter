@@ -13,7 +13,7 @@ import { ProductResource } from './resources/ProductResource';
 import { RoleResource } from './resources/RoleResource';
 import { UserResource } from './resources/UserResource';
 import { ServiceCancellationResource, ServiceResource, ServicesCluster } from './resources/ServiceResource';
-import { InvoiceCluster, InvoiceResource, InvoiceTransactionResource } from './resources/InvoiceResource';
+import { AdjustmentNoteResource, InvoiceCluster, InvoiceResource, InvoiceTransactionResource } from './resources/InvoiceResource';
 import { OrderResource } from './resources/OrderResource';
 import { TicketResource } from './resources/TicketResource';
 import { ActiveUsers, Overview, Revenue, Support } from './widgets/PanelWidgets';
@@ -30,6 +30,6 @@ let registered = false;
 export function registerPanel() {
     if (registered) return;
     registered = true;
-    registerCore({ widgets: [Overview, Revenue, Support, ActiveUsers], pages: [Dashboard, Extension, Settings, Updates, CronStats], clusters: [ExtensionsCluster, ServicesCluster, InvoiceCluster], resources: [OauthClientResource, AuditResource, UserResource, OrderResource, TicketResource, ServiceResource, ServiceCancellationResource, InvoiceResource, InvoiceTransactionResource, CategoryResource, ProductResource, ConfigOptionResource, CouponResource, NotificationTemplateResource, ExtensionResource, GatewayResource, ServerResource, ApiResource, CurrencyResource, CustomPropertyResource, EmailLogResource, ErrorLogResource, FailedJobResource, HttpLogResource, RoleResource, TaxRateResource] });
+    registerCore({ widgets: [Overview, Revenue, Support, ActiveUsers], pages: [Dashboard, Extension, Settings, Updates, CronStats], clusters: [ExtensionsCluster, ServicesCluster, InvoiceCluster], resources: [OauthClientResource, AuditResource, UserResource, OrderResource, TicketResource, ServiceResource, ServiceCancellationResource, InvoiceResource, InvoiceTransactionResource, AdjustmentNoteResource, CategoryResource, ProductResource, ConfigOptionResource, CouponResource, NotificationTemplateResource, ExtensionResource, GatewayResource, ServerResource, ApiResource, CurrencyResource, CustomPropertyResource, EmailLogResource, ErrorLogResource, FailedJobResource, HttpLogResource, RoleResource, TaxRateResource] });
 }
 registerPanel();
