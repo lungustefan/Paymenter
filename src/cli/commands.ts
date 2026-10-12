@@ -350,3 +350,30 @@ for (const [name, description] of [
         console.log(`${name} done.`);
     });
 }
+
+register('php:doctor', 'Check the PHP bridge: php binary, PHP extensions found, Blade themes that cannot run', async () => {
+    const { phpAvailability } = await import('@/server/extensions/php/bridge');
+    const { discoverPhpExtensions, discoverPhpThemes } = await import('@/server/extensions/php/discovery');
+    const a = phpAvailability(true);
+    console.log(a.ok ? `php ${a.version} (${a.binary}): OK` : `php: UNAVAILABLE - ${a.reason}`);
+    const exts = discoverPhpExtensions();
+    console.log(`${exts.length} PHP extension(s) in extensions/`);
+    for (const e of exts) {
+        console.log(` - ${e.type}/${e.name}`);
+        for (const w of e.warnings) console.log(`     ! ${w}`);
+    }
+    const themes = discoverPhpThemes();
+    for (const t of themes) console.log(` theme ${t.name}: ${t.reason}`);
+    if (a.ok && exts.length) {
+        const { getPhpBridge, stopPhpBridge } = await import('@/server/extensions/php/runtime');
+        for (const e of exts) {
+            try {
+                const d = await getPhpBridge().call('describe', { type: e.type, name: e.name });
+                console.log(`   ${e.name}: loads, ${d.methods.length} public method(s)`);
+            } catch (err: any) {
+                console.log(`   ${e.name}: FAILED to load - ${err.message}`);
+            }
+        }
+        stopPhpBridge();
+    }
+});

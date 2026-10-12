@@ -227,12 +227,16 @@ export class Extension extends AdminPage {
                                                 </td>
                                                 <td className="fi-ta-cell">
                                                     <div className="fi-ta-col">
-                                                        <div className="fi-ta-text fi-ta-text-item">{meta ? `${meta.name} (${meta.author})` : row.name}</div>
+                                                        <div className="fi-ta-text fi-ta-text-item">{meta ? `${meta.name}${meta.author ? ` (${meta.author})` : ''}` : row.name}{row.runtime === 'php' ? ' [PHP bridge]' : ''}</div>
                                                     </div>
                                                 </td>
                                                 <td className="fi-ta-cell">
                                                     <div className="fi-ta-col">
                                                         <div className="fi-ta-text fi-ta-text-item">{meta?.description ?? ''}</div>
+                                                        {row.unavailable && <div className="fi-ta-text fi-ta-text-item" style={{ color: 'var(--danger-600, #dc2626)' }}>{row.unavailable}</div>}
+                                                        {(row.warnings ?? []).map((w) => (
+                                                            <div key={w} className="fi-ta-text fi-ta-text-item" style={{ color: 'var(--warning-600, #d97706)' }}>{w}</div>
+                                                        ))}
                                                     </div>
                                                 </td>
                                                 <td className="fi-ta-cell fi-ta-actions-cell">{actions[index]}</td>
