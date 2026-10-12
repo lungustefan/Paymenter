@@ -49,6 +49,12 @@ export const departments = () => {
 /** `columnSpan(fn ($record) => $record ? 2 : 1)` */
 const span = ({ record }: any) => (record ? 2 : 1);
 
+/** the label of a service in the ticket forms: "<product> #<id> - <Status>" plus its custom label */
+async function serviceOptionLabel(service: any): Promise<string> {
+    const label = await service.displayLabel();
+    return `${(await service.rel('product'))?.name} #${service.id} - ${ucfirst(service.status)}${label === (await service.baseLabel()) ? '' : ` (${label})`}`;
+}
+
 export class TicketResource extends Resource {
     static model = Ticket;
     static override getGloballySearchableAttributes() {
@@ -97,7 +103,7 @@ export class TicketResource extends Resource {
             Select.make('service_id')
                 .label('Service')
                 .relationship('service', 'id', (q, _search, { get }) => void q.where('user_id', get('user_id')))
-                .getOptionLabelFromRecordUsing(async (record: any) => `${(await (await record.rel('product')))?.name} - ${ucfirst(record.status)}`)
+                .getOptionLabelFromRecordUsing(async (record: any) => serviceOptionLabel(record))
                 .columnSpan(span)
                 .disabled(({ get }) => !get('user_id')),
             MarkdownEditor.make('message').columnSpan(2).label('Initial Message').hiddenOn('edit').columnSpan(span).required(),
@@ -243,7 +249,7 @@ class EditTicket extends EditRecord {
                             Select.make('service_id')
                                 .label('Service')
                                 .relationship('service', 'id', (q, _search, { get }) => void q.where('user_id', get('user_id')))
-                                .getOptionLabelFromRecordUsing(async (r: any) => `${(await r.rel('product'))?.name} - ${ucfirst(r.status)}`)
+                                .getOptionLabelFromRecordUsing(async (r: any) => serviceOptionLabel(r))
                                 .disabled(({ get }) => !get('user_id')),
                         ]),
                 )
@@ -290,7 +296,7 @@ class EditTicket extends EditRecord {
                     .placeholder('No service')
                     .formatStateUsing(async ({ record }: any) => {
                         const service = await record.rel('service');
-                        return `${(await service.rel('product'))?.name} - ${ucfirst(service.status)}`;
+                        return serviceOptionLabel(service);
                     }),
                 actions,
             ]);
