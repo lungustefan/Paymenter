@@ -149,6 +149,25 @@ export async function serializeConfigOptions(product: Product, plans: Plan[]): P
 }
 
 /** Component `mount()`: resolve the initial plan / options / config from the URL or the cart item being edited. */
+/**
+ * The state of the config options of the checkout form: the given values where they are valid, the defaults otherwise
+ * (an option value that no longer exists falls back to the first one, text/number stay empty, checkboxes unchecked).
+ */
+export function normalizeConfigOptions(
+    options: Array<{ id: number; type: string | null; children: Array<{ id: number | null }> }>,
+    given: Record<string, any>,
+): Record<string, any> {
+    const out: Record<string, any> = {};
+    for (const option of options) {
+        const key = String(option.id);
+        const value = given[key];
+        if (['text', 'number'].includes(option.type ?? '')) out[key] = value ?? null;
+        else if (option.type === 'checkbox') out[key] = [true, 'true', '1', 1].includes(value);
+        else out[key] = value !== undefined && value !== null && option.children.some((c) => String(c.id) === String(value)) ? value : option.children[0]?.id;
+    }
+    return out;
+}
+
 export function loadCheckout(categorySlug: string, productSlug: string, query: CheckoutQuery) {
     return once(`pages:checkout:${categorySlug}/${productSlug}:${JSON.stringify(query)}`, async () => {
         const category = await findCategory(categorySlug);
@@ -186,14 +205,7 @@ export function loadCheckout(categorySlug: string, productSlug: string, query: C
             plan = query.plan ? plans.find((p) => String(p.id) === String(query.plan)) : plans[0];
             if (!plan) notFound();
 
-            // Prepare the config options
-            for (const option of configOptions) {
-                const key = String(option.id);
-                const given = query.options[key];
-                if (['text', 'number'].includes(option.type ?? '')) optionState[key] = given ?? null;
-                else if (option.type === 'checkbox') optionState[key] = given !== undefined && ['true', '1'].includes(given);
-                else optionState[key] = given ?? (await option.rel('children'))[0]?.id;
-            }
+            optionState = { ...query.options };
             checkoutConfig = { ...query.config };
             for (const field of await getCheckoutConfigFields(product, checkoutConfig)) {
                 if (['select', 'radio'].includes(field.type)) {
@@ -203,6 +215,13 @@ export function loadCheckout(categorySlug: string, productSlug: string, query: C
                 }
             }
         }
+
+        // Prepare the config options. Also done for an item that is already in the cart, because the
+        // product may have gained, lost or changed options since it was added.
+        optionState = normalizeConfigOptions(
+            await Promise.all(configOptions.map(async (option) => ({ id: option.id as number, type: option.type, children: await option.rel('children') }))),
+            optionState,
+        );
 
         const fields = await getCheckoutConfigFields(product, checkoutConfig);
         // rule objects cannot cross into client components
