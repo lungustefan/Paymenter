@@ -65,7 +65,8 @@ class FileStore implements Store {
         fs.rmSync(this.file(key), { force: true });
     }
     async flush() {
-        for (const f of fs.readdirSync(this.dir)) fs.rmSync(path.join(this.dir, f), { force: true });
+        // the PHP file store keeps its entries in nested directories
+        for (const f of fs.readdirSync(this.dir)) fs.rmSync(path.join(this.dir, f), { recursive: true, force: true });
     }
 }
 
