@@ -25,6 +25,7 @@ import { EmailLog } from './EmailLog';
 import { Extension } from './Extension';
 import { FailedJob } from './FailedJob';
 import { Gateway } from './Gateway';
+import { AdjustmentNote } from './AdjustmentNote';
 import { Invoice } from './Invoice';
 import { InvoiceItem } from './InvoiceItem';
 import { InvoiceSnapshot } from './InvoiceSnapshot';
@@ -60,7 +61,7 @@ import { UserAuthenticationLog } from './UserAuthenticationLog';
 import { UserSession } from './UserSession';
 
 export const models = {
-    ApiKey, Audit, BillingAgreement, Cart, CartItem, Category, ConfigOption, ConfigOptionProduct, Coupon, CouponProduct, Credit,
+    AdjustmentNote, ApiKey, Audit, BillingAgreement, Cart, CartItem, Category, ConfigOption, ConfigOptionProduct, Coupon, CouponProduct, Credit,
     CronStat, Currency, CustomProperty, DebugLog, EmailLog, Extension, FailedJob, Gateway, Invoice, InvoiceItem, InvoiceSnapshot,
     InvoiceTransaction, Notification, NotificationPreference, NotificationSubscription, NotificationTemplate, OauthAccessToken,
     OauthAuthCode, OauthClient, OauthRefreshToken, Order, Plan,
@@ -81,13 +82,14 @@ registerBladeStatic('Service', {
     STATUS_SUSPENDED: Service.STATUS_SUSPENDED,
 });
 registerBladeStatic('Invoice', {
+    STATUS_DRAFT: Invoice.STATUS_DRAFT,
     STATUS_PENDING: Invoice.STATUS_PENDING,
     STATUS_PAID: Invoice.STATUS_PAID,
     STATUS_CANCELLED: Invoice.STATUS_CANCELLED,
 });
 
 export {
-    ApiKey, Audit, BillingAgreement, Cart, CartItem, Category, ConfigOption, ConfigOptionProduct, Coupon, CouponProduct, Credit,
+    AdjustmentNote, ApiKey, Audit, BillingAgreement, Cart, CartItem, Category, ConfigOption, ConfigOptionProduct, Coupon, CouponProduct, Credit,
     CronStat, Currency, CustomProperty, DebugLog, EmailLog, Extension, FailedJob, Gateway, Invoice, InvoiceItem, InvoiceSnapshot,
     InvoiceTransaction, Notification, NotificationPreference, NotificationSubscription, NotificationTemplate, OauthAccessToken,
     OauthAuthCode, OauthClient, OauthRefreshToken, Order, Plan,

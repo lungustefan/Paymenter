@@ -7,7 +7,8 @@ import { makeTranslator } from '@/server/i18n';
 import { getLocale } from '@/server/page';
 import { getCurrentUser } from '@/server/auth/session';
 import { Carbon } from '@/server/lib/carbon';
-import { InvoiceTransactionStatus } from '@/server/enums';
+import { AdjustmentNoteStatus, AdjustmentNoteType, InvoiceTransactionStatus } from '@/server/enums';
+import { Price } from '@/server/classes/Price';
 import { ExtensionHelper } from '@/server/extensions/helper';
 import { checkoutGateways, billingGateways, recurringServiceItems } from '@/server/services/invoice/InvoicePayment';
 import type { Invoice } from '@/server/models/Invoice';
@@ -74,7 +75,21 @@ export default async function Show({ invoice, showPayModal, checkPaymentParam }:
             return { item, label: label ? String(label) : null, price: String(await item.formattedPrice()), total: String(await item.formattedTotal()) };
         }),
     );
-    const txRows = await Promise.all(transactions.map(async (tx) => ({ tx, gateway: await tx.rel('gateway'), amount: String(await tx.formattedAmount()) })));
+    const hasRefunds = transactions.some((tx) => Number(tx.refunded_amount) > 0);
+    const txRows = await Promise.all(
+        transactions.map(async (tx) => ({
+            tx,
+            gateway: await tx.rel('gateway'),
+            amount: String(await tx.formattedAmount()),
+            refunded: Number(tx.refunded_amount) > 0 ? String(await tx.formattedRefundedAmount()) : null,
+        })),
+    );
+    // credit / debit notes: the sum of the active ones is part of the total, the list is optional for clients
+    const notes = await invoice.rel('adjustmentNotes');
+    const adjustmentsTotal = notes.filter((n) => n.status === AdjustmentNoteStatus.Active).reduce((acc, n) => acc + Number(n.amount), 0);
+    const adjustmentsPrice = adjustmentsTotal !== 0 ? (await Price.make({ price: adjustmentsTotal, currency: await invoice.rel('currency') })).format(adjustmentsTotal) : null;
+    const showNotes = !!setting('notes_client_visible', false) && notes.length > 0;
+    const noteRows = showNotes ? await Promise.all(notes.map(async (note) => ({ note, amount: String(await note.formattedAmount()) }))) : [];
     const title = proforma ? t('invoices.proforma_invoice', { id: invoice.id }) : t('invoices.invoice', { id: invoice.number });
 
     return (
@@ -219,6 +234,12 @@ export default async function Show({ invoice, showPayModal, checkPaymentParam }:
                                 </div>
                             </>
                         )}
+                        {adjustmentsPrice && (
+                            <div className="flex justify-between">
+                                <div className="text-sm font-medium text-gray-500 uppercase dark:text-base">{t('invoices.ledger_adjustments')}</div>
+                                <div className="text-base font-medium text-gray-900 dark:text-white">{adjustmentsPrice}</div>
+                            </div>
+                        )}
                         <div className="flex justify-between">
                             <div className="text-base font-semibold text-gray-900 uppercase dark:text-white">Total</div>
                             <div className="text-base font-bold text-gray-900 dark:text-white">{String(formattedTotal)}</div>
@@ -244,18 +265,24 @@ export default async function Show({ invoice, showPayModal, checkPaymentParam }:
                                             <th scope="col" className={th}>
                                                 {t('invoices.amount')}
                                             </th>
+                                            {hasRefunds && (
+                                                <th scope="col" className={th}>
+                                                    {t('invoices.refunded_amount')}
+                                                </th>
+                                            )}
                                             <th scope="col" className={`${th} rounded-r-lg`}>
                                                 {t('invoices.status')}
                                             </th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {txRows.map(({ tx, gateway, amount }) => (
+                                        {txRows.map(({ tx, gateway, amount, refunded }) => (
                                             <tr key={tx.id}>
                                                 <td className="p-4 font-normal whitespace-nowrap">{tx.created_at?.format('d M Y H:i')}</td>
                                                 <td className="p-4 font-normal whitespace-nowrap">{tx.transaction_id}</td>
                                                 <td className="p-4 font-normal whitespace-nowrap">{tx.is_credit_transaction ? t('invoices.paid_with_credits') : (gateway?.name as string | undefined)}</td>
                                                 <td className="p-4 font-normal whitespace-nowrap">{amount}</td>
+                                                {hasRefunds && <td className="p-4 font-normal whitespace-nowrap">{refunded ?? '-'}</td>}
                                                 <td className="p-4 font-normal whitespace-nowrap">
                                                     {tx.status === InvoiceTransactionStatus.Succeeded && <span className="text-green-600 font-semibold">{t('invoices.transaction_statuses.succeeded')}</span>}
                                                     {tx.status === InvoiceTransactionStatus.Processing && (
@@ -265,6 +292,47 @@ export default async function Show({ invoice, showPayModal, checkPaymentParam }:
                                                         </span>
                                                     )}
                                                     {tx.status === InvoiceTransactionStatus.Failed && <span className="text-red-600 font-semibold">{t('invoices.transaction_statuses.failed')}</span>}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    )}
+
+                    {showNotes && (
+                        <div className="mt-12">
+                            <h2 className="text-2xl font-bold">{t('invoices.ledger_adjustments')}</h2>
+                            <div className="mt-4 overflow-x-auto">
+                                <table className="w-full" data-testid="adjustment-notes">
+                                    <thead className="bg-background border border-neutral rounded-lg">
+                                        <tr>
+                                            <th scope="col" className={`${th} rounded-l-lg`}>
+                                                {t('invoices.date')}
+                                            </th>
+                                            <th scope="col" className={th}>
+                                                {t('invoices.type')}
+                                            </th>
+                                            <th scope="col" className={th}>
+                                                {t('invoices.description')}
+                                            </th>
+                                            <th scope="col" className={`${th} rounded-r-lg`}>
+                                                {t('invoices.amount')}
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {noteRows.map(({ note, amount }) => (
+                                            <tr key={note.id}>
+                                                <td className="p-4 font-normal whitespace-nowrap">{note.created_at?.format('d M Y H:i')}</td>
+                                                <td className="p-4 font-normal whitespace-nowrap">
+                                                    {note.type === AdjustmentNoteType.Credit && <span className="text-green-600 font-semibold">{t('invoices.credit_note')}</span>}
+                                                    {note.type === AdjustmentNoteType.Debit && <span className="text-red-600 font-semibold">{t('invoices.debit_note')}</span>}
+                                                </td>
+                                                <td className="p-4 font-normal whitespace-nowrap">{note.description}</td>
+                                                <td className="p-4 font-normal whitespace-nowrap">
+                                                    <span className={note.type === AdjustmentNoteType.Credit ? 'text-green-600' : 'text-red-600'}>{amount}</span>
                                                 </td>
                                             </tr>
                                         ))}

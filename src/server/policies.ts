@@ -1,4 +1,5 @@
 import type { Model } from '@/server/orm';
+import { setting } from '@/server/config';
 import type { User } from '@/server/models/User';
 
 /**
@@ -21,6 +22,7 @@ interface PolicyDef {
 const CRUD = ['viewAny', 'view', 'create', 'update', 'delete', 'deleteAny'];
 
 const policies: Record<string, PolicyDef> = {
+    AdjustmentNote: { prefix: 'adjustment_notes', abilities: CRUD, overrides: { view: 'admin.adjustment_notes.viewAny' } },
     ApiKey: { prefix: 'api_keys', abilities: CRUD },
     Audit: { prefix: 'audit', abilities: ['viewAny', 'view'], overrides: { view: 'admin.audit.viewAny' } },
     BillingAgreement: { prefix: 'billing_agreements', abilities: ['viewAny', 'view'], overrides: { view: 'admin.billing_agreements.viewAny' } },
@@ -34,7 +36,18 @@ const policies: Record<string, PolicyDef> = {
     Extension: { prefix: 'extensions', abilities: ['viewAny', 'view', 'update', 'install', 'delete'] },
     FailedJob: { prefix: 'failed_jobs', abilities: ['viewAny'] },
     Gateway: { prefix: 'gateways', abilities: CRUD },
-    Invoice: { prefix: 'invoices', abilities: CRUD },
+    // with immutable invoices only a draft can be updated
+    Invoice: {
+        prefix: 'invoices',
+        abilities: CRUD,
+        overrides: {
+            update: async (user, record) => {
+                if (!(await user.hasPermission('admin.invoices.update'))) return false;
+                if (!record || !setting('immutable_invoices_enabled', false)) return true;
+                return (record as any).status === 'draft';
+            },
+        },
+    },
     InvoiceTransaction: { prefix: 'invoice_transactions', abilities: CRUD },
     NotificationTemplate: { prefix: 'notification_templates', abilities: CRUD },
     OauthClient: { prefix: 'oauth_clients', abilities: CRUD },

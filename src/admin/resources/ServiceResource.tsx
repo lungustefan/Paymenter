@@ -107,7 +107,7 @@ class InvoicesRelationManager extends RelationManager {
             ])
             .filters([])
             .headerActions([])
-            .recordActions([ViewAction.make().url(({ record }) => InvoiceResource.getUrl('edit', { record }))])
+            .recordActions([ViewAction.make().url(({ record }) => InvoiceResource.getUrl(setting('immutable_invoices_enabled', false) ? 'view' : 'edit', { record }))])
             .defaultSort('invoices.id', 'desc');
     }
 }

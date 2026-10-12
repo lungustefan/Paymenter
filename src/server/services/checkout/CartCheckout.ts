@@ -69,7 +69,7 @@ export async function checkoutCart(userId: number): Promise<{ redirect: string }
         // Create the invoice
         let invoice: Invoice | null = null;
         if (total.price > 0) {
-            invoice = new Invoice({ user_id: user.id, due_at: Carbon.now().addDays(7), currency_code: cart.currency_code });
+            invoice = new Invoice({ user_id: user.id, due_at: Carbon.now().addDays(7), currency_code: cart.currency_code, status: Invoice.STATUS_PENDING });
             await invoice.save();
         }
 

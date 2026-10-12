@@ -163,7 +163,7 @@ export async function addCreditAction(input: { currency: string; amount: string 
             const unpaid = await user.relation<Invoice>('invoices').where('status', Invoice.STATUS_PENDING).whereHas('items', (q) => q.where('reference_type', 'App\\Models\\Credit')).exists();
             if (unpaid) throw new DisplayException('You have an unpaid invoice for credits. Please pay the invoice before adding more credits.');
 
-            const created = await Invoice.create({ user_id: user.id, currency_code: input.currency, due_at: Carbon.now() });
+            const created = await Invoice.create({ user_id: user.id, currency_code: input.currency, due_at: Carbon.now(), status: Invoice.STATUS_PENDING });
             await created.relation('items').create({
                 description: (await import('@/server/i18n')).t('account.credit_deposit', { currency: input.currency }, locale),
                 quantity: 1,

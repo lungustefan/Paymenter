@@ -860,4 +860,16 @@ export default class Stripe extends Gateway {
         const b = Buffer.from(signature);
         return a.length === b.length && timingSafeEqual(a, b);
     }
+
+
+    supportsRefunds(): boolean {
+        return true;
+    }
+
+    async refund(transaction: InvoiceTransaction, amount: number): Promise<boolean> {
+        const paymentIntentId = transaction.transaction_id;
+        if (!paymentIntentId) throw new Error('Transaction has no Stripe payment intent ID.');
+        await this.request('post', '/refunds', { payment_intent: paymentIntentId, amount: Math.round(amount * 100) });
+        return true;
+    }
 }

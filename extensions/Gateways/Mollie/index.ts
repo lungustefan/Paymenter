@@ -5,6 +5,7 @@ import { Http } from '@/server/http';
 import { route } from '@/server/routes';
 import { numberFormat } from '@/server/lib/php';
 import type { Invoice } from '@/server/models/Invoice';
+import type { InvoiceTransaction } from '@/server/models/InvoiceTransaction';
 
 export default class Mollie extends Gateway {
     routes(): ExtensionRoute[] {
@@ -78,5 +79,19 @@ export default class Mollie extends Gateway {
         if (payment['status'] == 'paid') {
             await ExtensionHelper.addPayment(payment['metadata']['invoice_id'], 'Mollie', Number(payment['amount']['value']), null, payment['id']);
         }
+    }
+
+    supportsRefunds(): boolean {
+        return true;
+    }
+
+    async refund(transaction: InvoiceTransaction, amount: number): Promise<boolean> {
+        const paymentId = transaction.transaction_id;
+        if (!paymentId) throw new Error('Transaction has no Mollie payment ID.');
+        const invoice = await transaction.rel('invoice');
+        await this.request('/v2/payments/' + paymentId + '/refunds', 'post', {
+            amount: { currency: invoice.currency_code, value: numberFormat(amount, 2, '.', '') },
+        });
+        return true;
     }
 }

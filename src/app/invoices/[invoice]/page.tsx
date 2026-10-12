@@ -14,8 +14,8 @@ function loadInvoice(key: string) {
     return once(`pages:invoice:${key}`, async () => {
         const user = await requireUser({ verified: true });
         const invoice = await Invoice.resolveRouteBinding(decodeURIComponent(key));
-        if (!invoice || invoice.user_id !== user.id) notFound();
-        await invoice.load('transactions', 'transactions.gateway', 'transactions.invoice');
+        if (!invoice || invoice.user_id !== user.id || invoice.status === Invoice.STATUS_DRAFT) notFound();
+        await invoice.load('transactions', 'transactions.gateway', 'transactions.invoice', 'adjustmentNotes');
         return invoice;
     });
 }
