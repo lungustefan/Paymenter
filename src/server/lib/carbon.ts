@@ -13,6 +13,9 @@ const MONTHS = [
 
 const pad = (n: number, l = 2) => String(n).padStart(l, '0');
 
+/** the `format()` characters `translatedFormat()` translates: day and month names */
+const NAMES: Record<string, Intl.DateTimeFormatOptions> = { D: { weekday: 'short' }, l: { weekday: 'long' }, M: { month: 'short' }, F: { month: 'long' } };
+
 function utcOf(w: WallClock): Date {
     return new Date(Date.UTC(w.year, w.month - 1, w.day, w.hour, w.minute, w.second));
 }
@@ -264,6 +267,35 @@ export class Carbon {
 
     longAbsoluteDiffForHumans(other: Carbon | Date | null = null, locale = 'en'): string {
         return this.diffForHumans(other, locale, true);
+    }
+
+    /**
+     * Carbon's `translatedFormat()`: `format()` with the day and month names (`D`, `l`, `M`, `F`) in `locale`.
+     * The names come from Intl (CLDR), like the words of `diffForHumans()`; in English this is `format()`.
+     */
+    translatedFormat(fmt: string, locale = 'en'): string {
+        const lang = locale.split(/[-_]/)[0];
+        if (lang === 'en') return this.format(fmt);
+        let out = '';
+        for (let i = 0; i < fmt.length; i++) {
+            const c = fmt[i];
+            if (c === '\\') {
+                out += c + (fmt[++i] ?? '');
+                continue;
+            }
+            let name: string | null = null;
+            if (NAMES[c]) {
+                try {
+                    // the wall-clock date as UTC, so the name belongs to the same day as the other parts of the format
+                    name = new Intl.DateTimeFormat(lang, { ...NAMES[c], timeZone: 'UTC' }).format(utcOf(this.fields));
+                } catch {
+                    /* not a language Intl knows: the English name */
+                }
+            }
+            // the name goes in as escaped literal characters (`déc.` must not print the day)
+            out += name === null ? c : name.split('').map((ch) => `\\${ch}`).join('');
+        }
+        return this.format(out);
     }
 
     /** PHP `date()` formatting. */

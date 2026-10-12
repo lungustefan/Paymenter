@@ -21,6 +21,8 @@ export interface ResolvedHost {
     host: Host;
     /** `<title>` and heading of the page */
     title: string;
+    /** `getMaxContentWidth()` of the page (`fi-width-*` of the main container), `null` for the panel default */
+    maxContentWidth: string | null;
     /** the whole page (header + content) */
     render: () => Promise<ReactNode>;
 }
@@ -52,6 +54,7 @@ export async function resolveHost(segments: string[], user: User, pathname: stri
         return {
             host: page,
             title: heading,
+            maxContentWidth: (PageClass as typeof AdminPage).maxContentWidth,
             async render() {
                 const crumbs = page.getBreadcrumbs();
                 const cluster = (PageClass as any).cluster;
@@ -92,6 +95,7 @@ export async function resolveHost(segments: string[], user: User, pathname: stri
         return {
             host: page,
             title,
+            maxContentWidth: null,
             async render() {
                 const content = await page.renderPage();
                 const cluster = resource.cluster;

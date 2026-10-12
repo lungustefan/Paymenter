@@ -98,8 +98,11 @@ function AdminFooter() {
     );
 }
 
-/** The panel chrome of Filament's `layout.index`: topbar, sidebar and the main container. */
-export async function AdminLayout({ user, path, children }: { user: User; path: string; children: ReactNode }) {
+/**
+ * The panel chrome of Filament's `layout.index`: topbar, sidebar and the main container. `maxContentWidth` is
+ * the `getMaxContentWidth()` of the page (the panel default is `Width::SevenExtraLarge`).
+ */
+export async function AdminLayout({ user, path, maxContentWidth = null, children }: { user: User; path: string; maxContentWidth?: string | null; children: ReactNode }) {
     touchClientRefs();
     const groups: NavigationGroup[] = await buildNavigation(user, path);
     const name = await user.name();
@@ -161,7 +164,7 @@ export async function AdminLayout({ user, path, children }: { user: User; path: 
                 </SidebarPanel>
 
                 <div className="fi-main-ctn" style={{ display: 'flex', opacity: 1 }}>
-                    <main id="fi-main-content" tabIndex={-1} className="fi-main fi-width-7xl">
+                    <main id="fi-main-content" tabIndex={-1} className={`fi-main fi-width-${maxContentWidth ?? '7xl'}`}>
                         {children}
                     </main>
                 </div>

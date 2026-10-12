@@ -66,7 +66,14 @@ export default async function Show({ invoice, showPayModal, checkPaymentParam }:
             if (ref) referenceLinks.set(item.id as number, relativeUrl(route('services.show', ref.service_id)));
         }
     }
-    const rows = await Promise.all(items.map(async (item) => ({ item, price: String(await item.formattedPrice()), total: String(await item.formattedTotal()) })));
+    const rows = await Promise.all(
+        items.map(async (item) => {
+            // `$item->reference->label`: the label of the service the item is for
+            const reference = await item.rel('reference');
+            const label = reference ? await reference.getAttribute('label') : null;
+            return { item, label: label ? String(label) : null, price: String(await item.formattedPrice()), total: String(await item.formattedTotal()) };
+        }),
+    );
     const txRows = await Promise.all(transactions.map(async (tx) => ({ tx, gateway: await tx.rel('gateway'), amount: String(await tx.formattedAmount()) })));
     const title = proforma ? t('invoices.proforma_invoice', { id: invoice.id }) : t('invoices.invoice', { id: invoice.number });
 
@@ -172,7 +179,7 @@ export default async function Show({ invoice, showPayModal, checkPaymentParam }:
                                 </tr>
                             </thead>
                             <tbody>
-                                {rows.map(({ item, price, total }) => (
+                                {rows.map(({ item, label, price, total }) => (
                                     <tr key={item.id}>
                                         <td className="p-4 font-normal whitespace-nowrap">
                                             {referenceLinks.has(item.id as number) ? (
@@ -181,6 +188,12 @@ export default async function Show({ invoice, showPayModal, checkPaymentParam }:
                                                 </Link>
                                             ) : (
                                                 item.description
+                                            )}
+                                            {label && (
+                                                <>
+                                                    <br />
+                                                    <small style={{ color: '#666', fontSize: '0.9em' }}>{label}</small>
+                                                </>
                                             )}
                                         </td>
                                         <td className="p-4 font-normal whitespace-nowrap text-base">{price}</td>

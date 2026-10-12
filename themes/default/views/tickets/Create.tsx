@@ -12,7 +12,7 @@ export default async function Create() {
     const options = await Promise.all(
         services.map(async (service) => {
             const product = (await service.rel('product'))!;
-            return { id: service.id as number, label: `${product.name} (${ucfirst(service.status as string)})${service.expires_at ? ` - ${service.expires_at.format('Y-m-d')}` : ''}` };
+            return { id: service.id as number, label: `${product.name} (${await service.displayLabel()}) (${ucfirst(service.status as string)})${service.expires_at ? ` - ${service.expires_at.format('Y-m-d')}` : ''}` };
         }),
     );
     return <CreateTicketForm departments={departments} services={options} />;

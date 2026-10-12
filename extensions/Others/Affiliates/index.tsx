@@ -4,6 +4,7 @@ import type { ConfigDefinition, ExtensionPage } from '@/server/extensions/types'
 import type { Endpoint } from '@/server/api/admin';
 import { ExtensionHelper } from '@/server/extensions/helper';
 import { getCookie } from '@/server/cookies';
+import { getAuthUser, isAdminPath } from '@/server/auth/session';
 import { Events } from '@/server/event-defs';
 import { listen } from '@/server/events';
 import { registerLangNamespace, t } from '@/server/i18n';
@@ -98,6 +99,8 @@ export default class Affiliates extends Extension {
         // (Listeners/IncreamentAffiliateSignups.php)
         listen(Events.User.Created, async () => {
             if (!(await enabled())) return;
+            // Prevents users created by an admin (or while somebody is logged in) from counting as signups
+            if ((await isAdminPath()) || (await getAuthUser())) return;
             const affiliate = await Affiliate.query()
                 .where('code', (await getCookie(REFERRED_BY)) ?? '')
                 .first();
@@ -117,6 +120,8 @@ export default class Affiliates extends Extension {
         // (Listeners/AssociateOrderWithAffiliate.php)
         listen(Events.Order.Created, async ({ order }) => {
             if (!(await enabled())) return;
+            // Prevents admin created orders from being associated with an affiliate
+            if ((await isAdminPath()) || Number((await getAuthUser())?.id ?? 0) !== Number(order.user_id)) return;
             const affiliate = await Affiliate.query()
                 .where('code', (await getCookie(REFERRED_BY)) ?? '')
                 .first();

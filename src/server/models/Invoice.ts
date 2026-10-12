@@ -4,7 +4,7 @@ import { invoices } from '@/server/db/schema';
 import { Price } from '@/server/classes/Price';
 import { Settings } from '@/server/classes/Settings';
 import { setting } from '@/server/config';
-import { sum } from '@/server/lib/php';
+import { round, sum } from '@/server/lib/php';
 import type { Row } from './_types';
 import { Currency } from './Currency';
 import { User } from './User';
@@ -26,6 +26,9 @@ export interface InvoiceRelations {
     snapshot: InvoiceSnapshot | null;
     properties: Property[];
 }
+
+/** amounts are added up in cents, so 0.10 + 2 x 0.10 is 0.30 and not 0.30000000000000004 */
+const moneyToCents = (amount: unknown): number => round(Number(amount) * 100);
 
 export class Invoice extends Model<InvoiceRelations> {
     static STATUS_PENDING = 'pending';
@@ -56,16 +59,15 @@ export class Invoice extends Model<InvoiceRelations> {
 
     async total(): Promise<number> {
         const items = await this.rel('items');
-        return sum(items, (i) => Number(i.price) * Number(i.quantity));
+        return sum(items, (i) => moneyToCents(i.price) * Number(i.quantity)) / 100;
     }
 
     async remaining(): Promise<number> {
-        const total = await this.total();
         const paid = sum(
             (await this.rel('transactions')).filter((t) => t.status === InvoiceTransactionStatus.Succeeded),
-            (t) => Number(t.amount),
+            (t) => moneyToCents(t.amount),
         );
-        return total - paid;
+        return (moneyToCents(await this.total()) - paid) / 100;
     }
 
     async formattedTotal(): Promise<Price> {

@@ -583,8 +583,8 @@ class Importer {
                     hidden: record.hidden,
                     stock: record.stockcontrol ? record.qty : null,
                     allow_quantity: record.allowqty === 1 ? 'separated' : record.allowqty === 3 ? 'combined' : 'disabled',
-                    created_at: record.created_at,
-                    updated_at: record.updated_at,
+                    created_at: this.validateDate(record.created_at) ?? this.now(),
+                    updated_at: this.validateDate(record.updated_at) ?? this.now(),
                 });
 
                 // Upgrades

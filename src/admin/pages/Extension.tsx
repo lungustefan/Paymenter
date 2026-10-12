@@ -27,9 +27,9 @@ function ExtensionCard({ extension }: { extension: Record<string, any> }) {
     const author = extension.author === 'CorwinDev' ? 'Paymenter' : extension.author;
     const downloads = extension.download_count >= 1000 ? `${Math.round((extension.download_count / 1000) * 10) / 10}k` : extension.download_count;
     return (
-        <a href={extension.url} target="_blank" rel="noopener noreferrer" className="flex flex-col overflow-hidden transition-all duration-300 bg-white border border-gray-300 rounded-lg shadow-sm dark:bg-gray-800 dark:border-gray-700 hover:shadow-lg hover:border-primary-500 dark:hover:border-primary-500">
-            <div className="relative h-48 bg-gray-200 dark:bg-gray-700">
-                <img src={extension.image_url} alt={extension.name} className="object-cover w-full h-full" />
+        <a href={extension.url} target="_blank" rel="noopener noreferrer" className="flex flex-col w-[328px] h-[380px] overflow-hidden transition-all duration-300 bg-white border border-gray-300 rounded-lg shadow-sm dark:bg-gray-800 dark:border-gray-700 hover:shadow-lg hover:border-primary-500 dark:hover:border-primary-500">
+            <div className="relative h-[164px] bg-gray-200 dark:bg-gray-700">
+                <img src={extension.image_url} alt={extension.name} className="w-[328px] h-[164px]" />
                 <span className="absolute px-2 py-1 text-xs font-semibold text-white capitalize rounded-full top-2 right-2 bg-primary-600">{extension.type}</span>
             </div>
             <div className="flex flex-col flex-grow p-4">
@@ -66,6 +66,8 @@ export class Extension extends AdminPage {
     static navigationIcon = 'ri-download-2-line';
     static activeNavigationIcon = 'ri-download-2-fill';
     static navigationLabel = 'Available Extensions';
+    /** `getMaxContentWidth()`: `Width::MaxContent` */
+    static override maxContentWidth = 'max';
 
     static override async canAccess(user: User | null) {
         return !!user && (await hasPermission(user, 'admin.extensions.viewAny')) && (await hasPermission(user, 'admin.extensions.install'));
@@ -154,7 +156,7 @@ export class Extension extends AdminPage {
         const { list, error } = await this.marketplace();
         const filtered = (list ?? []).filter((e) => (!search || String(e.name).toLowerCase().includes(search.toLowerCase())) && (filter === 'all' || e.type === filter));
         return (
-            <div>
+            <div className="max-w-[1040px]">
                 <MarketplaceFilters search={search} filter={filter} searchIcon={<Icon icon="ri-search-line" size={null} className="w-5 h-5 text-gray-400" />} />
                 <div className="mt-6">
                     {error ? (
@@ -169,7 +171,7 @@ export class Extension extends AdminPage {
                         </div>
                     ) : (
                         <div>
-                            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+                            <div className="flex flex-wrap gap-6 items-center">
                                 {filtered.slice(0, loaded).map((e) => (
                                     <ExtensionCard key={e.name} extension={e} />
                                 ))}

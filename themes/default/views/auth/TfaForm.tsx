@@ -66,6 +66,9 @@ export function TfaForm() {
             if (e.key === 'Backspace' && refs.current[i]!.value === '') refs.current[i - 1]?.focus();
         },
         type: 'text',
+        inputMode: 'numeric' as const,
+        pattern: '[0-9]*',
+        autoComplete: 'off',
         maxLength: 1,
         className: inputClass,
     });
@@ -91,6 +94,7 @@ export function TfaForm() {
                                 onPaste={handlePaste}
                                 type="text"
                                 inputMode="numeric"
+                                pattern="[0-9]*"
                                 autoFocus
                                 className={inputClass}
                             />
