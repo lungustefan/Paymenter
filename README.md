@@ -162,6 +162,18 @@ bash update.sh          # or: pnpm paymenter app:upgrade
 
 `update.sh` downloads the latest release archive, keeps your `.env`, `storage/`, `extensions/` and `themes/`, installs the dependencies with the package manager it detects (pnpm, npm or yarn; force one with `--package-manager=pnpm`), runs `paymenter migrate --seed`, rebuilds only when you have custom themes/extensions and finally clears the cache. Restart the web process and the worker afterwards. It refuses to upgrade Paymenter V0 installations (see the [V0 migration guide](https://paymenter.org/docs/guides/v0-migration)). With Docker, pull the new image: `docker compose pull && docker compose up -d`.
 
+#### Upgrading from the Laravel (PHP) version 1.5.x
+
+The `update.sh` that ships with the PHP release points at the official PHP project, so do not use it. Back up the database and the install folder first, then download this edition's script into the existing install and run it (Node.js >= 22 and pnpm or npm are required; you can drop PHP and Composer afterwards):
+
+```bash
+cd /var/www/paymenter
+curl -fsSL -o update.sh https://raw.githubusercontent.com/lungustefan/Paymenter/master/update.sh
+bash update.sh
+```
+
+It removes the PHP sources (`app`, `vendor`, `public/index.php`, ...), keeps `.env`, `storage/`, `extensions/` and `themes/`, migrates the database in place and tells you to restart. Then replace the PHP web server config (nginx/Apache + php-fpm) with a reverse proxy to `pnpm start` (port 3000) and run `pnpm worker` instead of `artisan queue:work`/the cron entry. Read [Differences from the Laravel version](#differences-from-the-laravel-version) first.
+
 #### Development
 
 ```bash

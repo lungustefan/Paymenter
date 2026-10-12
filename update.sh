@@ -85,8 +85,10 @@ done
 
 # Detect the package manager (pnpm, npm or yarn): explicit option, then the lockfile of the current install, then what is installed.
 if [ -z "$PM" ]; then
-    if [ -f yarn.lock ] && command -v yarn >/dev/null 2>&1; then PM=yarn
-    elif [ -f package-lock.json ] && command -v npm >/dev/null 2>&1; then PM=npm
+    # The package-lock.json of the PHP release only describes its Vite assets: not a hint for this app.
+    if [ "$FROM_PHP" == 1 ] && command -v pnpm >/dev/null 2>&1; then PM=pnpm
+    elif [ -f yarn.lock ] && command -v yarn >/dev/null 2>&1; then PM=yarn
+    elif [ "$FROM_PHP" != 1 ] && [ -f package-lock.json ] && command -v npm >/dev/null 2>&1; then PM=npm
     elif command -v pnpm >/dev/null 2>&1; then PM=pnpm
     elif command -v npm >/dev/null 2>&1; then PM=npm
     elif command -v yarn >/dev/null 2>&1; then PM=yarn
@@ -182,11 +184,16 @@ RUN mkdir -p storage/app/public storage/app/invoices storage/app/tickets storage
 RUN chmod -R 755 storage extensions
 
 # Install the dependencies.
+INSTALL_OK=0
 case "$PM" in
-    pnpm) RUN pnpm install --frozen-lockfile || RUN pnpm install ;;
-    yarn) RUN yarn install ;;
-    npm) RUN npm install ;;
+    pnpm) { RUN pnpm install --frozen-lockfile || RUN pnpm install; } && INSTALL_OK=1 ;;
+    yarn) RUN yarn install && INSTALL_OK=1 ;;
+    npm) RUN npm install && INSTALL_OK=1 ;;
 esac
+if [ "$INSTALL_OK" != 1 ]; then
+    echo -e "\x1b[31;1mInstalling the dependencies failed, aborting. The new files are in place: fix the error above and run [$PM install] and the remaining steps (migrate, build) by hand.\x1b[0m"
+    exit 1
+fi
 
 # Run the database migrations.
 RUN pm_run paymenter migrate --seed
@@ -196,7 +203,10 @@ RUN pm_run paymenter app:settings:change theme default
 
 # Rebuild when custom themes/extensions are installed (they are registered at build time) or the release shipped without a build.
 CURRENT_HASH=$(find themes extensions -type f 2>/dev/null | sort | xargs sha256sum | sha256sum | cut -d' ' -f1)
-if [ ! -d .next ] || [ "$CURRENT_HASH" != "$(cat .registry-hash 2>/dev/null)" ]; then
+# The pre-built release links its externals into node_modules/.pnpm; with npm/yarn those links dangle, so rebuild then too.
+DANGLING=0
+for l in .next/node_modules/*; do [ -L "$l" ] && [ ! -e "$l" ] && DANGLING=1; done
+if [ ! -d .next ] || [ "$DANGLING" == 1 ] || [ "$CURRENT_HASH" != "$(cat .registry-hash 2>/dev/null)" ]; then
     RUN pm_run build
 else
     echo "Pre-built release found, skipping build."
