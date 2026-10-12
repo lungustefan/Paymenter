@@ -1,6 +1,6 @@
 # How to publish a release (easy steps)
 
-The release archive (`paymenter.tar.gz`) is built by GitHub Actions, not on your computer.
+The release archive (`paymenter.tar.gz`) is built by GitHub Actions, not on your computer. Releases are cut from `master`.
 
 ## One time setup
 1. Go to **Settings -> Actions -> General**, make sure Actions are enabled and
@@ -14,12 +14,11 @@ The release archive (`paymenter.tar.gz`) is built by GitHub Actions, not on your
 3. Wait about 5-10 minutes until the run is green.
 4. Open **Releases**: a **draft** release is there with `paymenter.tar.gz` and `checksum.txt`. Click **Edit -> Publish release**.
 
-## Installing from the archive
-```bash
-curl -L https://github.com/lungustefan/Paymenter/releases/latest/download/paymenter.tar.gz | tar -xz
-```
-then follow "Installation" in the README (the archive already contains the build, skip `pnpm build`).
-(`latest` ignores pre-releases: for an alpha use the download link on the release page.)
+## Installing / updating from the archive
+Download links: `https://github.com/lungustefan/Paymenter/releases/download/<version>/paymenter.tar.gz`
+(`/releases/latest` ignores pre-releases, so it does not work while only alphas exist).
+- New install: extract into an empty folder, then follow "Installation" in the README (the archive is pre-built).
+- Update: `bash update.sh` in the install folder (newest release, pre-releases included), or `bash update.sh --version=<version>`.
 
 ## Docker image
 The workflow **Docker** (`.github/workflows/docker.yaml`) builds `ghcr.io/lungustefan/paymenter` for linux/amd64 and linux/arm64 (one native runner per platform, merged into one tag):

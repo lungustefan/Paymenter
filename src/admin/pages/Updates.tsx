@@ -5,18 +5,17 @@ import { Action } from '../actions/Action';
 import { Notification } from '../Notification';
 import { hasPermission } from '@/server/policies';
 import { setting } from '@/server/config';
-import { appCommit, appVersion } from '@/server/version';
-import { checkForUpdates } from '@/server/commands/check-for-updates';
+import { appCommit, appVersion, isNewerVersion } from '@/server/version';
+import { checkForUpdates, RELEASES_REPO } from '@/server/commands/check-for-updates';
 import { buttonClass } from '../ui/classes';
 import { UpdateRunner } from './updates-client';
 import type { AdminActionResult } from '../protocol';
 import type { User } from '@/server/models/User';
 
 /** runs `app:upgrade` (update.sh) and returns what it printed */
-function runUpgrade(url?: string): Promise<string> {
+function runUpgrade(): Promise<string> {
     return new Promise((resolve) => {
-        const args = ['update.sh', '--install', ...(url ? [`--url=${url}`] : [])];
-        const child = spawn('bash', args, { cwd: process.cwd() });
+        const child = spawn('bash', ['update.sh', '--install'], { cwd: process.cwd() });
         let out = '';
         child.stdout.on('data', (d) => (out += d));
         child.stderr.on('data', (d) => (out += d));
@@ -26,8 +25,8 @@ function runUpgrade(url?: string): Promise<string> {
 }
 
 const Link = () => (
-    <a href="https://paymenter.org/docs/installation/updating">
-        https://paymenter.org/docs/installation/updating
+    <a href={`https://github.com/${RELEASES_REPO}#updating`}>
+        https://github.com/{RELEASES_REPO}#updating
     </a>
 );
 
@@ -56,7 +55,7 @@ export class Updates extends AdminPage {
     override async callMethod(method: string): Promise<AdminActionResult> {
         if (method !== 'update') return { ok: false };
         if (!(await Updates.canAccess(this.user))) return { ok: false };
-        const output = await runUpgrade(appVersion() === 'beta' ? 'https://api.paymenter.org/beta' : undefined);
+        const output = await runUpgrade();
         await Notification.make().title('Update finished').success().send();
         return { ok: true, data: { output } };
     }
@@ -96,7 +95,7 @@ export class Updates extends AdminPage {
                         </div>
                         {howTo}
                     </div>
-                ) : !beta && version !== latestVersion ? (
+                ) : !beta && isNewerVersion(latestVersion, version) ? (
                     <div className="flex flex-col gap-1">
                         <div>
                             <strong>Latest version:</strong> {latestVersion}

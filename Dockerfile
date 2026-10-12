@@ -4,7 +4,7 @@
 FROM node:22-alpine AS deps
 WORKDIR /app
 RUN npm install -g pnpm@10
-COPY package.json pnpm-lock.yaml ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
 
 # Stage 2: build the application (registers the bundled themes/extensions and compiles Next.js)

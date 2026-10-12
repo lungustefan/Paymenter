@@ -9,8 +9,8 @@ function parse(argv: string[]) {
     const flags: Record<string, string | boolean> = {};
     for (const a of argv) {
         if (a.startsWith('--')) {
-            const [k, v] = a.slice(2).split('=');
-            flags[k] = v ?? true;
+            const [k, ...v] = a.slice(2).split('=');
+            flags[k] = v.length ? v.join('=') : true;
         } else {
             args.push(a);
         }

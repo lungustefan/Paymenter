@@ -57,7 +57,7 @@ Needs Node.js 22+, pnpm and an empty MariaDB/MySQL database.
 ```bash
 git clone https://github.com/lungustefan/Paymenter.git paymenter && cd paymenter
 pnpm install
-cp .env.example .env                 # edit DB_HOST, DB_DATABASE, DB_USERNAME, DB_PASSWORD and APP_URL
+cp .env.example .env                 # edit DB_HOST, DB_DATABASE, DB_USERNAME, DB_PASSWORD, APP_URL (and CACHE_STORE=file if you have no Redis)
 pnpm paymenter key:generate
 pnpm paymenter migrate --seed
 pnpm paymenter app:init              # basic setup
@@ -85,15 +85,17 @@ Or, get additional help via [Community Discord](https://discord.gg/xB4UUT3XQg).
 #### Installation
 
 ```bash
-# 1. Get the code: a clone of this repository (or a release archive, which contains a pre-built app)
-curl -L https://github.com/paymenter/paymenter/releases/latest/download/paymenter.tar.gz | tar -xz
+# 1. Get the code: a release archive (contains a pre-built app; the files are not in a sub folder, so extract into an empty folder)
+#    Pick the newest release on https://github.com/lungustefan/Paymenter/releases (the "latest" link ignores pre-releases)
+mkdir paymenter && cd paymenter
+curl -L https://github.com/lungustefan/Paymenter/releases/download/<tag, e.g. v2.0.0-alpha.4>/paymenter.tar.gz | tar -xz
 # or: git clone https://github.com/lungustefan/Paymenter.git paymenter && cd paymenter
 
 # 2. Install the dependencies
 pnpm install            # npm install / yarn install work as well
 
 # 3. Configure the environment
-cp .env.example .env    # then set DB_*, APP_URL, CACHE_STORE and REDIS_* in .env
+cp .env.example .env    # then set DB_*, APP_URL in .env; without Redis set CACHE_STORE=file (the example defaults to redis)
 pnpm paymenter key:generate
 
 # 4. Create the database tables and the default data
@@ -162,7 +164,19 @@ cd /var/www/paymenter
 bash update.sh          # or: pnpm paymenter app:upgrade
 ```
 
-`update.sh` downloads the latest release archive, keeps your `.env`, `storage/`, `extensions/` and `themes/`, installs the dependencies with the package manager it detects (pnpm, npm or yarn; force one with `--package-manager=pnpm`), runs `paymenter migrate --seed`, rebuilds only when you have custom themes/extensions and finally clears the cache. Restart the web process and the worker afterwards. It refuses to upgrade Paymenter V0 installations (see the [V0 migration guide](https://paymenter.org/docs/guides/v0-migration)). With Docker, pull the new image: `docker compose pull && docker compose up -d`.
+`update.sh` downloads the newest release archive (pre-releases included, looked up through the GitHub API; pass `--version=v2.0.0-alpha.4` or `--url=<archive url>` to choose one), keeps your `.env`, `storage/`, `extensions/` and `themes/`, installs the dependencies with the package manager it detects (pnpm, npm or yarn; force one with `--package-manager=pnpm`), runs `paymenter migrate --seed`, rebuilds only when you have custom themes/extensions and finally clears the cache. Restart the web process and the worker afterwards. It refuses to upgrade Paymenter V0 installations (see the [V0 migration guide](https://paymenter.org/docs/guides/v0-migration)). With Docker, pull the new image: `docker compose pull && docker compose up -d`.
+
+#### Upgrading from the Laravel (PHP) version 1.5.x
+
+The `update.sh` that ships with the PHP release points at the official PHP project, so do not use it. Back up the database and the install folder first, then download this edition's script into the existing install and run it (Node.js >= 22 and pnpm or npm are required; you can drop PHP and Composer afterwards):
+
+```bash
+cd /var/www/paymenter
+curl -fsSL -o update.sh https://raw.githubusercontent.com/lungustefan/Paymenter/master/update.sh
+bash update.sh
+```
+
+It removes the PHP sources (`app`, `vendor`, `public/index.php`, ...), keeps `.env`, `storage/`, `extensions/` and `themes/`, migrates the database in place and tells you to restart. Then replace the PHP web server config (nginx/Apache + php-fpm) with a reverse proxy to `pnpm start` (port 3000) and run `pnpm worker` instead of `artisan queue:work`/the cron entry. Read [Differences from the Laravel version](#differences-from-the-laravel-version) first.
 
 #### Development
 

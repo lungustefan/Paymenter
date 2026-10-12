@@ -28,3 +28,19 @@ export function appCommit(): string {
         return '';
     }
 }
+
+/** True when `latest` is a higher version than `current` (prereleases sort below the release; non-numeric input is never newer). */
+export function isNewerVersion(latest: string | undefined, current: string): boolean {
+    const parse = (v: string) => {
+        const m = /^v?(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?/.exec(String(v ?? '').trim());
+        return m ? { n: [Number(m[1]), Number(m[2]), Number(m[3])], pre: m[4] } : null;
+    };
+    const a = parse(latest ?? '');
+    const b = parse(current);
+    if (!a || !b) return !!latest && latest !== current;
+    for (let i = 0; i < 3; i++) if (a.n[i] !== b.n[i]) return a.n[i] > b.n[i];
+    if (a.pre === b.pre) return false;
+    if (!a.pre) return true;
+    if (!b.pre) return false;
+    return a.pre.localeCompare(b.pre, undefined, { numeric: true }) > 0;
+}

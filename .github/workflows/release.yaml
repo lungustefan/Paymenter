@@ -50,12 +50,12 @@ jobs:
       - name: Build
         run: |
           pnpm build
-          find themes extensions -type f | sort | xargs sha256sum | sha256sum | cut -d' ' -f1 > .registry-hash
+          find themes extensions -type f | LC_ALL=C sort | xargs sha256sum | sha256sum | cut -d' ' -f1 > .registry-hash
 
       - name: Create release archive
         run: |
           rm -rf node_modules tests vitest.config.ts CODE_OF_CONDUCT.md CONTRIBUTING.md flake.lock flake.nix .next/cache .next/standalone
-          tar -czf paymenter.tar.gz * .next .registry-hash .env.example .gitignore
+          tar -czf paymenter.tar.gz --owner=0 --group=0 --numeric-owner * .next .registry-hash .env.example .gitignore
 
       - name: Create checksum and add to changelog
         run: |
