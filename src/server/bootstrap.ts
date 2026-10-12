@@ -26,6 +26,13 @@ export function boot(): Promise<void> {
             await ensureSettings(true);
             registerListeners();
             try {
+                // Blade/Livewire themes cannot run: say so instead of silently ignoring them
+                const { discoverPhpThemes } = await import('./extensions/php/discovery');
+                for (const t of discoverPhpThemes()) console.warn(`[theme:${t.name}] ${t.reason}`);
+            } catch {
+                /* diagnostics only */
+            }
+            try {
                 await ExtensionHelper.bootExtensions();
             } catch {
                 /* tables may not exist before the first migration */
