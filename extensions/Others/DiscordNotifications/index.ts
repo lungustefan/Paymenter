@@ -54,6 +54,14 @@ const resourceFor: Record<string, AdminResourceInfo> = {
 };
 
 export default class DiscordNotifications extends Extension {
+    static meta = {
+        name: 'Discord Notifications',
+        description: 'Send notifications to Discord for various events.',
+        version: 'builtin',
+        author: 'Paymenter',
+        extensionId: 'unknown',
+    };
+
     /**
      * Get all the configuration for the extension
      */

@@ -5,7 +5,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { cn } from '@themes/default/components/cn';
 
 /** the URL state of the page (`tab`, `q`, `filter`, `n`) */
-function useUrlState() {
+export function useUrlState() {
     const router = useRouter();
     const pathname = usePathname();
     const params = useSearchParams();
