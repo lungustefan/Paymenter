@@ -504,6 +504,7 @@ export const services = mysqlTable("services", {
     updated_at: dbTimestamp("updated_at"),
     billing_agreement_id: bigint("billing_agreement_id", { mode: 'number', unsigned: true }),
     label: varchar("label", { length: 255 }),
+    suspend_hold_until: dbDate("suspend_hold_until"),
 });
 
 export const serviceCancellations = mysqlTable("service_cancellations", {

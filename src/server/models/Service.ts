@@ -48,10 +48,10 @@ export class Service extends Model<ServiceRelations> {
     static table = services;
     static morphName = 'App\\Models\\Service';
     static fillable = [
-        'order_id', 'product_id', 'plan_id', 'quantity', 'price', 'expires_at', 'subscription_id', 'status',
+        'order_id', 'product_id', 'plan_id', 'quantity', 'price', 'expires_at', 'suspend_hold_until', 'subscription_id', 'status',
         'coupon_id', 'user_id', 'currency_code', 'billing_agreement_id',
     ];
-    static casts = { expires_at: 'date' };
+    static casts = { expires_at: 'date', suspend_hold_until: 'date' };
     static auditable = true;
     static observers = [ServiceObserver];
     static accessors = ['formattedPrice', 'baseLabel', 'description', 'cancellable', 'upgradable'];

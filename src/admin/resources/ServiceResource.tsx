@@ -168,6 +168,13 @@ export class ServiceResource extends Resource {
                 .label('Expires At')
                 .required(({ get }) => get('plan')?.type != 'one-time' && get('plan')?.type != 'free' && get('status') !== 'pending')
                 .placeholder('Select the expiration date'),
+            DatePicker.make('suspend_hold_until')
+                .label('Do Not Suspend Until')
+                .helperText(
+                    'While set to a future date, the automatic suspension cronjob will skip this service, even if it is overdue. This does not affect manual suspension or termination.',
+                )
+                .minDate(Carbon.now().format('Y-m-d'))
+                .placeholder('Select a date to hold off suspension until'),
             Select.make('coupon_id').label('Coupon').relationship('coupon', 'code').searchable().preload().placeholder('Select the coupon'),
             Select.make('currency_code')
                 .options(async ({ get, state }) => {
