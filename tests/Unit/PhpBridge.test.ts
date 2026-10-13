@@ -262,4 +262,12 @@ describe('PHP bridge', () => {
         await expect(getPhpBridge().call('describe', { type: 'server', name: '../../etc/passwd' })).rejects.toThrow(/Invalid extension/);
         await expect(getPhpBridge().call('call', { type: 'other', name: 'WarnDemo', fn: '__construct', args: [] })).rejects.toThrow(/Invalid function/);
     });
+
+    it('reports pre-1.0 function-style extensions as legacy instead of silently ignoring them', async () => {
+        const { discoverPhpExtensions, discoverLegacyPhpExtensions } = await import('@/server/extensions/php/discovery');
+        expect(discoverPhpExtensions().map((e) => e.name)).not.toContain('LegacyDemo');
+        expect(discoverLegacyPhpExtensions()).toEqual([{ type: 'gateway', name: 'LegacyDemo', hooks: ['getConfig', 'pay'] }]);
+        const { getPhpBridge } = await import('@/server/extensions/php/runtime');
+        await expect(getPhpBridge().call('describe', { type: 'gateway', name: 'LegacyDemo' })).rejects.toThrow(/not found/);
+    });
 });

@@ -25,6 +25,15 @@ WORKDIR /app
 RUN apk add --no-cache ca-certificates curl supervisor tar netcat-openbsd \
     && npm install -g pnpm@10
 
+# Optional PHP CLI for the PHP extension bridge (docs/php-extensions.md). Off by default, the image stays PHP-free:
+#   docker build --build-arg INSTALL_PHP=true -t paymenter-php .
+# Installs php84 (+ mbstring/ctype/openssl, all the shim needs) and points PHP_BIN at it. Not exercised in CI.
+ARG INSTALL_PHP=false
+RUN if [ "$INSTALL_PHP" = "true" ]; then \
+        apk add --no-cache php84 php84-mbstring php84-ctype php84-openssl php84-iconv \
+        && ln -sf /usr/bin/php84 /usr/local/bin/php; \
+    fi
+
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
     HOSTNAME=0.0.0.0 \

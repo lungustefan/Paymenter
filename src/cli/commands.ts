@@ -353,7 +353,7 @@ for (const [name, description] of [
 
 register('php:doctor', 'Check the PHP bridge: php binary, PHP extensions found, Blade themes that cannot run', async () => {
     const { phpAvailability } = await import('@/server/extensions/php/bridge');
-    const { discoverPhpExtensions, discoverPhpThemes } = await import('@/server/extensions/php/discovery');
+    const { discoverPhpExtensions, discoverPhpThemes, discoverLegacyPhpExtensions } = await import('@/server/extensions/php/discovery');
     const a = phpAvailability(true);
     console.log(a.ok ? `php ${a.version} (${a.binary}): OK` : `php: UNAVAILABLE - ${a.reason}`);
     const exts = discoverPhpExtensions();
@@ -361,6 +361,9 @@ register('php:doctor', 'Check the PHP bridge: php binary, PHP extensions found, 
     for (const e of exts) {
         console.log(` - ${e.type}/${e.name}`);
         for (const w of e.warnings) console.log(`     ! ${w}`);
+    }
+    for (const l of discoverLegacyPhpExtensions()) {
+        console.log(` - ${l.type}/${l.name}: LEGACY pre-1.0 function-style extension (${l.hooks.slice(0, 6).join(', ')}${l.hooks.length > 6 ? ', ...' : ''}); not loadable, it needs a ${l.name}/${l.name}.php class written for v1.5.x (see docs/php-extensions.md)`);
     }
     const themes = discoverPhpThemes();
     for (const t of themes) console.log(` theme ${t.name}: ${t.reason}`);
