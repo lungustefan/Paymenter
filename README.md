@@ -223,7 +223,7 @@ themes/<name>/
 
 **Theme translations.** A theme can ship its own strings in `themes/<name>/lang/<locale>/<group>.json` (same JSON format as `lang/`). While the theme is active they are available under a namespace that equals the theme's folder name: `themes/my-theme/lang/en/theme.json` containing `{"welcome": "Welcome, :name"}` is used as `t('my-theme::theme.welcome', { name })` on the server and `useT().t('my-theme::theme.welcome', { name })` in client components. Missing keys in the current locale fall back to the fallback locale (`en`) and then to the key itself. Namespaces of inactive themes are not loaded. The lang folder is discovered at build time (`pnpm registry`, run by `dev` and `build`), so restart `pnpm dev` after adding one (translations are cached per process, restart after editing them too). `themes/default/lang` is the reference. Note that `app:theme:create` copies the `lang` folder, so rename the namespace in the copied keys to the new theme's name.
 
-Scaffold one with `pnpm paymenter app:extension:create` or `pnpm paymenter app:theme:create`, and look at `extensions/Gateways/Stripe` (gateway), `extensions/Servers/Pterodactyl` (server), `extensions/Others/Announcements` (other) and `themes/default` for working examples. Select the active theme under Settings in the admin panel.
+Scaffold one with `pnpm paymenter app:extension:create` or `pnpm paymenter app:theme:create`, and look at `extensions/Gateways/Stripe` (gateway), `extensions/Servers/Pterodactyl` (server; see also [docs/proxmox.md](docs/proxmox.md) for the Proxmox VE extension), `extensions/Others/Announcements` (other) and `themes/default` for working examples. Select the active theme under Settings in the admin panel.
 
 #### Differences from the Laravel version
 
