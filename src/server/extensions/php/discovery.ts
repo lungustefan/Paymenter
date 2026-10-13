@@ -67,6 +67,43 @@ export function discoverPhpExtensions(): PhpExtensionInfo[] {
     return out;
 }
 
+export interface LegacyPhpExtension {
+    type: PhpExtensionInfo['type'];
+    name: string;
+    hooks: string[];
+}
+
+/**
+ * Pre-1.0 extensions (the archived Paymenter/Extensions repository): `<Name>/index.php` with plain functions
+ * `<Name>_getConfig()`, `<Name>_pay()`, `<Name>_createServer()` ... and no class. They target the 0.x data model
+ * (`OrderProduct`, `ExtensionHelper::getConfig('Name', 'key')`) and cannot be loaded; they are reported, not ignored.
+ */
+export function discoverLegacyPhpExtensions(): LegacyPhpExtension[] {
+    const out: LegacyPhpExtension[] = [];
+    const root = extensionsRoot();
+    for (const typeDir of Object.keys(TYPES)) {
+        let names: string[] = [];
+        try {
+            names = fs.readdirSync(path.join(/* turbopackIgnore: true */ root, typeDir), { withFileTypes: true }).filter((d) => d.isDirectory() && /^[A-Za-z][A-Za-z0-9_]*$/.test(d.name)).map((d) => d.name).sort();
+        } catch {
+            continue;
+        }
+        for (const name of names) {
+            const dir = path.join(/* turbopackIgnore: true */ root, typeDir, name);
+            if (exists(path.join(dir, `${name}.php`)) || ['index.ts', 'index.tsx', 'index.js'].some((f) => exists(path.join(dir, f)))) continue;
+            let src: string;
+            try {
+                src = fs.readFileSync(path.join(/* turbopackIgnore: true */ dir, 'index.php'), 'utf8');
+            } catch {
+                continue;
+            }
+            const hooks = [...src.matchAll(new RegExp(`^function\\s+${name}_([A-Za-z0-9]+)\\s*\\(`, 'gm'))].map((m) => m[1]);
+            if (hooks.length) out.push({ type: TYPES[typeDir], name, hooks });
+        }
+    }
+    return out;
+}
+
 /** Themes written for Blade/Livewire (no `theme.ts`): they are not usable and are reported instead of silently ignored. */
 export function discoverPhpThemes(): { name: string; reason: string }[] {
     const out: { name: string; reason: string }[] = [];
