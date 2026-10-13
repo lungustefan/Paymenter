@@ -33,7 +33,6 @@ themes/*
 !themes/default
 extensions/Others/Pages
 extensions/Servers/LicenseManager
-extensions/Servers/Proxmox
 
 # Local data
 /storage/app/public/*
