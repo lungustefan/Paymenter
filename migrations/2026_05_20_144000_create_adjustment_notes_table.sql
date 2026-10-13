@@ -1,0 +1,3 @@
+create table `adjustment_notes` (`id` bigint unsigned not null auto_increment primary key, `invoice_id` bigint unsigned not null, `type` varchar(255) not null, `number` varchar(255) null, `amount` decimal(17, 2) not null, `description` text null, `status` varchar(255) not null default 'active', `created_at` timestamp null, `updated_at` timestamp null) default character set {{charset}} collate {{collation}};
+alter table `adjustment_notes` add constraint `adjustment_notes_invoice_id_foreign` foreign key (`invoice_id`) references `invoices` (`id`) on delete cascade;
+alter table `adjustment_notes` add unique `adjustment_notes_number_unique`(`number`);

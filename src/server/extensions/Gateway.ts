@@ -1,3 +1,4 @@
+import type { InvoiceTransaction } from '@/server/models/InvoiceTransaction';
 import type { Invoice } from '@/server/models/Invoice';
 import type { BillingAgreement } from '@/server/models/BillingAgreement';
 import type { User } from '@/server/models/User';
@@ -22,6 +23,16 @@ export abstract class Gateway extends Extension {
     }
 
     async charge(_invoice: Invoice, _total: number, _billingAgreement: BillingAgreement): Promise<boolean> {
+        throw new Error('Not implemented');
+    }
+
+    /** Whether the gateway can refund its transactions (see `refund()`). */
+    supportsRefunds(): boolean {
+        return false;
+    }
+
+    /** Refund `amount` of the given transaction at the payment provider. Return false (or throw) when it fails. */
+    async refund(_transaction: InvoiceTransaction, _amount: number): Promise<boolean> {
         throw new Error('Not implemented');
     }
 

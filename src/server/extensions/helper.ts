@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { sql } from 'drizzle-orm';
 import { extensionRegistry, type ExtensionEntry } from '@/generated/registry';
-import { InvoiceTransactionStatus } from '@/server/enums';
+import { AdjustmentNoteType, InvoiceTransactionStatus } from '@/server/enums';
 import { cacheGet, cachePut } from '@/server/cache';
 import { currentDb, transaction } from '@/server/orm';
 import { recordAudit } from '@/server/orm/audit';
@@ -20,6 +20,8 @@ import type { User } from '@/server/models/User';
 import type { Setting } from '@/server/models/Setting';
 import { migrationsPath } from '@/server/db/migrate';
 import { dbConfig, getPool } from '@/server/db/connection';
+import { discoverPhpExtensions, type PhpExtensionInfo } from './php/discovery';
+import { phpAvailability } from './php/bridge';
 
 /** Port of App\Helpers\ExtensionHelper. */
 
@@ -27,6 +29,12 @@ export interface AvailableExtension {
     name: string;
     type: string;
     meta: ExtensionMeta | null;
+    /** `php`: an upstream-layout PHP extension running through the PHP bridge */
+    runtime?: 'php';
+    /** why the extension cannot run right now (e.g. php is not installed) */
+    unavailable?: string;
+    /** parts of the extension that cannot run on the Node.js panel */
+    warnings?: string[];
 }
 
 type ExtensionCtor = new (config?: Record<string, any>) => ExtensionBase;
@@ -37,9 +45,33 @@ function entryFor(type: string, name: string): ExtensionEntry | undefined {
     return extensionRegistry.find((e) => e.type === type.toLowerCase() && e.name.toLowerCase() === name.toLowerCase());
 }
 
+/** upstream-layout PHP extension (extensions/<Type>/<Name>/<Name>.php) without a TypeScript entry */
+export function phpEntryFor(type: string, name: string): PhpExtensionInfo | undefined {
+    if (entryFor(type, name)) return undefined;
+    return discoverPhpExtensions().find((e) => e.type === type.toLowerCase() && e.name.toLowerCase() === name.toLowerCase());
+}
+
+async function loadPhpClass(info: PhpExtensionInfo): Promise<{ Cls: ExtensionCtor; mod: any }> {
+    const key = `php:${info.type}:${info.name}`;
+    let hit = moduleCache.get(key);
+    if (!hit) {
+        const a = phpAvailability();
+        if (!a.ok) throw new Error(a.reason);
+        const [{ getPhpBridge }, { createPhpExtensionClass }] = await Promise.all([import('./php/runtime'), import('./php/PhpExtension')]);
+        const desc = await getPhpBridge().call('describe', { type: info.type, name: info.name });
+        hit = { Cls: createPhpExtensionClass(info, desc) as unknown as ExtensionCtor, mod: {} };
+        moduleCache.set(key, hit);
+    }
+    return hit;
+}
+
 async function loadClass(type: string, name: string): Promise<{ Cls: ExtensionCtor; mod: any }> {
     const entry = entryFor(type, name);
-    if (!entry) throw new Error(`Extension "${name}" not found`);
+    if (!entry) {
+        const php = phpEntryFor(type, name);
+        if (php) return loadPhpClass(php);
+        throw new Error(`Extension "${name}" not found`);
+    }
     const key = `${entry.type}:${entry.name}`;
     let hit = moduleCache.get(key);
     if (!hit) {
@@ -72,6 +104,16 @@ export class ExtensionHelper {
                 out.push({ name: e.name, type: e.type, meta: (Cls as any).meta ?? null });
             } catch {
                 /* broken extension: skip */
+            }
+        }
+        for (const info of discoverPhpExtensions()) {
+            if (out.some((o) => o.type === info.type && o.name === info.name)) continue;
+            try {
+                const { Cls } = await loadPhpClass(info);
+                out.push({ name: info.name, type: info.type, meta: (Cls as any).meta ?? null, runtime: 'php', warnings: info.warnings });
+            } catch (e: any) {
+                // php missing / extension does not load: still listed, with the reason, instead of vanishing
+                out.push({ name: info.name, type: info.type, meta: { name: info.name, description: '', version: '', author: '' }, runtime: 'php', unavailable: String(e?.message ?? e), warnings: info.warnings });
             }
         }
         return out;
@@ -210,7 +252,7 @@ export class ExtensionHelper {
         const gateways: Gateway[] = [];
         for (const gateway of await Gateway.query().with('settings').get()) {
             const instance = (await this.getExtension('gateway', gateway.extension, await gateway.rel('settings'))) as any;
-            if (typeof instance.supportsBillingAgreements === 'function' && instance.supportsBillingAgreements()) gateways.push(gateway);
+            if (typeof instance.supportsBillingAgreements === 'function' && (await instance.supportsBillingAgreements())) gateways.push(gateway);
         }
         return gateways;
     }
@@ -280,6 +322,58 @@ export class ExtensionHelper {
         t.fee = fee;
         await t.save();
         return t;
+    }
+
+    /* ---------------- refunds ---------------- */
+
+    /** Refund a transaction through the payment gateway, then record it locally. */
+    static async refund(invoiceTransaction: InvoiceTransaction, amount: number): Promise<boolean> {
+        if (!(amount > 0)) throw new Error('Refund amount must be greater than 0.');
+        const gateway = await invoiceTransaction.rel('gateway');
+        if (!gateway || !(await this.hasFunction(gateway, 'supportsRefunds')) || !(await this.hasFunction(gateway, 'refund'))) {
+            throw new Error(`Gateway does not support refunds for transaction #${invoiceTransaction.id}`);
+        }
+        const instance = (await this.getExtension('gateway', gateway.extension, await gateway.rel('settings'))) as any;
+        if (!instance.supportsRefunds()) throw new Error(`Gateway does not support refunds for transaction #${invoiceTransaction.id}`);
+
+        return transaction(async () => {
+            const locked = await InvoiceTransaction.query().where('id', invoiceTransaction.id).lockForUpdate().firstOrFail();
+            this.assertRefundable(locked, amount);
+            const success = await instance.refund(locked, amount);
+            if (!success) throw new Error(`Gateway refund failed for transaction #${locked.id}`);
+            return this.recordRefund(locked, amount);
+        });
+    }
+
+    /** Record a refund without contacting the payment gateway. */
+    static async refundLocally(invoiceTransaction: InvoiceTransaction, amount: number): Promise<void> {
+        if (!(amount > 0)) throw new Error('Refund amount must be greater than 0.');
+        await transaction(async () => {
+            const locked = await InvoiceTransaction.query().where('id', invoiceTransaction.id).lockForUpdate().firstOrFail();
+            this.assertRefundable(locked, amount);
+            await this.recordRefund(locked, amount);
+        });
+    }
+
+    private static assertRefundable(locked: InvoiceTransaction, amount: number) {
+        const refundable = locked.refundableAmount();
+        if (Math.round(amount * 100) > Math.round(refundable * 100)) {
+            throw new Error(`Refund amount (${amount}) exceeds refundable amount (${refundable}) for this transaction.`);
+        }
+    }
+
+    /** Raise the refunded amount of the transaction and add a credit note for it on the invoice. */
+    private static async recordRefund(locked: InvoiceTransaction, amount: number): Promise<boolean> {
+        const refunded = (Math.round(Number(locked.refunded_amount ?? 0) * 100) + Math.round(amount * 100)) / 100;
+        locked.refunded_amount = refunded;
+        await locked.save();
+        const invoice = await locked.rel('invoice');
+        await invoice.relation('adjustmentNotes').create({
+            type: AdjustmentNoteType.Credit,
+            amount: -1 * Math.abs(amount),
+            description: `Refund for transaction #${locked.id} (${locked.transaction_id ?? 'manual'})`,
+        });
+        return true;
     }
 
     static async cancelSubscription(service: Service): Promise<boolean> {

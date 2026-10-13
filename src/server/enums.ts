@@ -8,6 +8,18 @@ export const InvoiceTransactionStatus = {
 } as const;
 export type InvoiceTransactionStatus = (typeof InvoiceTransactionStatus)[keyof typeof InvoiceTransactionStatus];
 
+export const AdjustmentNoteStatus = {
+    Active: 'active',
+    Voided: 'voided',
+} as const;
+export type AdjustmentNoteStatus = (typeof AdjustmentNoteStatus)[keyof typeof AdjustmentNoteStatus];
+
+export const AdjustmentNoteType = {
+    Credit: 'credit',
+    Debit: 'debit',
+} as const;
+export type AdjustmentNoteType = (typeof AdjustmentNoteType)[keyof typeof AdjustmentNoteType];
+
 export const NotificationEnabledStatus = {
     Force: 'force',
     ChoiceOn: 'choice_on',

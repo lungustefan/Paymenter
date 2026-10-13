@@ -18,9 +18,12 @@ const dirs = (p) => (fs.existsSync(p) ? fs.readdirSync(p, { withFileTypes: true 
 
 const themes = [];
 const themeModules = [];
+const themeLangs = [];
 for (const name of dirs(path.join(root, 'themes'))) {
     const dir = path.join(root, 'themes', name);
     if (entryFiles(dir, ['theme.ts', 'theme.tsx', 'theme.js'])) themes.push(name);
+    // translations: themes/<name>/lang/<locale>/<group>.json, used as the `<name>::group.key` namespace
+    if (fs.existsSync(path.join(dir, 'lang')) && fs.statSync(path.join(dir, 'lang')).isDirectory()) themeLangs.push(name);
     // a theme with an index file provides the layout + page views
     if (entryFiles(dir, ['index.ts', 'index.tsx', 'index.js'])) themeModules.push(name);
 }
@@ -45,6 +48,11 @@ const lines = [
     '',
     'export const themeModuleRegistry: Record<string, () => Promise<any>> = {',
     ...themeModules.map((t) => `    ${JSON.stringify(t)}: () => import('@themes/${t}'),`),
+    '};',
+    '',
+    '/** themes with a `lang` folder: the namespace (= theme folder name) -> directory, relative to the project root */',
+    'export const themeLangRegistry: Record<string, string> = {',
+    ...themeLangs.map((t) => `    ${JSON.stringify(t)}: ${JSON.stringify('themes/' + t + '/lang')},`),
     '};',
     '',
     'export interface ExtensionEntry { type: string; name: string; dir: string; load: () => Promise<any>; }',

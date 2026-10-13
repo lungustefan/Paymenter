@@ -1,3 +1,4 @@
+import { setting } from '@/server/config';
 import { User } from '@/server/models/User';
 import { Currency } from '@/server/models/Currency';
 import { Ticket } from '@/server/models/Ticket';
@@ -248,7 +249,7 @@ class ShowInvoices extends ManageRelatedRecords {
                     .color(({ state }) => ({ paid: 'success', pending: 'warning' })[state as string] ?? 'danger'),
             ])
             .filters([SelectFilter.make('status').label('Status').options({ paid: 'Paid', pending: 'Pending', cancelled: 'Cancelled' })])
-            .recordActions([ViewAction.make().url(({ record }) => InvoiceResource.getUrl('edit', { record }))]);
+            .recordActions([ViewAction.make().url(({ record }) => InvoiceResource.getUrl(setting('immutable_invoices_enabled', false) ? 'view' : 'edit', { record }))]);
     }
 }
 

@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { config, setting } from './config';
 import { dataGet } from './lib/php';
+import { themeLangRegistry } from '@/generated/registry';
 
 /**
  * Translations. Mirrors Laravel's translator on top of the JSON files that
@@ -21,6 +22,19 @@ export function langPath(): string {
 export function registerLangNamespace(namespace: string, dir: string) {
     namespaces.set(namespace, dir);
     for (const k of [...cache.keys()]) if (k.startsWith(`${namespace}::`)) cache.delete(k);
+}
+
+/**
+ * Namespace directory: explicitly registered ones, plus the translations of the
+ * active theme (`themes/<name>/lang`, namespace = theme name), like the
+ * `Lang::addNamespace($themeName, ...)` of the PHP version.
+ */
+function namespaceDir(ns: string): string | undefined {
+    const registered = namespaces.get(ns);
+    if (registered) return registered;
+    const rel = themeLangRegistry[ns];
+    if (rel && String(setting('theme', 'default')) === ns) return path.resolve(process.cwd(), rel);
+    return undefined;
 }
 
 export function flushTranslations() {
@@ -91,7 +105,7 @@ function lookup(key: string, locale: string): string | Tree | undefined {
     let k = key;
     const ns = /^([a-z0-9_-]+)::(.+)$/i.exec(key);
     if (ns) {
-        const nsDir = namespaces.get(ns[1]);
+        const nsDir = namespaceDir(ns[1]);
         if (!nsDir) return undefined;
         dir = nsDir;
         cacheKey = ns[1];
@@ -203,6 +217,14 @@ function deepMerge(a: Tree, b: Tree): Tree {
 export function clientMessages(locale: string): Tree {
     const fallback = config<string>('app.fallback_locale', 'en');
     const groups = (loc: string) => loadGroup(langPath(), `core:${langPath()}`, loc);
-    const merged = locale === fallback ? groups(locale) : deepMerge(groups(fallback), groups(locale));
+    const merged: Tree = locale === fallback ? { ...groups(locale) } : deepMerge(groups(fallback), groups(locale));
+    // active theme namespace: groups are exposed as `<theme>::<group>` (the client splits keys at the first dot)
+    const theme = String(setting('theme', 'default'));
+    const themeDir = namespaceDir(theme);
+    if (themeDir && themeLangRegistry[theme]) {
+        const tg = (loc: string) => loadGroup(themeDir, `${theme}:${themeDir}`, loc);
+        const tm = locale === fallback ? tg(locale) : deepMerge(tg(fallback), tg(locale));
+        for (const [g, v] of Object.entries(tm)) merged[`${theme}::${g}`] = v;
+    }
     return { ...merged, __json: { ...loadJsonFile(fallback), ...loadJsonFile(locale) } };
 }

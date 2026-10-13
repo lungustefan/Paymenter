@@ -4,6 +4,18 @@ import { mysqlTable, bigint, boolean, char, decimal, int, longtext, mediumtext, 
 import { sql } from 'drizzle-orm';
 import { dbJson, dbTimestamp, dbDatetime, dbDate } from './types';
 
+export const adjustmentNotes = mysqlTable("adjustment_notes", {
+    id: bigint("id", { mode: 'number', unsigned: true }).primaryKey().autoincrement(),
+    invoice_id: bigint("invoice_id", { mode: 'number', unsigned: true }).notNull(),
+    type: varchar("type", { length: 255 }).notNull(),
+    number: varchar("number", { length: 255 }),
+    amount: decimal("amount", { precision: 17, scale: 2, mode: 'number' }).notNull(),
+    description: text("description"),
+    status: varchar("status", { length: 255 }).notNull().default("active"),
+    created_at: dbTimestamp("created_at"),
+    updated_at: dbTimestamp("updated_at"),
+});
+
 export const apiKeys = mysqlTable("api_keys", {
     id: bigint("id", { mode: 'number', unsigned: true }).primaryKey().autoincrement(),
     name: varchar("name", { length: 255 }).notNull(),
@@ -225,10 +237,11 @@ export const failedJobs = mysqlTable("failed_jobs", {
 export const invoices = mysqlTable("invoices", {
     id: bigint("id", { mode: 'number', unsigned: true }).primaryKey().autoincrement(),
     number: varchar("number", { length: 255 }),
-    status: varchar("status", { length: 255 }).notNull().default("pending"),
+    status: varchar("status", { length: 255 }).notNull().default("draft"),
+    cancellation_reason: varchar("cancellation_reason", { length: 255 }),
     due_at: dbDate("due_at"),
     currency_code: varchar("currency_code", { length: 3 }).notNull(),
-    user_id: bigint("user_id", { mode: 'number', unsigned: true }).notNull(),
+    user_id: bigint("user_id", { mode: 'number', unsigned: true }),
     created_at: dbTimestamp("created_at"),
     updated_at: dbTimestamp("updated_at"),
 });
@@ -263,6 +276,7 @@ export const invoiceTransactions = mysqlTable("invoice_transactions", {
     invoice_id: bigint("invoice_id", { mode: 'number', unsigned: true }).notNull(),
     gateway_id: bigint("gateway_id", { mode: 'number', unsigned: true }),
     amount: decimal("amount", { precision: 17, scale: 2, mode: 'number' }).notNull(),
+    refunded_amount: decimal("refunded_amount", { precision: 17, scale: 2, mode: 'number' }).notNull().default(0),
     fee: decimal("fee", { precision: 17, scale: 2, mode: 'number' }),
     transaction_id: varchar("transaction_id", { length: 255 }),
     status: varchar("status", { length: 255 }).notNull().default("succeeded"),
@@ -490,6 +504,7 @@ export const services = mysqlTable("services", {
     updated_at: dbTimestamp("updated_at"),
     billing_agreement_id: bigint("billing_agreement_id", { mode: 'number', unsigned: true }),
     label: varchar("label", { length: 255 }),
+    suspend_hold_until: dbDate("suspend_hold_until"),
 });
 
 export const serviceCancellations = mysqlTable("service_cancellations", {

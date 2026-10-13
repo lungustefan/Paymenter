@@ -2,6 +2,7 @@ import { Order } from '@/server/models/Order';
 import { Product } from '@/server/models/Product';
 import { Currency } from '@/server/models/Currency';
 import { Invoice } from '@/server/models/Invoice';
+import { setting } from '@/server/config';
 import { ExtensionHelper } from '@/server/extensions/helper';
 import { Carbon } from '@/server/lib/carbon';
 import { Resource } from '../core/Resource';
@@ -160,7 +161,7 @@ class CreateOrder extends CreateRecord {
     protected override async afterCreate() {
         const order = this.record as any;
         const invoice = new Invoice();
-        invoice.fill({ user_id: order.user_id, currency_code: order.currency_code, due_at: Carbon.now().addUnit('day', 7) });
+        invoice.fill({ user_id: order.user_id, currency_code: order.currency_code, due_at: Carbon.now().addUnit('day', 7), status: setting('immutable_invoices_enabled', false) ? Invoice.STATUS_DRAFT : Invoice.STATUS_PENDING });
         await invoice.save();
 
         for (const service of (await order.relation('services').get()) as any[]) {

@@ -4,6 +4,7 @@ import type { Model } from '@/server/orm';
 import type { GeneratePdfEvent } from '@/server/classes/GeneratePdfEvent';
 import type { Cart } from '@/server/models/Cart';
 import type { CartItem } from '@/server/models/CartItem';
+import type { AdjustmentNote } from '@/server/models/AdjustmentNote';
 import type { Invoice } from '@/server/models/Invoice';
 import type { InvoiceItem } from '@/server/models/InvoiceItem';
 import type { InvoiceTransaction } from '@/server/models/InvoiceTransaction';
@@ -37,6 +38,9 @@ export const Events = {
         Deleting: defineEvent<{ cartItem: CartItem }>('App\\Events\\CartItem\\Deleting'),
         Updated: defineEvent<{ cartItem: CartItem }>('App\\Events\\CartItem\\Updated'),
         Updating: defineEvent<{ cartItem: CartItem }>('App\\Events\\CartItem\\Updating'),
+    },
+    AdjustmentNote: {
+        Creating: defineEvent<{ adjustmentNote: AdjustmentNote }>('App\\Events\\AdjustmentNote\\Creating'),
     },
     Invoice: {
         Created: defineEvent<{ invoice: Invoice }>('App\\Events\\Invoice\\Created'),

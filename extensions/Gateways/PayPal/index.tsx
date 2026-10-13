@@ -11,6 +11,8 @@ import { randomString } from '@/server/lib/ids';
 import { BillingAgreement } from '@/server/models/BillingAgreement';
 import { Invoice } from '@/server/models/Invoice';
 import type { InvoiceItem } from '@/server/models/InvoiceItem';
+import type { InvoiceTransaction } from '@/server/models/InvoiceTransaction';
+import { numberFormat } from '@/server/lib/php';
 import { Service } from '@/server/models/Service';
 import type { User } from '@/server/models/User';
 import PayPalButtons from './PayPalButtons';
@@ -27,7 +29,7 @@ export default class PayPal extends Gateway {
     static meta = {
         name: 'PayPal Gateway',
         description: 'Accept payments via PayPal.',
-        version: '1.0.0',
+        version: 'builtin',
         author: 'Paymenter',
         url: 'https://paymenter.org/docs/extensions/paypal',
         icon: 'data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgNTEyIDUxMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICAgIDxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSIjRjVGNkY4IiAvPgogICAgPHBhdGggZD0iTTMzNi4zOTcgMTgxLjQ4QzMzNi4zOTcgMjE1LjY2NyAzMDQuODQ3IDI1NiAyNTcuMTExIDI1NkgyMTEuMTI5TDIwOC44NzIgMjcwLjI0MkwxOTguMTQ1IDMzOC44SDE0MUwxNzUuMzc4IDExOEgyNjcuOTYxQzI5OS4xMzcgMTE4IDMyMy42NjQgMTM1LjM3NiAzMzIuNjk4IDE1OS41MjNDMzM1LjMwNCAxNjYuNTQzIDMzNi41NTkgMTczLjk5MyAzMzYuMzk3IDE4MS40OFoiIGZpbGw9IiMwMDI5OTEiIC8+CiAgICA8cGF0aCBkPSJNMzY5LjMzMSAyNDQuOTZDMzYzLjAzMSAyODMuMjM3IDMyOS44OTggMzExLjI5MyAyOTEuMTA2IDMxMS4ySDI1OS4xNzZMMjQ1Ljg4NSAzOTRIMTg5LjA0N0wxOTguMTQzIDMzOC44TDIwOC44NzYgMjcwLjI0MUwyMTEuMTI3IDI1NkgyNTcuMTA5QzMwNC43ODMgMjU2IDMzNi4zOTUgMjE1LjY2NyAzMzYuMzk1IDE4MS40NzlDMzU5Ljg1NSAxOTMuNTg3IDM3My41MzIgMjE4LjA1MyAzNjkuMzMxIDI0NC45NloiIGZpbGw9IiM2MENERkYiIC8+CiAgICA8cGF0aCBkPSJNMzM2LjM5NyAxODEuNDhDMzI2LjU1OSAxNzYuMzM0IDMxNC42MjkgMTczLjIgMzAxLjY0NSAxNzMuMkgyMjQuMTE5TDIxMS4xMjkgMjU2SDI1Ny4xMTFDMzA0Ljc4NSAyNTYgMzM2LjM5NyAyMTUuNjY3IDMzNi4zOTcgMTgxLjQ4WiIgZmlsbD0iIzAwOENGRiIgLz4KPC9zdmc+Cg==',
@@ -438,6 +440,21 @@ export default class PayPal extends Gateway {
 
         await service.relation('properties').where('key', 'has_paypal_subscription').delete();
 
+        return true;
+    }
+
+
+    supportsRefunds(): boolean {
+        return true;
+    }
+
+    async refund(transaction: InvoiceTransaction, amount: number): Promise<boolean> {
+        const captureId = transaction.transaction_id;
+        if (!captureId) throw new Error('Transaction has no PayPal capture ID.');
+        const invoice = await transaction.rel('invoice');
+        await this.request('post', this.baseUrl + '/v2/payments/captures/' + captureId + '/refund', {
+            amount: { currency_code: invoice.currency_code, value: numberFormat(amount, 2, '.', '') },
+        });
         return true;
     }
 }

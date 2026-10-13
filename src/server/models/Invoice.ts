@@ -10,19 +10,22 @@ import { Currency } from './Currency';
 import { User } from './User';
 import { InvoiceItem } from './InvoiceItem';
 import { InvoiceTransaction } from './InvoiceTransaction';
+import { AdjustmentNote } from './AdjustmentNote';
 import { InvoiceSnapshot } from './InvoiceSnapshot';
 import { Property } from './Property';
 import { TaxRate } from './TaxRate';
 import { InvoiceObserver } from '@/server/observers/InvoiceObserver';
-import { InvoiceTransactionStatus } from '@/server/enums';
+import { AdjustmentNoteStatus, AdjustmentNoteType, InvoiceTransactionStatus } from '@/server/enums';
+import { t } from '@/server/i18n';
 
 export interface Invoice extends Row<typeof invoices> {}
 
 export interface InvoiceRelations {
     currency: Currency | null;
-    user: User;
+    user: User | null;
     items: InvoiceItem[];
     transactions: InvoiceTransaction[];
+    adjustmentNotes: AdjustmentNote[];
     snapshot: InvoiceSnapshot | null;
     properties: Property[];
 }
@@ -31,6 +34,7 @@ export interface InvoiceRelations {
 const moneyToCents = (amount: unknown): number => round(Number(amount) * 100);
 
 export class Invoice extends Model<InvoiceRelations> {
+    static STATUS_DRAFT = 'draft';
     static STATUS_PENDING = 'pending';
     static STATUS_PAID = 'paid';
     static STATUS_CANCELLED = 'cancelled';
@@ -38,11 +42,11 @@ export class Invoice extends Model<InvoiceRelations> {
     static table = invoices;
     static casts = { due_at: 'date' };
     static morphName = 'App\\Models\\Invoice';
-    static fillable = ['number', 'user_id', 'currency_code', 'due_at', 'status'];
+    static fillable = ['number', 'user_id', 'currency_code', 'due_at', 'status', 'cancellation_reason'];
     static auditable = true;
     static observers = [InvoiceObserver];
     static accessors = [
-        'total', 'formattedTotal', 'formattedRemaining', 'remaining', 'tax', 'userProperties', 'userName', 'billTo',
+        'total', 'formattedTotal', 'currentBalance', 'formattedCurrentBalance', 'formattedRemaining', 'remaining', 'tax', 'userProperties', 'userName', 'billTo',
     ];
 
     /** `public bool $send_create_email = true;` */
@@ -53,19 +57,50 @@ export class Invoice extends Model<InvoiceRelations> {
         user: belongsTo(() => User, 'user_id'),
         items: hasMany(() => InvoiceItem, 'invoice_id'),
         transactions: hasMany(() => InvoiceTransaction, 'invoice_id'),
+        adjustmentNotes: hasMany(() => AdjustmentNote, 'invoice_id'),
         snapshot: hasOne(() => InvoiceSnapshot, 'invoice_id'),
         properties: morphMany(() => Property, 'model'),
     };
 
-    async total(): Promise<number> {
-        const items = await this.rel('items');
-        return sum(items, (i) => moneyToCents(i.price) * Number(i.quantity)) / 100;
+    /** Credit note for the full total (used when an invoice is cancelled). */
+    async createCancellationCreditNote(description: string | null = null): Promise<void> {
+        const total = await this.total();
+        await this.relation('adjustmentNotes').create({
+            type: AdjustmentNoteType.Credit,
+            amount: -1 * Math.abs(total),
+            description: description ?? 'Automatic credit note generated after overdue invoice cancellation.',
+        });
+        this.unsetRelation('adjustmentNotes');
     }
 
+    /** Items plus the active debit notes minus the active credit notes (credit amounts are stored negative). */
+    async total(): Promise<number> {
+        const items = await this.rel('items');
+        const notes = (await this.rel('adjustmentNotes')).filter((n) => n.status === AdjustmentNoteStatus.Active);
+        const noteCents = (type: string) => moneyToCents(sum(notes.filter((n) => n.type === type), (n) => Number(n.amount)));
+        return (
+            (sum(items, (i) => moneyToCents(i.price) * Number(i.quantity)) + noteCents(AdjustmentNoteType.Debit) + noteCents(AdjustmentNoteType.Credit)) / 100
+        );
+    }
+
+    /** Total minus the succeeded transactions (net of refunds). */
+    async currentBalance(): Promise<number> {
+        const paid = sum(
+            (await this.rel('transactions')).filter((t) => t.status === InvoiceTransactionStatus.Succeeded),
+            (t) => moneyToCents(t.amount) - moneyToCents(t.refunded_amount),
+        );
+        return (moneyToCents(await this.total()) - paid) / 100;
+    }
+
+    async formattedCurrentBalance(): Promise<Price> {
+        return Price.make({ price: await this.currentBalance(), currency: await this.rel('currency'), tax: await this.tax() });
+    }
+
+    /** Remaining amount of the invoice, net of refunded amounts. */
     async remaining(): Promise<number> {
         const paid = sum(
             (await this.rel('transactions')).filter((t) => t.status === InvoiceTransactionStatus.Succeeded),
-            (t) => moneyToCents(t.amount),
+            (t) => moneyToCents(t.amount) - moneyToCents(t.refunded_amount),
         );
         return (moneyToCents(await this.total()) - paid) / 100;
     }
@@ -93,6 +128,7 @@ export class Invoice extends Model<InvoiceRelations> {
         const snapshot = await this.rel('snapshot');
         if (setting('invoice_snapshot', true) && snapshot?.properties) return snapshot.properties;
         const user = await this.rel('user');
+        if (!user) return {};
         const props = await user
             .relation<Property>('properties')
             .whereHas('parent_property', (q) => q.where('show_on_invoice', true))
@@ -105,7 +141,7 @@ export class Invoice extends Model<InvoiceRelations> {
     async userName(): Promise<string> {
         const snapshot = await this.rel('snapshot');
         if (setting('invoice_snapshot', true) && snapshot?.name) return snapshot.name;
-        return (await this.rel('user')).displayName();
+        return (await this.rel('user'))?.displayName() ?? t('invoices.deleted_user');
     }
 
     async billTo(): Promise<string> {

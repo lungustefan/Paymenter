@@ -6,7 +6,8 @@ import { dispatch } from '@/server/events';
 import { Events } from '@/server/event-defs';
 import { setting } from '@/server/config';
 import { defaultLocale, t } from '@/server/i18n';
-import { InvoiceTransactionStatus } from '@/server/enums';
+import { AdjustmentNoteStatus, AdjustmentNoteType, InvoiceTransactionStatus } from '@/server/enums';
+import { Price } from '@/server/classes/Price';
 import { GeneratePdfEvent } from './GeneratePdfEvent';
 import type { Invoice } from '@/server/models/Invoice';
 
@@ -95,9 +96,10 @@ function fmtDate(d: { translatedFormat(f: string, locale?: string): string } | n
 
 /** Port of resources/views/pdf/invoice.blade.php */
 async function renderInvoice(invoice: Invoice): Promise<Buffer> {
-    const [items, transactions, total, userName, userProps, billTo, tax] = await Promise.all([
+    const [items, transactions, adjustmentNotes, total, userName, userProps, billTo, tax] = await Promise.all([
         invoice.rel('items'),
         invoice.rel('transactions'),
+        invoice.rel('adjustmentNotes'),
         invoice.formattedTotal(),
         invoice.userName(),
         invoice.userProperties(),
@@ -200,23 +202,63 @@ async function renderInvoice(invoice: Invoice): Promise<Buffer> {
         doc.font('bold').fontSize(10.5).fillColor('#000').text(amount, tx + 150, y, { width: 110, align: 'right' });
         doc.y = Math.max(doc.y, y) + 6;
     };
+    // sum of the active credit / debit notes
+    const adjustmentsTotal = adjustmentNotes.filter((n) => n.status === AdjustmentNoteStatus.Active).reduce((acc, n) => acc + Number(n.amount), 0);
+    const adjustmentsRow = async () => {
+        if (adjustmentsTotal === 0) return;
+        const price = await Price.make({ price: adjustmentsTotal, currency: await invoice.rel('currency') });
+        row(t('invoices.ledger_adjustments'), price.format(adjustmentsTotal));
+    };
     if (Number(total.tax) > 0) {
         row(t('invoices.subtotal'), total.format(total.price - Number(total.tax)));
         row(`${tax?.name} (${decimalString(tax?.rate)}%)`, total.formatted.tax);
+        await adjustmentsRow();
         row(t('invoices.total'), String(total), true, true);
     } else {
+        await adjustmentsRow();
         row(t('invoices.total'), String(total), true, true);
     }
 
-    // Transactions
+    const sectionTitle = (title: string) => {
+        doc.moveDown(3);
+        doc.font('bold').fontSize(12).fillColor('#000').text(title, left, doc.y);
+        doc.font('regular').fontSize(10.5).moveDown(0.8);
+    };
+
+    // Adjustment notes (credit / debit notes), when the clients may see them
+    if (setting('notes_client_visible', false) && adjustmentNotes.length > 0) {
+        sectionTitle(t('invoices.ledger_adjustments'));
+        const acols = [width * 0.15, width * 0.17, width * 0.13, width * 0.35, width * 0.2];
+        drawHeader([t('invoices.date'), t('invoices.type'), t('invoices.status'), t('invoices.description'), t('invoices.amount')], acols);
+        for (const note of adjustmentNotes) {
+            const type = note.type === AdjustmentNoteType.Credit ? t('invoices.credit_note') : note.type === AdjustmentNoteType.Debit ? t('invoices.debit_note') : '';
+            const status = String(note.status).charAt(0).toUpperCase() + String(note.status).slice(1);
+            drawRow([fmtDate(note.created_at), type, status, String(note.description ?? ''), String(await note.formattedAmount())], acols);
+        }
+    }
+
+    // Transactions (the refunded column only when something was refunded)
     const paid = transactions.filter((tr) => tr.status === InvoiceTransactionStatus.Succeeded);
     if (paid.length > 0) {
-        doc.moveDown(3);
-        const tcols = [width * 0.3, width * 0.2, width * 0.25, width * 0.25];
-        drawHeader([t('invoices.transaction_id'), t('invoices.payment_date'), t('invoices.amount'), t('invoices.payment_method')], tcols);
+        const hasRefunds = paid.some((tr) => Number(tr.refunded_amount) > 0);
+        sectionTitle(t('invoices.transactions'));
+        const tcols = hasRefunds ? [width * 0.25, width * 0.17, width * 0.2, width * 0.18, width * 0.2] : [width * 0.3, width * 0.2, width * 0.25, width * 0.25];
+        drawHeader(
+            [t('invoices.transaction_id'), t('invoices.payment_date'), t('invoices.amount'), ...(hasRefunds ? [t('invoices.refunded_amount')] : []), t('invoices.payment_method')],
+            tcols,
+        );
         for (const tr of paid) {
             const gateway = await tr.rel('gateway');
-            drawRow([String(tr.transaction_id ?? ''), fmtDate(tr.created_at), String(await tr.formattedAmount()), gateway ? gateway.name : ''], tcols);
+            drawRow(
+                [
+                    String(tr.transaction_id ?? ''),
+                    fmtDate(tr.created_at),
+                    String(await tr.formattedAmount()),
+                    ...(hasRefunds ? [Number(tr.refunded_amount) > 0 ? String(await tr.formattedRefundedAmount()) : '-'] : []),
+                    gateway ? gateway.name : '',
+                ],
+                tcols,
+            );
         }
     }
 
