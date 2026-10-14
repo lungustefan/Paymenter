@@ -1,13 +1,24 @@
 import type { ReactNode } from 'react';
+import { statSync } from 'node:fs';
+import path from 'node:path';
 import { setting, config } from '@/server/config';
 import { storageUrl } from '@/server/routes';
 import { activeThemeName } from '@/server/theme-module';
 import { isRtl } from '@/server/locales';
 import { Head } from '@themes/default/layouts/Head';
 import { filamentPalette } from './palette';
-import { NotificationsHost } from './client';
+import { NotificationsHost, ThemeSync } from './client';
 import { ActionsProvider } from '../actions/client';
 import type { NotificationData } from '../Notification';
+
+/** cache-buster for the un-hashed admin stylesheet, so a browser can never pair new HTML with a stale cached admin.css */
+const cssVersion = (theme: string) => {
+    try {
+        return Math.floor(statSync(path.join(process.cwd(), 'public/build/themes', theme, 'admin.css')).mtimeMs).toString(36);
+    } catch {
+        return '0';
+    }
+};
 
 const darkModeScript = `const loadDarkMode = () => {
     window.theme = localStorage.getItem('theme') ?? 'system'
@@ -49,11 +60,12 @@ html.fi {
                     }}
                 />
                 <link href="/fonts/filament/filament/inter/index.css" rel="stylesheet" />
-                <link rel="stylesheet" href={`/build/themes/${activeThemeName()}/admin.css`} precedence="default" />
+                <link rel="stylesheet" href={`/build/themes/${activeThemeName()}/admin.css?v=${cssVersion(activeThemeName())}`} precedence="default" />
                 <script dangerouslySetInnerHTML={{ __html: darkModeScript }} />
                 <Head />
             </head>
             <body className="fi-body fi-panel-admin fi-body-has-navigation fi-body-has-topbar" suppressHydrationWarning>
+                <ThemeSync />
                 <NotificationsHost initial={flashed} closeLabel="Close">
                     <ActionsProvider>{children}</ActionsProvider>
                 </NotificationsHost>
