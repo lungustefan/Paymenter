@@ -1,6 +1,7 @@
 'use client';
 
-import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { Icon } from '../ui/Icon';
 import { colorClass } from '../ui/colors';
@@ -137,18 +138,60 @@ export function Dropdown({
     wrapperProps?: Record<string, any>;
 }) {
     const [open, setOpen] = useState(false);
+    const [pos, setPos] = useState<{ top?: number; bottom?: number; left: number; maxHeight: number } | null>(null);
     const ref = useRef<HTMLDivElement>(null);
+    const panelRef = useRef<HTMLDivElement>(null);
+
+    // The panel is portalled to <body> and positioned with `position: fixed` from the trigger's rect,
+    // so no ancestor (sticky topbar, overflow clip, stacking context) can clip it or paint it under content.
+    const reposition = useCallback(() => {
+        const trigger = ref.current;
+        const panel = panelRef.current;
+        if (!trigger || !panel) return;
+        const margin = 8;
+        const r = trigger.getBoundingClientRect();
+        const vw = document.documentElement.clientWidth;
+        const vh = window.innerHeight;
+        const w = panel.offsetWidth;
+        const h = panel.scrollHeight;
+        const below = vh - r.bottom - margin * 2;
+        const above = r.top - margin * 2;
+        const flip = h > below && above > below;
+        const left = Math.min(Math.max(placement === 'bottom-end' ? r.right - w : r.left, margin), Math.max(margin, vw - w - margin));
+        setPos((prev) => {
+            const next = flip ? { bottom: vh - r.top + margin, left, maxHeight: above } : { top: r.bottom + margin, left, maxHeight: below };
+            return prev && prev.top === next.top && prev.bottom === (next as any).bottom && prev.left === next.left && prev.maxHeight === next.maxHeight ? prev : next;
+        });
+    }, [placement]);
+
+    useLayoutEffect(() => {
+        if (!open) {
+            setPos(null);
+            return;
+        }
+        reposition();
+        window.addEventListener('resize', reposition);
+        window.addEventListener('scroll', reposition, true);
+        window.visualViewport?.addEventListener('resize', reposition);
+        return () => {
+            window.removeEventListener('resize', reposition);
+            window.removeEventListener('scroll', reposition, true);
+            window.visualViewport?.removeEventListener('resize', reposition);
+        };
+    }, [open, reposition]);
 
     useEffect(() => {
         if (!open) return;
-        const onDown = (e: MouseEvent) => {
-            if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+        const onDown = (e: Event) => {
+            const t = e.target as Node;
+            if (ref.current?.contains(t) || panelRef.current?.contains(t)) return;
+            setOpen(false);
         };
         const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
-        document.addEventListener('mousedown', onDown);
+        document.addEventListener('pointerdown', onDown);
         document.addEventListener('keydown', onKey);
         return () => {
-            document.removeEventListener('mousedown', onDown);
+            document.removeEventListener('pointerdown', onDown);
             document.removeEventListener('keydown', onKey);
         };
     }, [open]);
@@ -156,14 +199,22 @@ export function Dropdown({
     const close = () => setOpen(false);
     return (
         <div ref={ref} className={`fi-dropdown ${className}`.trim()} style={{ position: 'relative' }} {...wrapperProps}>
-            <div className="fi-dropdown-trigger" onMouseDown={(e) => e.button === 0 && !disabled && setOpen((o) => !o)}>
+            {/* click (not mousedown): fires once for mouse, touch and keyboard, so the synthesised mouse events after a tap cannot toggle twice */}
+            <div className="fi-dropdown-trigger" onClick={() => !disabled && setOpen((o) => !o)}>
                 {trigger}
             </div>
-            {open && (
-                <div className={`fi-dropdown-panel ${width ? `fi-width-${width}` : ''} ${panelClassName}`.trim()} style={{ top: 'calc(100% + 8px)', ...(placement === 'bottom-end' ? { right: 0 } : { left: 0 }) }}>
-                    {typeof children === 'function' ? children(close) : children}
-                </div>
-            )}
+            {open &&
+                createPortal(
+                    <div
+                        ref={panelRef}
+                        data-dropdown-panel=""
+                        className={`fi-dropdown-panel ${width ? `fi-width-${width}` : ''} ${panelClassName}`.trim()}
+                        style={{ position: 'fixed', zIndex: 1000, overflowY: 'auto', visibility: pos ? undefined : 'hidden', top: 0, left: 0, ...(pos ?? {}), ...(pos && pos.bottom !== undefined ? { top: 'auto' } : {}) }}
+                    >
+                        {typeof children === 'function' ? children(close) : children}
+                    </div>,
+                    document.body,
+                )}
         </div>
     );
 }
@@ -344,5 +395,37 @@ export function PageNotifications({ items }: { items: NotificationData[] }) {
             notify(n);
         }
     }, [items, notify]);
+    return null;
+}
+
+/**
+ * Keeps the `dark` class of <html> in sync with the chosen theme. The inline pre-hydration script only runs once per document;
+ * this also re-applies it after hydration, when a page is restored from the back/forward cache, when the tab becomes visible
+ * again, and when the OS appearance or the stored preference changes, so a page can never stay half light / half dark.
+ */
+export function ThemeSync() {
+    useEffect(() => {
+        const sync = () => {
+            let theme = 'system';
+            try {
+                theme = localStorage.getItem('theme') || 'system';
+            } catch {
+                /* storage unavailable */
+            }
+            applyTheme(theme);
+        };
+        const mq = window.matchMedia('(prefers-color-scheme: dark)');
+        sync();
+        mq.addEventListener('change', sync);
+        window.addEventListener('pageshow', sync);
+        window.addEventListener('storage', sync);
+        document.addEventListener('visibilitychange', sync);
+        return () => {
+            mq.removeEventListener('change', sync);
+            window.removeEventListener('pageshow', sync);
+            window.removeEventListener('storage', sync);
+            document.removeEventListener('visibilitychange', sync);
+        };
+    }, []);
     return null;
 }
